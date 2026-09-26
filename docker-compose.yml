@@ -1,0 +1,29 @@
+name: hato
+
+# PostgreSQL para desarrollo local. Los valores por defecto permiten
+# `docker compose up -d db` sin .env; si existe .env, sus valores tienen prioridad.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: hato-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hato}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hato_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-hato}
+      TZ: ${APP_TIMEZONE:-America/Bogota}
+      PGTZ: ${APP_TIMEZONE:-America/Bogota}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-hato} -d ${POSTGRES_DB:-hato}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  db-data:
+    name: hato-db-data
