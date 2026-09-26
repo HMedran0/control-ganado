@@ -18,6 +18,7 @@
     "test:tz": "turbo run test:tz",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @hato/api run db:generate",
     "db:migrate": "pnpm --filter @hato/api run db:migrate",
     "db:seed": "pnpm --filter @hato/api run db:seed",
     "db:reset": "pnpm --filter @hato/api run db:reset"

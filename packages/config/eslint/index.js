@@ -30,6 +30,8 @@ export const ignores = [
   '**/*.tsbuildinfo',
   // Especificación de partida, no código del proyecto (incluye referencia/prisma.config.ts).
   'docs/**',
+  // Cliente de Prisma: código generado, se regenera con `pnpm db:generate`.
+  '**/src/generated/**',
 ];
 
 /**
@@ -82,11 +84,19 @@ export function hato({ tsconfigRootDir }) {
     },
 
     // Pruebas: el uso de `any` y de aserciones no nulas es aceptable al montar datos.
+    // Las reglas `no-unsafe-*` también se apagan porque el cuerpo de una respuesta HTTP llega
+    // como `any` por diseño (supertest): afirmar sobre él es justamente lo que prueba el
+    // contrato de la API. En el código de producción siguen activas.
     {
-      files: ['**/*.{test,spec}.{ts,tsx}', '**/test/**/*.{ts,tsx}'],
+      files: ['**/*.{test,spec}.{ts,tsx}', '**/*.e2e-spec.ts', '**/test/**/*.{ts,tsx}'],
       rules: {
         '@typescript-eslint/no-explicit-any': 'off',
         '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-unsafe-assignment': 'off',
+        '@typescript-eslint/no-unsafe-member-access': 'off',
+        '@typescript-eslint/no-unsafe-call': 'off',
+        '@typescript-eslint/no-unsafe-return': 'off',
+        '@typescript-eslint/no-unsafe-argument': 'off',
       },
     },
 

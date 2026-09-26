@@ -15,7 +15,7 @@ jobs:
     name: Lint, typecheck, pruebas y build
     runs-on: ubuntu-latest
 
-    # Declarado desde M0.1 para que las pruebas de integración de M0.3 lo usen sin cambios.
+    # PostgreSQL real para las pruebas de integración (04-arquitectura.md §9, §10).
     # Misma imagen que docker-compose.yml.
     services:
       db:
@@ -34,10 +34,17 @@ jobs:
           --health-retries 5
 
     env:
+      # La base de las pruebas de integración; el arranque de la suite le aplica las
+      # migraciones. El puerto lo fija el servicio de arriba, nunca el código.
       DATABASE_URL: postgresql://hato:hato_dev@localhost:5432/hato_test?schema=public
+      TEST_DATABASE_URL: postgresql://hato:hato_dev@localhost:5432/hato_test?schema=public
       APP_TIMEZONE: America/Bogota
-      SEED_TODAY: "2026-09-25"
       TURBO_TELEMETRY_DISABLED: "1"
+      # Secretos de prueba: no sirven en ningún entorno real.
+      JWT_ACCESS_SECRET: secreto-de-integracion-continua-1234567890ab
+      REFRESH_TOKEN_PEPPER: pepper-de-integracion-continua-1234567890abcd
+      CORS_ORIGINS: http://localhost:5173
+      PUBLIC_WEB_URL: http://localhost:5173
 
     steps:
       - name: Descargar el repositorio
@@ -56,6 +63,10 @@ jobs:
       - name: Instalar dependencias
         run: pnpm install --frozen-lockfile --strict-peer-dependencies
 
+      # El cliente de Prisma no se versiona: se genera desde el esquema.
+      - name: Generar el cliente de Prisma
+        run: pnpm db:generate
+
       - name: Formato
         run: pnpm format:check
 
@@ -65,7 +76,8 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Pruebas con cobertura
+      # Incluye las pruebas de integración de la API contra el PostgreSQL del servicio.
+      - name: Pruebas
         run: pnpm test
 
       # ADR-002: las fechas de negocio no deben depender de la zona horaria del proceso.

@@ -2,17 +2,44 @@
   "$schema": "https://turborepo.com/schema.json",
   "ui": "stream",
   "globalDependencies": ["packages/config/**", ".env.example"],
+  // Turbo filtra el entorno de las tareas. Estas variables se pasan tal cual sin entrar en la
+  // clave de caché: son configuración del entorno (y secretos), no entradas del código.
+  "globalPassThroughEnv": [
+    "NODE_ENV",
+    "PORT",
+    "APP_TIMEZONE",
+    "LOG_LEVEL",
+    "SEED_TODAY",
+    "DEV_FAKE_AUTH",
+    "JWT_ACCESS_SECRET",
+    "REFRESH_TOKEN_PEPPER",
+    "CORS_ORIGINS",
+    "PUBLIC_WEB_URL",
+    "PRISMA_USER_CONSENT_FOR_DANGEROUS_AI_ACTION"
+  ],
   "tasks": {
+    "db:generate": {
+      "inputs": ["prisma/schema.prisma"],
+      "outputs": ["src/generated/**"],
+      "passThroughEnv": ["DATABASE_URL"]
+    },
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "db:generate"],
       "outputs": ["dist/**"]
     },
     "dev": {
+      "dependsOn": ["^build", "db:generate"],
+      "passThroughEnv": ["DATABASE_URL"],
       "cache": false,
       "persistent": true
     },
-    "typecheck": {},
+    "typecheck": {
+      "dependsOn": ["db:generate"]
+    },
     "test": {
+      "dependsOn": ["db:generate"],
+      // En la clave de caché: si cambia la base de datos, el resultado puede cambiar.
+      "env": ["DATABASE_URL", "TEST_DATABASE_URL"],
       "outputs": ["coverage/**"]
     },
     "test:tz": {
