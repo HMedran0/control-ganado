@@ -4,6 +4,9 @@
   "extends": "@hato/config/tsconfig/base.json",
   "compilerOptions": {
     "types": ["node"],
+    // Resuelve @hato/shared a su código fuente (ADR-003): el typecheck no necesita
+    // compilar shared antes. En tiempo de ejecución Node usa dist/ (condición "default").
+    "customConditions": ["development"],
     "noEmit": true,
     "declaration": false,
     "declarationMap": false,

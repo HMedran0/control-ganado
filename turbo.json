@@ -11,11 +11,12 @@
       "cache": false,
       "persistent": true
     },
-    "typecheck": {
-      "dependsOn": ["^build"]
-    },
+    "typecheck": {},
     "test": {
-      "dependsOn": ["^build"]
+      "outputs": ["coverage/**"]
+    },
+    "test:tz": {
+      "cache": false
     }
   }
 }
