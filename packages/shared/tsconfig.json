@@ -1,0 +1,15 @@
+{
+  // Typecheck: incluye las pruebas y la configuración de Vitest. No emite.
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // Sin sintaxis que requiera transformación en tiempo de compilación
+    // (enum, namespace, parameter properties): shared debe ser código borrable.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src/**/*.ts", "vitest.config.ts"]
+}

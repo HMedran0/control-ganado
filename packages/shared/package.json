@@ -1,0 +1,31 @@
+{
+  "name": "@hato/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Esquemas zod, tipos y reglas puras de dominio compartidas",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@hato/config": "workspace:*",
+    "@types/node": "24.9.2",
+    "typescript": "6.0.3",
+    "vite": "8.3.1",
+    "vitest": "5.0.2"
+  }
+}

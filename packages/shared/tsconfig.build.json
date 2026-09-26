@@ -1,0 +1,14 @@
+{
+  // Compilación a dist/: solo el código de la librería, sin pruebas.
+  // `rootDir` y `outDir` se declaran aquí y no en la base compartida porque las rutas
+  // relativas de un tsconfig se resuelven contra el archivo que las declara.
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "types": ["node"],
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts", "src/**/*.spec.ts"]
+}
