@@ -13,6 +13,9 @@ build/
 out/
 *.tsbuildinfo
 
+# Cliente de Prisma: se genera con `pnpm db:generate` (y en CI antes de compilar).
+apps/api/src/generated/
+
 # Cachés de herramientas
 .turbo/
 .eslintcache
