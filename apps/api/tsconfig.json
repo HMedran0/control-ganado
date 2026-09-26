@@ -1,0 +1,13 @@
+{
+  // Sin `erasableSyntaxOnly`: NestJS (M0.2) usa parameter properties en los constructores
+  // para la inyección de dependencias, y esa sintaxis no es borrable.
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "include": ["src/**/*.ts"]
+}

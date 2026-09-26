@@ -1,0 +1,19 @@
+{
+  "name": "@hato/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Aplicación web de Hato (React + Vite)",
+  "type": "module",
+  "scripts": {
+    "dev": "echo Pendiente del hito M2 - Vite + React",
+    "build": "echo Pendiente del hito M2 - build de la web",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@hato/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@hato/config": "workspace:*",
+    "typescript": "6.0.3"
+  }
+}

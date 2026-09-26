@@ -1,0 +1,15 @@
+{
+  // M2 cambiará la resolución a la de empaquetador cuando entre Vite.
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    "types": [],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // La web se compila con Vite (transpilación por archivo): sin sintaxis no borrable.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}
