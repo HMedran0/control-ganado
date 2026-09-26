@@ -1,10 +1,16 @@
 /**
- * Punto de entrada del paquete compartido.
+ * Paquete compartido entre la API, la web (F1), el móvil (F2) y el escritorio (F3).
  *
- * En M0.2 se agregan aquí `id.ts` (UUIDv7), los enums del dominio, el formato es-CO,
- * el catálogo de códigos de error y las reglas puras de `domain/`. Por ahora solo
- * expone el nombre del paquete para verificar el enlace del workspace de punta a punta.
+ * Contiene solo lógica pura: fechas de negocio, enums del dominio, formato es-CO, catálogo de
+ * errores y las reglas de negocio de `domain/`. Sin acceso a base de datos, sin frameworks y
+ * sin APIs exclusivas de Node (ADR-003).
  */
 
-/** Nombre del paquete, usado por los placeholders de apps/api y apps/web. */
-export const SHARED_PACKAGE_NAME = '@hato/shared';
+export * from './date.js';
+export * from './domain/index.js';
+export * from './enums.js';
+export * from './errors.js';
+export * from './format/index.js';
+export * from './id.js';
+export * from './money.js';
+export * from './schemas/farm-settings.js';

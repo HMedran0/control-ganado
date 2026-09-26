@@ -1,14 +1,16 @@
-import { SHARED_PACKAGE_NAME } from '@hato/shared';
+import { DEFAULT_FARM_SETTINGS, ERROR_CATALOG } from '@hato/shared';
 
 /**
  * Punto de entrada de la API.
  *
- * En M0.2 se reemplaza por el arranque real de NestJS sobre Fastify
+ * En M0.3 se reemplaza por el arranque real de NestJS sobre Fastify
  * (`NestFactory.create(AppModule, new FastifyAdapter())`), con validación de las
- * variables de entorno, filtro de errores problem+json y el endpoint /health de M0.3.
+ * variables de entorno, el filtro de errores problem+json que traduce `ERROR_CATALOG`
+ * y el endpoint /health.
  *
  * Por ahora solo comprueba que el enlace del workspace con `@hato/shared` funciona.
  */
 export function describeApi(): string {
-  return `Hato API — pendiente del hito M0.2 (usa ${SHARED_PACKAGE_NAME})`;
+  const errorCount = Object.keys(ERROR_CATALOG).length;
+  return `Hato API — pendiente del hito M0.3 (${errorCount} códigos de error, destete a los ${DEFAULT_FARM_SETTINGS.weaningAgeMonths} meses)`;
 }
