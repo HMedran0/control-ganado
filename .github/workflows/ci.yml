@@ -65,8 +65,12 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Pruebas
+      - name: Pruebas con cobertura
         run: pnpm test
+
+      # ADR-002: las fechas de negocio no deben depender de la zona horaria del proceso.
+      - name: Pruebas en dos zonas horarias
+        run: pnpm test:tz
 
       - name: Build
         run: pnpm build
