@@ -19,9 +19,9 @@ export default defineConfig({
   migrations: {
     path: 'prisma/migrations',
     // Node 24 ejecuta TypeScript borrando los tipos, sin necesidad de un ejecutor aparte.
-    // Prisma 7 quitó `--skip-seed` de `migrate reset`, así que este archivo debe existir
-    // siempre; hasta M0.3b solo avisa que el seed está pendiente.
-    seed: 'node prisma/seed/seed.ts',
+    // `--conditions=development` resuelve @hato/shared a su código fuente (ADR-003) y el
+    // gancho `ts-resolve` traduce las importaciones `.js` del cliente generado (ADR-006).
+    seed: 'node --conditions=development --import ./prisma/seed/ts-resolve.mjs prisma/seed/seed.ts',
   },
   datasource: {
     url: process.env.DATABASE_URL ?? SIN_CONFIGURAR,

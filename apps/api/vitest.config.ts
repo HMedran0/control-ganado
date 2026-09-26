@@ -12,7 +12,7 @@ export default defineConfig({
   plugins: [swc.vite({ module: { type: 'es6' } })],
   test: {
     environment: 'node',
-    include: ['src/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
+    include: ['src/**/*.spec.ts', 'prisma/seed/**/*.spec.ts', 'test/**/*.e2e-spec.ts'],
     // Las pruebas de integración comparten una base de datos: se ejecutan en serie.
     fileParallelism: false,
     globalSetup: ['./test/global-setup.ts'],

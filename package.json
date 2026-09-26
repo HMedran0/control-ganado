@@ -21,6 +21,7 @@
     "db:generate": "pnpm --filter @hato/api run db:generate",
     "db:migrate": "pnpm --filter @hato/api run db:migrate",
     "db:seed": "pnpm --filter @hato/api run db:seed",
+    "db:seed:load": "pnpm --filter @hato/api run db:seed:load",
     "db:reset": "pnpm --filter @hato/api run db:reset"
   },
   "devDependencies": {
