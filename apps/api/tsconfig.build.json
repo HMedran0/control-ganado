@@ -1,0 +1,16 @@
+{
+  // Configuración que usa el builder del CLI de Nest. No incluye pruebas.
+  // El compilador es SWC (ver nest-cli.json y .swcrc): compila mucho más rápido que tsc y,
+  // con `decoratorMetadata`, emite los metadatos que la inyección de dependencias de NestJS
+  // lee en tiempo de ejecución. Un compilador basado en esbuild no los emite (ADR-005).
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts", "test/**", "dist/**"]
+}

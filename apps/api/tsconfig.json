@@ -1,16 +1,28 @@
 {
-  // Sin `erasableSyntaxOnly`: NestJS (M0.2) usa parameter properties en los constructores
-  // para la inyección de dependencias, y esa sintaxis no es borrable.
+  // apps/api es ESM (`"type": "module"`): NestJS 12 se publica solo como módulos ES, así que
+  // la API no puede ser CommonJS y el generador de Prisma emite `esm` (ADR-005).
+  // Sin `erasableSyntaxOnly`: NestJS usa parameter properties en los constructores para la
+  // inyección de dependencias, y esa sintaxis no es borrable.
   "extends": "@hato/config/tsconfig/base.json",
   "compilerOptions": {
     "types": ["node"],
-    // Resuelve @hato/shared a su código fuente (ADR-003): el typecheck no necesita
-    // compilar shared antes. En tiempo de ejecución Node usa dist/ (condición "default").
+    // Resuelve @hato/shared a su código fuente para revisar tipos sin compilar (ADR-003).
     "customConditions": ["development"],
+    // Metadatos de decoradores: los necesita la inyección de dependencias de NestJS.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
     "noEmit": true,
     "declaration": false,
     "declarationMap": false,
     "sourceMap": false
   },
-  "include": ["src/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "test/**/*.ts",
+    "vitest.config.ts",
+    "prisma.config.ts",
+    "prisma/seed/**/*.ts"
+  ],
+  // Código generado por Prisma: no se revisa como código propio.
+  "exclude": ["src/generated/**", "dist/**"]
 }
