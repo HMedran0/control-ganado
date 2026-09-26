@@ -1,0 +1,664 @@
+// Esquema de REFERENCIA. Copiar a apps/api/prisma/schema.prisma en la Fase 0.
+// Índices parciales, pg_trgm y CHECKs se agregan en una migración SQL manual (ver 03-modelo-datos.md §5).
+// IDs: UUIDv7 generados en la aplicación (packages/shared/src/id.ts), por eso no hay @default en id.
+// Escrito para Prisma 7: la URL de conexión va en apps/api/prisma.config.ts y el cliente usa
+// el adaptador @prisma/adapter-pg. Verificar la documentación vigente de Prisma al iniciar M0.3.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OPERATOR
+  VET
+}
+
+enum BreedGroup {
+  INDICUS
+  TAURUS
+  CROSS
+}
+
+enum VaccineScheduleType {
+  OFFICIAL_CYCLE
+  AGE_WINDOW
+  INTERVAL
+  NONE
+}
+
+enum Sex {
+  FEMALE
+  MALE
+}
+
+enum Origin {
+  BORN_ON_FARM
+  PURCHASED
+}
+
+enum ExitType {
+  SALE
+  DEATH
+  SLAUGHTER
+  THEFT
+  TRANSFER
+  OTHER
+}
+
+enum IdentifierType {
+  VISUAL_TAG
+  DIN
+  RFID
+  QR
+  BRAND
+  OTHER
+}
+
+enum IdentifierRetireReason {
+  LOST
+  DAMAGED
+  REASSIGNED
+  OTHER
+}
+
+enum ServiceMethod {
+  NATURAL
+  AI
+  UNKNOWN
+}
+
+enum PregnancyOutcome {
+  PENDING
+  CALVED
+  ABORTED
+  FAILED
+}
+
+enum CalvingType {
+  NORMAL
+  ASSISTED
+  CESAREAN
+}
+
+enum WeightMethod {
+  SCALE
+  TAPE
+  ESTIMATE
+}
+
+enum ExpenseType {
+  PURCHASE
+  FEED
+  MEDICATION
+  VACCINE
+  VETERINARY
+  TRANSPORT
+  OTHER
+}
+
+enum AllocationMethod {
+  DIRECT
+  EQUAL
+  BY_WEIGHT
+}
+
+enum ValuationMethod {
+  MANUAL
+  PRICE_PER_KG
+}
+
+enum WorkSessionStatus {
+  OPEN
+  CLOSED
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  ARCHIVE
+  RESTORE
+  VOID
+  EXIT
+  REVERT_EXIT
+  LOGIN
+}
+
+model Farm {
+  id              String   @id @db.Uuid
+  name            String
+  municipality    String?
+  department      String?
+  icaPremiseCode  String?  @map("ica_premise_code")
+  settings        Json
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships  Membership[]
+  animals      Animal[]
+  breeds       Breed[]
+  vaccines     Vaccine[]
+  lots         Lot[]
+  tags         Tag[]
+  expenses     Expense[]
+  workSessions WorkSession[]
+  cycles       VaccinationCycle[]
+  importBatches ImportBatch[]
+
+  @@map("farms")
+}
+
+model User {
+  id                 String    @id @db.Uuid
+  name               String
+  username           String    @unique
+  email              String?   @unique
+  passwordHash       String    @map("password_hash")
+  mustChangePassword Boolean   @default(false) @map("must_change_password")
+  isActive           Boolean   @default(true) @map("is_active")
+  lastLoginAt        DateTime? @map("last_login_at") @db.Timestamptz
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  memberships   Membership[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Membership {
+  id       String  @id @db.Uuid
+  userId   String  @map("user_id") @db.Uuid
+  farmId   String  @map("farm_id") @db.Uuid
+  role     Role
+  isActive Boolean @default(true) @map("is_active")
+
+  user User @relation(fields: [userId], references: [id])
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@unique([userId, farmId])
+  @@map("memberships")
+}
+
+model RefreshToken {
+  id        String    @id @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  familyId  String    @map("family_id") @db.Uuid
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  userAgent String?   @map("user_agent")
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Breed {
+  id             String     @id @db.Uuid
+  farmId         String     @map("farm_id") @db.Uuid
+  name           String
+  group          BreedGroup @default(CROSS)
+  gestationDays  Int?       @map("gestation_days")
+  isActive       Boolean    @default(true) @map("is_active")
+
+  farm    Farm     @relation(fields: [farmId], references: [id])
+  animals Animal[]
+
+  @@unique([farmId, name])
+  @@map("breeds")
+}
+
+model Vaccine {
+  id                  String  @id @db.Uuid
+  farmId              String  @map("farm_id") @db.Uuid
+  name                String
+  disease             String
+  defaultDose         String? @map("default_dose")
+  route               String?
+  scheduleType        VaccineScheduleType @default(INTERVAL) @map("schedule_type")
+  boosterIntervalDays Int?    @map("booster_interval_days")
+  eligibleSex         Sex?    @map("eligible_sex")
+  minAgeDays          Int?    @map("min_age_days")
+  maxAgeDays          Int?    @map("max_age_days")
+  blockIneligibleSex  Boolean @default(false) @map("block_ineligible_sex")
+  isActive            Boolean @default(true) @map("is_active")
+
+  farm    Farm                     @relation(fields: [farmId], references: [id])
+  records VaccinationRecord[]
+  cycles  VaccinationCycleVaccine[]
+
+  @@unique([farmId, name])
+  @@map("vaccines")
+}
+
+model Lot {
+  id          String  @id @db.Uuid
+  farmId      String  @map("farm_id") @db.Uuid
+  name        String
+  description String?
+  isActive    Boolean @default(true) @map("is_active")
+
+  farm    Farm     @relation(fields: [farmId], references: [id])
+  animals Animal[]
+
+  @@unique([farmId, name])
+  @@map("lots")
+}
+
+model Tag {
+  id       String  @id @db.Uuid
+  farmId   String  @map("farm_id") @db.Uuid
+  key      String
+  label    String
+  isSystem Boolean @default(false) @map("is_system")
+
+  farm    Farm        @relation(fields: [farmId], references: [id])
+  animals AnimalTag[]
+
+  @@unique([farmId, key])
+  @@map("tags")
+}
+
+model Animal {
+  id                 String    @id @db.Uuid
+  farmId             String    @map("farm_id") @db.Uuid
+  code               String
+  name               String?
+  sex                Sex
+  breedId            String    @map("breed_id") @db.Uuid
+  birthDate          DateTime  @map("birth_date") @db.Date
+  birthDateEstimated Boolean   @default(false) @map("birth_date_estimated")
+  origin             Origin
+  originDetail       String?   @map("origin_detail")
+  entryDate          DateTime  @map("entry_date") @db.Date
+  damId              String?   @map("dam_id") @db.Uuid
+  sireId             String?   @map("sire_id") @db.Uuid
+  sireExternalRef    String?   @map("sire_external_ref")
+  birthPregnancyId   String?   @map("birth_pregnancy_id") @db.Uuid
+  lotId              String?   @map("lot_id") @db.Uuid
+  forSale            Boolean   @default(false) @map("for_sale")
+  exitType           ExitType? @map("exit_type")
+  exitDate           DateTime? @map("exit_date") @db.Date
+  exitReason         String?   @map("exit_reason")
+  photoUrl           String?   @map("photo_url")
+  notes              String?
+  version            Int       @default(1)
+  createdById        String    @map("created_by_id") @db.Uuid
+  updatedById        String    @map("updated_by_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
+  deletedReason      String?   @map("deleted_reason")
+
+  farm           Farm       @relation(fields: [farmId], references: [id])
+  breed          Breed      @relation(fields: [breedId], references: [id])
+  lot            Lot?       @relation(fields: [lotId], references: [id])
+  dam            Animal?    @relation("DamOffspring", fields: [damId], references: [id])
+  offspringAsDam Animal[]   @relation("DamOffspring")
+  sire           Animal?    @relation("SireOffspring", fields: [sireId], references: [id])
+  offspringAsSire Animal[]  @relation("SireOffspring")
+  birthPregnancy Pregnancy? @relation("PregnancyCalves", fields: [birthPregnancyId], references: [id])
+
+  pregnancies        Pregnancy[]         @relation("DamPregnancies")
+  pregnanciesAsSire  Pregnancy[]         @relation("SirePregnancies")
+  identifiers        Identifier[]
+  tags               AnimalTag[]
+  vaccinations       VaccinationRecord[]
+  treatments         TreatmentRecord[]
+  weights            WeightRecord[]
+  lotMovements       LotMovement[]
+  allocations        ExpenseAllocation[]
+  sales              Sale[]
+  valuations         Valuation[]
+  workSessionEntries WorkSessionEntry[]
+
+  // Único parcial (farm_id, code) WHERE deleted_at IS NULL → migración SQL manual.
+  @@index([farmId])
+  @@index([farmId, lotId])
+  @@index([damId])
+  @@index([farmId, birthDate])
+  @@map("animals")
+}
+
+model AnimalTag {
+  animalId    String   @map("animal_id") @db.Uuid
+  tagId       String   @map("tag_id") @db.Uuid
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  animal Animal @relation(fields: [animalId], references: [id])
+  tag    Tag    @relation(fields: [tagId], references: [id])
+
+  @@id([animalId, tagId])
+  @@map("animal_tags")
+}
+
+model Identifier {
+  id           String                  @id @db.Uuid
+  farmId       String                  @map("farm_id") @db.Uuid
+  animalId     String                  @map("animal_id") @db.Uuid
+  type         IdentifierType
+  value        String
+  assignedAt   DateTime                @map("assigned_at") @db.Date
+  retiredAt    DateTime?               @map("retired_at") @db.Date
+  retireReason IdentifierRetireReason? @map("retire_reason")
+  replacedById String?                 @map("replaced_by_id") @db.Uuid
+  createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz
+
+  animal     Animal      @relation(fields: [animalId], references: [id])
+  replacedBy Identifier? @relation("IdentifierReplacement", fields: [replacedById], references: [id])
+  replaces   Identifier[] @relation("IdentifierReplacement")
+
+  // Único parcial (farm_id, type, value) WHERE retired_at IS NULL → migración SQL manual.
+  @@index([farmId, value])
+  @@index([animalId])
+  @@map("identifiers")
+}
+
+model Pregnancy {
+  id                   String           @id @db.Uuid
+  farmId               String           @map("farm_id") @db.Uuid
+  damId                String           @map("dam_id") @db.Uuid
+  serviceDate          DateTime         @map("service_date") @db.Date
+  serviceDateEstimated Boolean          @default(false) @map("service_date_estimated")
+  method               ServiceMethod
+  sireId               String?          @map("sire_id") @db.Uuid
+  sireExternalRef      String?          @map("sire_external_ref")
+  confirmedAt          DateTime?        @map("confirmed_at") @db.Date
+  expectedCalvingDate  DateTime         @map("expected_calving_date") @db.Date
+  outcome              PregnancyOutcome @default(PENDING)
+  outcomeDate          DateTime?        @map("outcome_date") @db.Date
+  calvingType          CalvingType?     @map("calving_type")
+  stillbornCount       Int              @default(0) @map("stillborn_count")
+  isImported           Boolean          @default(false) @map("is_imported")
+  responsible          String?
+  notes                String?
+  version              Int              @default(1)
+  createdById          String           @map("created_by_id") @db.Uuid
+  updatedById          String           @map("updated_by_id") @db.Uuid
+  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  voidedAt             DateTime?        @map("voided_at") @db.Timestamptz
+  voidReason           String?          @map("void_reason")
+
+  dam    Animal   @relation("DamPregnancies", fields: [damId], references: [id])
+  sire   Animal?  @relation("SirePregnancies", fields: [sireId], references: [id])
+  calves Animal[] @relation("PregnancyCalves")
+
+  // Único parcial (dam_id) WHERE outcome='PENDING' AND voided_at IS NULL → migración SQL manual.
+  @@index([farmId, outcome, expectedCalvingDate])
+  @@index([damId])
+  @@map("pregnancies")
+}
+
+model VaccinationRecord {
+  id            String    @id @db.Uuid
+  farmId        String    @map("farm_id") @db.Uuid
+  animalId      String    @map("animal_id") @db.Uuid
+  vaccineId     String    @map("vaccine_id") @db.Uuid
+  appliedOn     DateTime  @map("applied_on") @db.Date
+  dose          String?
+  batchNumber   String?   @map("batch_number")
+  ruvNumber     String?   @map("ruv_number")
+  cycleId       String?   @map("cycle_id") @db.Uuid
+  responsible   String?
+  nextDueOn     DateTime? @map("next_due_on") @db.Date
+  workSessionId String?   @map("work_session_id") @db.Uuid
+  notes         String?
+  createdById   String    @map("created_by_id") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  voidedAt      DateTime? @map("voided_at") @db.Timestamptz
+  voidReason    String?   @map("void_reason")
+
+  animal      Animal            @relation(fields: [animalId], references: [id])
+  vaccine     Vaccine           @relation(fields: [vaccineId], references: [id])
+  cycle       VaccinationCycle? @relation(fields: [cycleId], references: [id])
+  workSession WorkSession? @relation(fields: [workSessionId], references: [id])
+
+  @@index([farmId, animalId, vaccineId, appliedOn(sort: Desc)])
+  @@index([farmId, nextDueOn])
+  @@map("vaccination_records")
+}
+
+model TreatmentRecord {
+  id                 String    @id @db.Uuid
+  farmId             String    @map("farm_id") @db.Uuid
+  animalId           String    @map("animal_id") @db.Uuid
+  startedOn          DateTime  @map("started_on") @db.Date
+  reason             String
+  medication         String
+  dose               String?
+  durationDays       Int       @default(1) @map("duration_days")
+  withdrawalMeatDays Int       @default(0) @map("withdrawal_meat_days")
+  withdrawalMilkDays Int       @default(0) @map("withdrawal_milk_days")
+  withdrawalUntil    DateTime? @map("withdrawal_until") @db.Date
+  responsible        String?
+  workSessionId      String?   @map("work_session_id") @db.Uuid
+  notes              String?
+  createdById        String    @map("created_by_id") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  voidedAt           DateTime? @map("voided_at") @db.Timestamptz
+  voidReason         String?   @map("void_reason")
+
+  animal      Animal       @relation(fields: [animalId], references: [id])
+  workSession WorkSession? @relation(fields: [workSessionId], references: [id])
+
+  @@index([farmId, animalId])
+  @@index([farmId, withdrawalUntil])
+  @@map("treatment_records")
+}
+
+model WeightRecord {
+  id            String       @id @db.Uuid
+  farmId        String       @map("farm_id") @db.Uuid
+  animalId      String       @map("animal_id") @db.Uuid
+  weighedOn     DateTime     @map("weighed_on") @db.Date
+  weightKg      Decimal      @map("weight_kg") @db.Decimal(7, 2)
+  method        WeightMethod @default(SCALE)
+  isBirthWeight Boolean      @default(false) @map("is_birth_weight")
+  workSessionId String?      @map("work_session_id") @db.Uuid
+  notes         String?
+  createdById   String       @map("created_by_id") @db.Uuid
+  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  voidedAt      DateTime?    @map("voided_at") @db.Timestamptz
+  voidReason    String?      @map("void_reason")
+
+  animal      Animal       @relation(fields: [animalId], references: [id])
+  workSession WorkSession? @relation(fields: [workSessionId], references: [id])
+
+  @@index([animalId, weighedOn(sort: Desc)])
+  @@map("weight_records")
+}
+
+model LotMovement {
+  id            String   @id @db.Uuid
+  farmId        String   @map("farm_id") @db.Uuid
+  animalId      String   @map("animal_id") @db.Uuid
+  fromLotId     String?  @map("from_lot_id") @db.Uuid
+  toLotId       String?  @map("to_lot_id") @db.Uuid
+  movedOn       DateTime @map("moved_on") @db.Date
+  workSessionId String?  @map("work_session_id") @db.Uuid
+  createdById   String   @map("created_by_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  animal Animal @relation(fields: [animalId], references: [id])
+
+  @@index([animalId])
+  @@map("lot_movements")
+}
+
+model Expense {
+  id               String           @id @db.Uuid
+  farmId           String           @map("farm_id") @db.Uuid
+  type             ExpenseType
+  occurredOn       DateTime         @map("occurred_on") @db.Date
+  amount           Decimal          @db.Decimal(14, 2)
+  description      String
+  allocationMethod AllocationMethod @map("allocation_method")
+  createdById      String           @map("created_by_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  voidedAt         DateTime?        @map("voided_at") @db.Timestamptz
+  voidReason       String?          @map("void_reason")
+
+  farm        Farm                @relation(fields: [farmId], references: [id])
+  allocations ExpenseAllocation[]
+
+  @@index([farmId, occurredOn])
+  @@map("expenses")
+}
+
+model ExpenseAllocation {
+  id        String  @id @db.Uuid
+  farmId    String  @map("farm_id") @db.Uuid
+  expenseId String  @map("expense_id") @db.Uuid
+  animalId  String  @map("animal_id") @db.Uuid
+  amount    Decimal @db.Decimal(14, 2)
+
+  expense Expense @relation(fields: [expenseId], references: [id])
+  animal  Animal  @relation(fields: [animalId], references: [id])
+
+  @@index([animalId])
+  @@index([expenseId])
+  @@map("expense_allocations")
+}
+
+model Sale {
+  id          String    @id @db.Uuid
+  farmId      String    @map("farm_id") @db.Uuid
+  animalId    String    @map("animal_id") @db.Uuid
+  soldOn      DateTime  @map("sold_on") @db.Date
+  amount      Decimal   @db.Decimal(14, 2)
+  buyer       String?
+  notes       String?
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  voidedAt    DateTime? @map("voided_at") @db.Timestamptz
+  voidReason  String?   @map("void_reason")
+
+  animal Animal @relation(fields: [animalId], references: [id])
+
+  // Único parcial (animal_id) WHERE voided_at IS NULL → migración SQL manual.
+  @@index([farmId, soldOn])
+  @@map("sales")
+}
+
+model Valuation {
+  id          String          @id @db.Uuid
+  farmId      String          @map("farm_id") @db.Uuid
+  animalId    String          @map("animal_id") @db.Uuid
+  valuedOn    DateTime        @map("valued_on") @db.Date
+  amount      Decimal         @db.Decimal(14, 2)
+  method      ValuationMethod
+  createdById String          @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  animal Animal @relation(fields: [animalId], references: [id])
+
+  @@index([animalId, valuedOn(sort: Desc)])
+  @@map("valuations")
+}
+
+model WorkSession {
+  id            String            @id @db.Uuid
+  farmId        String            @map("farm_id") @db.Uuid
+  name          String
+  sessionDate   DateTime          @map("session_date") @db.Date
+  activities    Json
+  expectedLotId String?           @map("expected_lot_id") @db.Uuid
+  status        WorkSessionStatus @default(OPEN)
+  closedAt      DateTime?         @map("closed_at") @db.Timestamptz
+  createdById   String            @map("created_by_id") @db.Uuid
+  createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  farm         Farm                @relation(fields: [farmId], references: [id])
+  entries      WorkSessionEntry[]
+  vaccinations VaccinationRecord[]
+  treatments   TreatmentRecord[]
+  weights      WeightRecord[]
+
+  @@index([farmId, sessionDate])
+  @@map("work_sessions")
+}
+
+model WorkSessionEntry {
+  id            String   @id @db.Uuid
+  workSessionId String   @map("work_session_id") @db.Uuid
+  animalId      String   @map("animal_id") @db.Uuid
+  processedAt   DateTime @default(now()) @map("processed_at") @db.Timestamptz
+  createdById   String   @map("created_by_id") @db.Uuid
+
+  workSession WorkSession @relation(fields: [workSessionId], references: [id])
+  animal      Animal      @relation(fields: [animalId], references: [id])
+
+  @@unique([workSessionId, animalId])
+  @@map("work_session_entries")
+}
+
+model AuditLog {
+  id        BigInt      @id @default(autoincrement())
+  farmId    String      @map("farm_id") @db.Uuid
+  userId    String?     @map("user_id") @db.Uuid
+  entity    String
+  entityId  String      @map("entity_id") @db.Uuid
+  action    AuditAction
+  diff      Json?
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([farmId, entity, entityId])
+  @@index([farmId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model VaccinationCycle {
+  id        String   @id @db.Uuid
+  farmId    String   @map("farm_id") @db.Uuid
+  name      String
+  startsOn  DateTime @map("starts_on") @db.Date
+  endsOn    DateTime @map("ends_on") @db.Date
+  isOfficial Boolean @default(true) @map("is_official")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  farm         Farm                      @relation(fields: [farmId], references: [id])
+  vaccines     VaccinationCycleVaccine[]
+  vaccinations VaccinationRecord[]
+
+  @@unique([farmId, name])
+  @@index([farmId, startsOn])
+  @@map("vaccination_cycles")
+}
+
+model VaccinationCycleVaccine {
+  cycleId   String @map("cycle_id") @db.Uuid
+  vaccineId String @map("vaccine_id") @db.Uuid
+
+  cycle   VaccinationCycle @relation(fields: [cycleId], references: [id])
+  vaccine Vaccine          @relation(fields: [vaccineId], references: [id])
+
+  @@id([cycleId, vaccineId])
+  @@map("vaccination_cycle_vaccines")
+}
+
+model ImportBatch {
+  id           String   @id @db.Uuid
+  farmId       String   @map("farm_id") @db.Uuid
+  fileName     String   @map("file_name")
+  totalRows    Int      @map("total_rows")
+  createdRows  Int      @map("created_rows")
+  errorRows    Int      @map("error_rows")
+  summary      Json
+  createdById  String   @map("created_by_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId, createdAt])
+  @@map("import_batches")
+}
