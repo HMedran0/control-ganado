@@ -9,10 +9,19 @@
  * por defecto de `@node-rs/argon2` (m=19456, t=2, p=1), que son los recomendados por OWASP.
  */
 
-import { hash as argon2Hash, Algorithm, Version } from '@node-rs/argon2';
+import { hash as argon2Hash, type Algorithm, type Version } from '@node-rs/argon2';
 
 import { SeedRefusedError } from './guards.js';
 import type { SeededRandom } from './random.js';
+
+/**
+ * `@node-rs/argon2` declara `Algorithm` y `Version` como `const enum` ambientales, y
+ * `verbatimModuleSyntax` no deja acceder a sus miembros (TS2748): el valor desaparecería al
+ * borrar los tipos. Se usan los valores numéricos del propio paquete, con el tipo puesto a
+ * mano para no perder la comprobación en la llamada.
+ */
+const ARGON2ID = 2 as Algorithm;
+const ARGON2_V19 = 1 as Version;
 
 /**
  * ⚠️ SAL FIJA, EXCLUSIVA DEL SEED. No copiar a `apps/api/src`.
@@ -57,8 +66,8 @@ export async function hashSeedPassword(
   random: SeededRandom,
 ): Promise<string> {
   return argon2Hash(password, {
-    algorithm: Algorithm.Argon2id,
-    version: Version.V0x13,
+    algorithm: ARGON2ID,
+    version: ARGON2_V19,
     salt: seedSalt(random),
   });
 }
