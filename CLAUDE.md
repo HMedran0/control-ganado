@@ -26,16 +26,22 @@ Desde la raíz del monorepo:
 | `pnpm install` | Instala todo el workspace. En CI se usa `--frozen-lockfile --strict-peer-dependencies`. |
 | `pnpm dev` | `turbo run dev` en todos los paquetes (api y web imprimen su hito pendiente hasta M0.2/M2). |
 | `pnpm build` | `turbo run build`. Compila `packages/shared` a `dist/` con `tsc`. |
-| `pnpm lint` | Build (necesario para los tipos entre paquetes) + `eslint .` con una sola flat config raíz. |
+| `pnpm lint` | `eslint .` con una sola flat config raíz, con información de tipos. No necesita build (ADR-003). |
 | `pnpm lint:fix` | Igual, con `--fix`. |
 | `pnpm typecheck` | `tsc` por paquete, sin emitir. |
-| `pnpm test` | `turbo run test`; Vitest en `packages/shared`. |
+| `pnpm test` | `turbo run test`; Vitest con cobertura. Umbral de 90 % en `packages/shared/src/domain`. |
+| `pnpm test:tz` | La misma suite con `TZ=America/Bogota` y `TZ=Asia/Tokyo` (ADR-002). |
 | `pnpm format` / `pnpm format:check` | Prettier sobre el repositorio. `docs/*.md` y `CLAUDE.md` están excluidos. |
 | `docker compose up -d db` | PostgreSQL 16 para desarrollo (servicio `db`, volumen `hato-db-data`, healthcheck). |
 | `docker compose down` | Detiene la base de datos. Con `-v` borra el volumen. |
 | `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` | Delegan en `apps/api`. **Imprimen "pendiente de M0.3"** hasta ese hito. |
 
 Por paquete: `pnpm --filter @hato/shared test:watch`, `pnpm --filter @hato/api typecheck`.
+
+## Decisiones registradas (docs/adr/)
+- **ADR-001** TypeScript 6.0.3, no 7: `typescript-eslint` aún no soporta TS 7 y se perdería el lint con tipos.
+- **ADR-002** Fechas de negocio como `IsoDate` (`YYYY-MM-DD` con tipo marcado) y meses cumplidos con recorte a fin de mes. Nada de `Date` en el dominio.
+- **ADR-003** `@hato/shared` expone su código fuente con la condición `development`: lint y typecheck no compilan antes. Consecuencia: **shared no puede usar APIs de Node** (también corre en web y en Expo).
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.
