@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, pruebas y build
+    runs-on: ubuntu-latest
+
+    # Declarado desde M0.1 para que las pruebas de integración de M0.3 lo usen sin cambios.
+    # Misma imagen que docker-compose.yml.
+    services:
+      db:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: hato
+          POSTGRES_PASSWORD: hato_dev
+          POSTGRES_DB: hato_test
+          TZ: America/Bogota
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U hato -d hato_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://hato:hato_dev@localhost:5432/hato_test?schema=public
+      APP_TIMEZONE: America/Bogota
+      SEED_TODAY: "2026-09-25"
+      TURBO_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v7
+
+      - name: Instalar pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Instalar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      # --strict-peer-dependencies: una advertencia de peer dependencies falla la build.
+      - name: Instalar dependencias
+        run: pnpm install --frozen-lockfile --strict-peer-dependencies
+
+      - name: Formato
+        run: pnpm format:check
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Pruebas
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
