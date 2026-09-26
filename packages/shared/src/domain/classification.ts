@@ -1,0 +1,94 @@
+/**
+ * Categoría de manejo (exclusiva) y etiquetas derivadas (combinables).
+ * RN-06, RN-07, RN-08, RN-25, RN-27 y 08 §2.1. Nada de esto se almacena (RN-16).
+ */
+
+import { type IsoDate } from '../date.js';
+import {
+  DERIVED_TAG,
+  MANAGEMENT_CATEGORY,
+  SEX,
+  type DerivedTag,
+  type ManagementCategory,
+  type Sex,
+} from '../enums.js';
+import { ageInMonths } from './age.js';
+
+/** Edad en meses a partir de la cual un macho es toro o macho adulto (08 §2.1). */
+export const ADULT_MALE_AGE_MONTHS = 24;
+
+/** Entrada de `managementCategory`. */
+export type ManagementCategoryInput = {
+  readonly sex: Sex;
+  readonly birthDate: IsoDate;
+  /** Preñeces con desenlace `CALVED` no anuladas (RN-07). */
+  readonly calvingCount: number;
+  /** `Farm.settings.weaningAgeMonths`, 7 por defecto (08 §1.2). */
+  readonly weaningAgeMonths: number;
+  readonly today: IsoDate;
+};
+
+/**
+ * Categoría de manejo del animal (RN-06). El orden de evaluación es el de la regla:
+ * cría por edad, luego hembra con o sin partos, luego macho por edad.
+ */
+export function managementCategory(input: ManagementCategoryInput): ManagementCategory {
+  const months = ageInMonths(input.birthDate, input.today);
+  const isCalf = months < input.weaningAgeMonths;
+
+  if (input.sex === SEX.FEMALE) {
+    if (isCalf) return MANAGEMENT_CATEGORY.CALF_FEMALE;
+    return input.calvingCount >= 1 ? MANAGEMENT_CATEGORY.COW : MANAGEMENT_CATEGORY.HEIFER;
+  }
+
+  if (isCalf) return MANAGEMENT_CATEGORY.CALF_MALE;
+  return months < ADULT_MALE_AGE_MONTHS
+    ? MANAGEMENT_CATEGORY.YOUNG_MALE
+    : MANAGEMENT_CATEGORY.ADULT_MALE;
+}
+
+/** Entrada de `derivedTags`. */
+export type DerivedTagsInput = {
+  readonly category: ManagementCategory;
+  /** Preñez `PENDING` no anulada con `confirmedAt` (RN-08). */
+  readonly hasOpenConfirmedPregnancy: boolean;
+  /** Preñez `PENDING` no anulada sin confirmar (RN-08). */
+  readonly hasOpenUnconfirmedPregnancy: boolean;
+  /** Preñeces con desenlace `CALVED` no anuladas (RN-07). */
+  readonly calvingCount: number;
+  /** Fecha del último parto; `null` si no ha parido. */
+  readonly lastCalvingDate: IsoDate | null;
+  /** `TreatmentRecord.withdrawalUntil` más lejana vigente; `null` si no hay retiro. */
+  readonly withdrawalUntil: IsoDate | null;
+  readonly weaningAgeMonths: number;
+  readonly today: IsoDate;
+};
+
+/**
+ * Etiquetas derivadas del animal, en orden fijo: `SERVED`, `PREGNANT`, `CALVED`, `DRY`,
+ * `WITHDRAWAL`.
+ *
+ * `DRY` (Horra, RN-25): vaca sin preñez abierta cuyo último parto fue hace al menos la edad
+ * de destete, es decir, sin cría al pie. Si una vaca no tuviera fecha de último parto
+ * registrada no se marca horra, porque no se puede saber si tiene cría al pie.
+ */
+export function derivedTags(input: DerivedTagsInput): DerivedTag[] {
+  const tags: DerivedTag[] = [];
+
+  if (input.hasOpenUnconfirmedPregnancy) tags.push(DERIVED_TAG.SERVED);
+  if (input.hasOpenConfirmedPregnancy) tags.push(DERIVED_TAG.PREGNANT);
+  if (input.calvingCount >= 1) tags.push(DERIVED_TAG.CALVED);
+
+  const isCow = input.category === MANAGEMENT_CATEGORY.COW;
+  const hasOpenPregnancy = input.hasOpenConfirmedPregnancy || input.hasOpenUnconfirmedPregnancy;
+  if (isCow && !hasOpenPregnancy && input.lastCalvingDate !== null) {
+    const monthsSinceCalving = ageInMonths(input.lastCalvingDate, input.today);
+    if (monthsSinceCalving >= input.weaningAgeMonths) tags.push(DERIVED_TAG.DRY);
+  }
+
+  if (input.withdrawalUntil !== null && input.withdrawalUntil >= input.today) {
+    tags.push(DERIVED_TAG.WITHDRAWAL);
+  }
+
+  return tags;
+}
