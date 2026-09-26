@@ -1,0 +1,23 @@
+{
+  "name": "@hato/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Configuración compartida del monorepo: tsconfig, ESLint y Prettier",
+  "type": "module",
+  "exports": {
+    "./eslint": "./eslint/index.js",
+    "./prettier": "./prettier/index.js",
+    "./tsconfig/base.json": "./tsconfig/base.json"
+  },
+  "files": [
+    "eslint",
+    "prettier",
+    "tsconfig"
+  ],
+  "dependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint-config-prettier": "10.1.8",
+    "globals": "17.12.0",
+    "typescript-eslint": "8.70.1"
+  }
+}

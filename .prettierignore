@@ -1,0 +1,12 @@
+node_modules/
+dist/
+build/
+coverage/
+.turbo/
+pnpm-lock.yaml
+
+# Especificación de partida: se mantiene tal como fue escrita.
+# Los ADR de docs/adr/ sí se formatean.
+docs/*.md
+docs/referencia/
+CLAUDE.md
