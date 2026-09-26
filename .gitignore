@@ -1,0 +1,32 @@
+# Dependencias
+node_modules/
+.pnpm-store/
+
+# Variables de entorno (usar .env.example para documentarlas)
+.env
+.env.*
+!.env.example
+
+# Compilados
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Cachés de herramientas
+.turbo/
+.eslintcache
+coverage/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Preferencias personales de Claude Code
+.claude/settings.local.json
+
+# Editores y sistema operativo
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

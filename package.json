@@ -1,0 +1,31 @@
+{
+  "name": "hato",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Sistema de gestión y control de ganado bovino",
+  "license": "UNLICENSED",
+  "packageManager": "pnpm@12.6.0",
+  "engines": {
+    "node": ">=24.0.0 <25.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run build && eslint .",
+    "lint:fix": "turbo run build && eslint . --fix",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:migrate": "pnpm --filter @hato/api run db:migrate",
+    "db:seed": "pnpm --filter @hato/api run db:seed",
+    "db:reset": "pnpm --filter @hato/api run db:reset"
+  },
+  "devDependencies": {
+    "@hato/config": "workspace:*",
+    "eslint": "10.11.0",
+    "prettier": "3.9.9",
+    "turbo": "2.11.4",
+    "typescript": "6.0.3"
+  }
+}

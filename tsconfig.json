@@ -1,0 +1,12 @@
+{
+  // Cada paquete tiene su propio tsconfig; este solo fija la base para el editor.
+  // El typecheck real se ejecuta por paquete con `pnpm typecheck`.
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false
+  },
+  "files": []
+}
