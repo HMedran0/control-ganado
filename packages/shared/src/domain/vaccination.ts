@@ -6,7 +6,7 @@
  * Los registros anulados nunca cuentan (RN-13).
  */
 
-import { addDays, isWithin, type IsoDate } from '../date.js';
+import { addDays, isWithin, maxIsoDate, type IsoDate } from '../date.js';
 import { VACCINE_SCHEDULE_TYPE, type Sex, type VaccineScheduleType } from '../enums.js';
 import { warning, type ErrorCode, type Warning } from '../errors.js';
 import { ageInDays } from './age.js';
@@ -46,6 +46,12 @@ export type VaccinationCycleLike = {
 export type AnimalForVaccine = {
   readonly sex: Sex;
   readonly birthDate: IsoDate;
+  /**
+   * `Animal.entryDate`: fecha de ingreso a la finca. En los nacidos en la finca es igual a
+   * `birthDate`; en los comprados es posterior. Determina desde cuándo el animal pudo
+   * vacunarse en un ciclo oficial (RN-13, ADR-004).
+   */
+  readonly entryDate: IsoDate;
 };
 
 /** Estado de la vacuna en un animal. */
@@ -81,8 +87,8 @@ export const VACCINE_STATUS_REASON = {
   CLOSED_CYCLE: 'CLOSED_CYCLE',
   /** La finca no tiene ciclos oficiales configurados. */
   NO_CYCLE: 'NO_CYCLE',
-  /** El animal nació después de que cerró el ciclo. */
-  BORN_AFTER_CYCLE: 'BORN_AFTER_CYCLE',
+  /** El animal nació o ingresó a la finca después de que cerró el ciclo. */
+  NOT_IN_FARM_DURING_CYCLE: 'NOT_IN_FARM_DURING_CYCLE',
   /** Nunca se le ha aplicado y la vacuna es de intervalo. */
   NO_RECORD: 'NO_RECORD',
   /** Ya tiene la aplicación vigente. */
@@ -167,11 +173,13 @@ function officialCycleStatus(input: VaccineStatusInput): VaccineStatus {
     );
   }
 
-  // Un animal nacido después de que cerró el ciclo no pudo vacunarse en él.
-  if (animal.birthDate > cycle.endsOn) {
+  // Un animal que no estaba en la finca cuando cerró el ciclo no pudo vacunarse en él:
+  // ni el nacido después, ni el comprado después (RN-13, ADR-004).
+  const inFarmSince = maxIsoDate(animal.birthDate, animal.entryDate);
+  if (inFarmSince > cycle.endsOn) {
     return status(
       VACCINE_STATUS.NOT_APPLICABLE,
-      VACCINE_STATUS_REASON.BORN_AFTER_CYCLE,
+      VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE,
       null,
       last?.appliedOn ?? null,
     );
@@ -278,7 +286,8 @@ function intervalStatus(input: VaccineStatusInput): VaccineStatus {
  * Estado de una vacuna en un animal según su tipo de programación (RN-13).
  *
  * - `OFFICIAL_CYCLE`: pendiente si no hay aplicación dentro del ciclo en curso; vencida si
- *   faltó la del último ciclo cerrado.
+ *   faltó la del último ciclo cerrado. No aplica si el animal nació o ingresó a la finca
+ *   después del cierre del ciclo.
  * - `AGE_WINDOW`: pendiente dentro de la ventana de edad sin aplicación; vencida al pasar la
  *   edad máxima («fuera de edad»).
  * - `INTERVAL`: vencida si la fecha de refuerzo pasó; próxima si cae dentro de `alertDays`.
