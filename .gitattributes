@@ -1,0 +1,19 @@
+# Normalización de fin de línea: LF en el repositorio, coherente con .editorconfig
+# y con `endOfLine: 'lf'` de Prettier. Evita que los hooks .sh lleguen con CRLF a CI.
+* text=auto eol=lf
+
+*.sh text eol=lf
+*.ps1 text eol=crlf
+
+# Binarios
+*.xlsx binary
+*.xls binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+
+# Archivos generados: no ensucian los diffs ni las estadísticas del repositorio.
+pnpm-lock.yaml -diff linguist-generated
