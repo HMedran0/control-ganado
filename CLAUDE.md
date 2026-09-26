@@ -24,24 +24,36 @@ Desde la raíz del monorepo:
 | Comando | Qué hace |
 |---|---|
 | `pnpm install` | Instala todo el workspace. En CI se usa `--frozen-lockfile --strict-peer-dependencies`. |
-| `pnpm dev` | `turbo run dev` en todos los paquetes (api y web imprimen su hito pendiente hasta M0.2/M2). |
-| `pnpm build` | `turbo run build`. Compila `packages/shared` a `dist/` con `tsc`. |
+| `pnpm dev` | Levanta la API en `http://localhost:3000/api/v1` con recarga, y `shared` compilando en vigilancia. Necesita `.env` y la base arriba. |
+| `pnpm build` | `turbo run build`. Compila `shared` con `tsc` y la API con el CLI de Nest y SWC. |
 | `pnpm lint` | `eslint .` con una sola flat config raíz, con información de tipos. No necesita build (ADR-003). |
 | `pnpm lint:fix` | Igual, con `--fix`. |
 | `pnpm typecheck` | `tsc` por paquete, sin emitir. |
-| `pnpm test` | `turbo run test`; Vitest con cobertura. Umbral de 90 % en `packages/shared/src/domain`. |
-| `pnpm test:tz` | La misma suite con `TZ=America/Bogota` y `TZ=Asia/Tokyo` (ADR-002). |
+| `pnpm test` | Vitest. En `shared`, con cobertura y umbral de 90 % en `src/domain`; en `api`, unitarias e integración contra PostgreSQL real. |
+| `pnpm test:tz` | La suite de `shared` con `TZ=America/Bogota` y `TZ=Asia/Tokyo` (ADR-002). |
 | `pnpm format` / `pnpm format:check` | Prettier sobre el repositorio. `docs/*.md` y `CLAUDE.md` están excluidos. |
 | `docker compose up -d db` | PostgreSQL 16 para desarrollo (servicio `db`, volumen `hato-db-data`, healthcheck). |
 | `docker compose down` | Detiene la base de datos. Con `-v` borra el volumen. |
-| `pnpm db:migrate` · `pnpm db:seed` · `pnpm db:reset` | Delegan en `apps/api`. **Imprimen "pendiente de M0.3"** hasta ese hito. |
+| `pnpm db:generate` | Genera el cliente de Prisma desde el esquema. No se versiona; `build`, `typecheck` y `test` dependen de él. |
+| `pnpm db:migrate` | `prisma migrate dev`: crea y aplica una migración nueva. |
+| `pnpm db:reset` | **Borra y recrea la base**, aplica las migraciones y corre el seed. Solo en desarrollo. |
+| `pnpm db:seed` | Carga la finca de referencia. **Pendiente del hito M0.3b**: hoy solo avisa. |
 
 Por paquete: `pnpm --filter @hato/shared test:watch`, `pnpm --filter @hato/api typecheck`.
+
+La base de datos de las pruebas de integración (`hato_test`) la crea y migra la propia suite;
+su URL sale de `TEST_DATABASE_URL`, nunca de un puerto fijo en el código.
+
+Mientras no exista el inicio de sesión (hito M1), la API usa `DEV_FAKE_AUTH=true` y toma la
+finca y el rol de las cabeceras `x-dev-farm-id`, `x-dev-role` y `x-dev-user-id`. Con
+`NODE_ENV=production` la API **no arranca** si esa variable está activa.
 
 ## Decisiones registradas (docs/adr/)
 - **ADR-001** TypeScript 6.0.3, no 7: `typescript-eslint` aún no soporta TS 7 y se perdería el lint con tipos.
 - **ADR-002** Fechas de negocio como `IsoDate` (`YYYY-MM-DD` con tipo marcado) y meses cumplidos con recorte a fin de mes. Nada de `Date` en el dominio.
 - **ADR-003** `@hato/shared` expone su código fuente con la condición `development`: lint y typecheck no compilan antes. Consecuencia: **shared no puede usar APIs de Node** (también corre en web y en Expo).
+- **ADR-004** Elegibilidad en ciclos oficiales: un animal que nació o ingresó a la finca después del cierre del ciclo no queda vencido (RN-13).
+- **ADR-005** `apps/api` es **ESM** porque NestJS 12 se publica solo como módulos ES; Prisma genera el cliente en ESM. El compilador es **SWC** (no esbuild) porque hace falta `emitDecoratorMetadata` para la inyección de dependencias, y por eso las pruebas de la API van con Vitest + `unplugin-swc`.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.
