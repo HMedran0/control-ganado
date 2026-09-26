@@ -52,6 +52,8 @@ export type SeedEnvironment = {
   readonly NODE_ENV?: string | undefined;
   readonly DATABASE_URL?: string | undefined;
   readonly SEED_TODAY?: string | undefined;
+  /** El resto del entorno; permite pasar `process.env` tal cual. */
+  readonly [key: string]: string | undefined;
 };
 
 /**
