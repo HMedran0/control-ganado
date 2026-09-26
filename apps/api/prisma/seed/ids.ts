@@ -38,13 +38,16 @@ export type IdFactory = {
  * dependa de lo que se haya generado antes en el mismo proceso (importa en las pruebas, que
  * crean datos con `uuidv7` y después ejecutan el seed).
  */
-export function createIdFactory(random: SeededRandom): IdFactory {
+export function createIdFactory(random: SeededRandom, epochOffsetMs = 0): IdFactory {
   resetUuidv7State();
   let generated = 0;
 
   return {
     next: () => {
-      const id = uuidv7({ now: SEED_EPOCH_MS + generated, random: (length) => random.bytes(length) });
+      const id = uuidv7({
+        now: SEED_EPOCH_MS + epochOffsetMs + generated,
+        random: (length) => random.bytes(length),
+      });
       generated += 1;
       return id;
     },

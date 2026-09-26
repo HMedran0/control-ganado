@@ -59,7 +59,11 @@ async function inChunks<T>(rows: readonly T[], write: (chunk: T[]) => Promise<un
  * de negocio, está rehaciendo un juego de datos de demostración. Por eso vive en el seed y no
  * en la API, y por eso las guardas no lo dejan correr contra una base que no sea local.
  */
-export async function resetFarmData(prisma: SeedClient, farmId: string): Promise<void> {
+export async function resetFarmData(
+  prisma: SeedClient,
+  farmId: string,
+  usernames: readonly string[] = USERS.map((user) => user.username),
+): Promise<void> {
   const animals = await prisma.animal.findMany({ where: { farmId }, select: { id: true } });
   const animalIds = animals.map((animal) => animal.id);
   const where = { animalId: { in: animalIds } };
@@ -95,7 +99,7 @@ export async function resetFarmData(prisma: SeedClient, farmId: string): Promise
   await prisma.importBatch.deleteMany({ where: { farmId } });
   await prisma.membership.deleteMany({ where: { farmId } });
   await prisma.farm.deleteMany({ where: { id: farmId } });
-  await prisma.user.deleteMany({ where: { username: { in: USERS.map((user) => user.username) } } });
+  await prisma.user.deleteMany({ where: { username: { in: [...usernames] } } });
 }
 
 /** Datos completos por escribir. */
