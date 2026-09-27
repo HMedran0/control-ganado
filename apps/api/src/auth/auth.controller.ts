@@ -1,5 +1,10 @@
 import { Controller, Get, Post, Req, Res } from '@nestjs/common';
-import { changePasswordSchema, loginSchema, type LoginInput } from '@hato/shared';
+import {
+  changePasswordSchema,
+  loginSchema,
+  type LoginInput,
+  type SessionResponse,
+} from '@hato/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
 import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
@@ -113,9 +118,6 @@ export class AuthController {
     };
   }
 }
-
-/** Respuesta de login, refresh y cambio de contraseña. Nunca incluye el token de refresco. */
-type SessionResponse = Omit<Session, 'refreshToken'>;
 
 /** Respuesta de `GET /me`. */
 type MeResponse = {

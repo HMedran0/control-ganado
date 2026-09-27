@@ -7,6 +7,8 @@
 
 import { z } from 'zod';
 
+import type { Role } from '../enums.js';
+
 /** Longitud mínima de una contraseña (04-arquitectura.md §5). */
 export const MIN_PASSWORD_LENGTH = 8;
 
@@ -107,3 +109,34 @@ export const updateUserSchema = z
     { message: 'No hay nada que cambiar.' },
   );
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+
+/** Membresía del usuario en una finca, para elegir la finca activa (ADR-007, decisión 4). */
+export type MembershipView = {
+  readonly farmId: string;
+  readonly farmName: string;
+  readonly role: Role;
+};
+
+/** Usuario de la sesión, tal como lo devuelven login, refresh y cambio de contraseña. */
+export type SessionUser = {
+  readonly id: string;
+  readonly name: string;
+  readonly username: string;
+  readonly email: string | null;
+  /** Contraseña temporal sin cambiar: solo puede cambiarla o salir (AUT-04 CA2). */
+  readonly mustChangePassword: boolean;
+};
+
+/**
+ * Respuesta de `POST /auth/login`, `POST /auth/refresh` y `POST /auth/change-password`.
+ *
+ * El token de acceso viaja en el cuerpo para que el cliente lo guarde **solo en memoria**; el
+ * de refresco nunca aparece aquí, va en una cookie `HttpOnly` (ADR-007).
+ */
+export type SessionResponse = {
+  readonly accessToken: string;
+  readonly user: SessionUser;
+  readonly farm: { readonly id: string; readonly name: string };
+  readonly role: Role;
+  readonly memberships: readonly MembershipView[];
+};

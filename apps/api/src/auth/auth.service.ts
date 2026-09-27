@@ -1,5 +1,12 @@
 import { Injectable } from '@nestjs/common';
-import { AUDIT_ACTION, DomainError, uuidv7, type LoginInput, type Role } from '@hato/shared';
+import {
+  AUDIT_ACTION,
+  DomainError,
+  uuidv7,
+  type LoginInput,
+  type MembershipView,
+  type SessionResponse,
+} from '@hato/shared';
 
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
@@ -20,27 +27,13 @@ import { TokenService, type IssuedRefreshToken } from './token.service.js';
  *    auditoría; del token de refresco solo se guarda su hash.
  */
 
-/** Membresía del usuario, para elegir finca activa y para `/me`. */
-export type MembershipView = {
-  readonly farmId: string;
-  readonly farmName: string;
-  readonly role: Role;
-};
-
-/** Sesión recién abierta o renovada. */
-export type Session = {
-  readonly accessToken: string;
+/**
+ * Sesión recién abierta o renovada: la respuesta pública (`SessionResponse`, contrato
+ * compartido con la web en `@hato/shared`) más el token de refresco, que el controlador pone
+ * en la cookie y nunca en el cuerpo.
+ */
+export type Session = SessionResponse & {
   readonly refreshToken: IssuedRefreshToken;
-  readonly user: {
-    readonly id: string;
-    readonly name: string;
-    readonly username: string;
-    readonly email: string | null;
-    readonly mustChangePassword: boolean;
-  };
-  readonly farm: { readonly id: string; readonly name: string };
-  readonly role: Role;
-  readonly memberships: readonly MembershipView[];
 };
 
 /** Datos de la petición que hacen falta para el bloqueo y la trazabilidad. */
