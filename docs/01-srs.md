@@ -406,7 +406,10 @@ Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), 
 - CA1: Cambiar un parámetro recalcula las clasificaciones derivadas (son calculadas, no almacenadas).
 
 **CFG-02 — Catálogos** · M · F1
-Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vacunación, lotes, etiquetas manuales, tipos de gasto.
+Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vacunación, lotes y etiquetas manuales (M3). Los **tipos de gasto** pasan a M7 (Finanzas), donde se usan; hoy son un enum fijo (`EXPENSE_TYPE`).
+- CA1: Los catálogos no se borran: se desactivan, dejan de ofrecerse en los formularios y conservan su historial.
+- CA2: Los nombres son únicos por finca sin distinguir mayúsculas ni espacios sobrantes («Brahman» y «brahman » son el mismo).
+- CA3: Desactivar algo en uso (un lote con animales activos, una vacuna de un ciclo en curso o futuro) se advierte antes de confirmar, sin bloquear.
 
 ### 3.13 Copias de seguridad y exportación (BAK)
 

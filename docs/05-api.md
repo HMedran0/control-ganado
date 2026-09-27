@@ -30,14 +30,18 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /users | A | Crear usuario (`username` obligatorio, `email` opcional) con rol y contraseña temporal |
 | PATCH | /users/:id | A | Editar nombre, rol, activo |
 | POST | /users/:id/reset-password | A | Genera contraseña temporal |
-| GET | /farm | T | Datos y parámetros |
-| PATCH | /farm | A | Editar datos y `settings` |
+| GET | /farm | T | Datos y parámetros. `settings.pricePerKgByCategory` solo viaja para ADMIN (RN-20) |
+| PATCH | /farm | A | Editar datos y `settings` (parciales: se mezclan con los guardados y se valida el resultado). Exige `version` |
 | GET/POST/PATCH | /breeds, /breeds/:id | T lee, A escribe | Catálogo de razas |
 | GET/POST/PATCH | /vaccines, /vaccines/:id | T lee, A/V escribe | Catálogo de vacunas (incluye `scheduleType` y elegibilidad) |
 | GET/POST/PATCH | /vaccination-cycles, /vaccination-cycles/:id | T lee, A escribe | Ciclos oficiales y sus vacunas (SAN-06) |
 | GET | /vaccination-cycles/:id/progress | T | Vacunados y pendientes por vacuna del ciclo |
 | GET/POST/PATCH | /lots, /lots/:id | T lee, A escribe | Lotes |
-| GET/POST/PATCH | /tags, /tags/:id | T lee, A escribe | Etiquetas manuales |
+| GET/POST/PATCH | /tags, /tags/:id | T lee, A escribe | Etiquetas manuales. La `key` se genera al crear y no cambia al renombrar; `COTERO` no se desactiva ni se renombra (`SYSTEM_TAG_PROTECTED`) |
+| GET | /lots/:id/deactivation-warnings | A | Lo que advertiría desactivar el lote (`LOT_HAS_ACTIVE_ANIMALS`), para mostrarlo antes de confirmar |
+| GET | /vaccines/:id/deactivation-warnings | A/V | Lo que advertiría desactivar la vacuna (`VACCINE_IN_ACTIVE_CYCLE`) |
+
+**Catálogos (M3).** Los listados devuelven `{ items, nextCursor: null }`: son pequeños y no se paginan. Por defecto solo traen los activos; `?includeInactive=true` incluye los desactivados. No hay `DELETE`: se desactiva con `PATCH { isActive: false, version }`, y la respuesta trae `warnings` si el elemento sigue en uso. Los nombres son únicos por finca sin distinguir mayúsculas ni espacios sobrantes (`CATALOG_NAME_TAKEN`). Crear un ciclo que se cruza con otro responde con la advertencia `CYCLE_OVERLAP`.
 
 ## Animales
 | Método | Ruta | Rol | Descripción |
