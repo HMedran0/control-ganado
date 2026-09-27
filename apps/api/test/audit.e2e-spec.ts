@@ -3,7 +3,7 @@ import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import request from 'supertest';
 
 import { PrismaService } from '../src/infra/prisma.service.js';
-import { createTestApp, devAuthHeaders } from './helpers/app.js';
+import { bearer, createTestApp, signTestToken } from './helpers/app.js';
 import { cleanDatabase, createFarm, type TestFarm } from './helpers/fixtures.js';
 import { ProbeController } from './helpers/probe.controller.js';
 
@@ -16,6 +16,7 @@ describe('AuditInterceptor', () => {
   let app: NestFastifyApplication;
   let prisma: PrismaService;
   let farm: TestFarm;
+  let headers: Record<string, string>;
 
   beforeAll(async () => {
     app = await createTestApp({ controllers: [ProbeController] });
@@ -23,6 +24,7 @@ describe('AuditInterceptor', () => {
     prisma = app.get(PrismaService);
     await cleanDatabase(prisma);
     farm = await createFarm(prisma, 'Finca de auditoría');
+    headers = bearer(await signTestToken(app, { userId: farm.userId, farmId: farm.farmId }));
   });
 
   afterAll(async () => {
@@ -37,7 +39,7 @@ describe('AuditInterceptor', () => {
   it('registra una escritura exitosa con entidad, acción, finca y usuario', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/probe/breeds')
-      .set(devAuthHeaders(farm.farmId, 'ADMIN', farm.userId))
+      .set(headers)
       .send({ name: 'Gyr' })
       .expect(201);
 
@@ -58,7 +60,7 @@ describe('AuditInterceptor', () => {
   it('no registra nada si la escritura falla', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/probe/breeds/failing')
-      .set(devAuthHeaders(farm.farmId, 'ADMIN', farm.userId))
+      .set(headers)
       .send({ name: 'No se crea' })
       .expect(409);
 
@@ -70,7 +72,7 @@ describe('AuditInterceptor', () => {
   it('no registra las lecturas', async () => {
     await request(app.getHttpServer())
       .get('/api/v1/probe/scope')
-      .set(devAuthHeaders(farm.farmId))
+      .set(headers)
       .expect(200);
 
     await new Promise((resolve) => setTimeout(resolve, 150));

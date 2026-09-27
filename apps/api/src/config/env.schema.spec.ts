@@ -20,7 +20,6 @@ describe('parseEnv', () => {
     expect(env.PORT).toBe(3000);
     expect(env.APP_TIMEZONE).toBe('America/Bogota');
     expect(env.LOG_LEVEL).toBe('info');
-    expect(env.DEV_FAKE_AUTH).toBe(false);
     expect(env.SEED_TODAY).toBeUndefined();
   });
 
@@ -84,33 +83,11 @@ describe('parseEnv', () => {
     });
   });
 
-  describe('DEV_FAKE_AUTH', () => {
-    it('se acepta fuera de producción', () => {
-      const env = parseEnv({ ...validEnv(), NODE_ENV: 'development', DEV_FAKE_AUTH: 'true' });
-      expect(env.DEV_FAKE_AUTH).toBe(true);
-    });
-
-    it('en pruebas también', () => {
-      expect(
-        parseEnv({ ...validEnv(), NODE_ENV: 'test', DEV_FAKE_AUTH: 'true' }).DEV_FAKE_AUTH,
-      ).toBe(true);
-    });
-
-    // Esta es la prueba que exige el hito: el mecanismo temporal no puede quedar activo
-    // en producción. Si alguien lo intenta, la API no arranca.
-    it('NO se acepta en producción: la API no arranca', () => {
-      expect(() =>
-        parseEnv({ ...validEnv(), NODE_ENV: 'production', DEV_FAKE_AUTH: 'true' }),
-      ).toThrow(/DEV_FAKE_AUTH no puede estar activo en producción/);
-    });
-
-    it('en producción con DEV_FAKE_AUTH=false sí arranca', () => {
-      const env = parseEnv({ ...validEnv(), NODE_ENV: 'production', DEV_FAKE_AUTH: 'false' });
-      expect(env.DEV_FAKE_AUTH).toBe(false);
-    });
-
-    it('en producción sin la variable sí arranca', () => {
-      expect(parseEnv({ ...validEnv(), NODE_ENV: 'production' }).DEV_FAKE_AUTH).toBe(false);
-    });
+  // El mecanismo temporal DEV_FAKE_AUTH se retiró en M1, cuando llegó la autenticación
+  // de verdad: ya no hay variable de entorno que pueda dejar la API abierta
+  // (docs/adr/007-autenticacion.md).
+  it('ignora las variables desconocidas, como el DEV_FAKE_AUTH retirado en M1', () => {
+    const env = parseEnv({ ...validEnv(), DEV_FAKE_AUTH: 'true' });
+    expect(env).not.toHaveProperty('DEV_FAKE_AUTH');
   });
 });

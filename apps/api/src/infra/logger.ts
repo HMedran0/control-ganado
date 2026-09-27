@@ -15,8 +15,6 @@ export const LOGGER = Symbol('LOGGER');
 const REDACTED_PATHS = [
   'req.headers.authorization',
   'req.headers.cookie',
-  'req.headers["x-dev-farm-id"]',
-  'req.headers["x-dev-role"]',
   'res.headers["set-cookie"]',
   '*.password',
   '*.currentPassword',
@@ -29,6 +27,8 @@ const REDACTED_PATHS = [
   'passwordHash',
   'accessToken',
   'refreshToken',
+  'temporaryPassword',
+  '*.temporaryPassword',
 ];
 
 /** Entorno que necesita el logger. */

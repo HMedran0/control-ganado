@@ -15,7 +15,7 @@ import type { Env } from '../config/env.schema.js';
 export class Clock {
   private readonly fixedToday: IsoDate | null;
 
-  constructor(@Inject(ENV) private readonly env: Env) {
+  constructor(@Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE' | 'SEED_TODAY'>) {
     this.fixedToday = env.SEED_TODAY === undefined ? null : toIsoDate(env.SEED_TODAY);
   }
 

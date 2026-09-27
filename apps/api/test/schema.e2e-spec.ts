@@ -101,12 +101,12 @@ describe('Esquema de la base de datos', () => {
     ).rejects.toThrow();
   });
 
-  it('las 26 tablas del modelo existen', async () => {
+  it('las 27 tablas del modelo existen', async () => {
     const rows = await prisma.$queryRaw<{ total: bigint }[]>`
       SELECT count(*) AS total FROM information_schema.tables
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         AND table_name <> '_prisma_migrations'
     `;
-    expect(Number(rows[0]?.total)).toBe(26);
+    expect(Number(rows[0]?.total)).toBe(27);
   });
 });

@@ -1,11 +1,17 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { uuidv7 } from '@hato/shared';
+import { ROLE, uuidv7 } from '@hato/shared';
 import request from 'supertest';
 
 import { PrismaService } from '../src/infra/prisma.service.js';
-import { createTestApp, devAuthHeaders } from './helpers/app.js';
-import { cleanDatabase, createAnimal, createFarm, type TestFarm } from './helpers/fixtures.js';
+import { bearer, createTestApp, signTestToken } from './helpers/app.js';
+import {
+  cleanDatabase,
+  createAnimal,
+  createFarm,
+  createMember,
+  type TestFarm,
+} from './helpers/fixtures.js';
 import { ProbeController } from './helpers/probe.controller.js';
 
 /**
@@ -20,6 +26,8 @@ describe('FarmScope: aislamiento por finca', () => {
   let prisma: PrismaService;
   let esperanza: TestFarm;
   let palmar: TestFarm;
+  let deEsperanza: Record<string, string>;
+  let dePalmar: Record<string, string>;
 
   beforeAll(async () => {
     app = await createTestApp({ controllers: [ProbeController] });
@@ -41,16 +49,24 @@ describe('FarmScope: aislamiento por finca', () => {
     await app.close();
   });
 
+  /** Token de un usuario real de cada finca; el ámbito sale de su membresía. */
+  beforeAll(async () => {
+    deEsperanza = bearer(
+      await signTestToken(app, { userId: esperanza.userId, farmId: esperanza.farmId }),
+    );
+    dePalmar = bearer(await signTestToken(app, { userId: palmar.userId, farmId: palmar.farmId }));
+  });
+
   it('cada finca solo ve sus propios animales', async () => {
     const primera = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
-      .set(devAuthHeaders(esperanza.farmId))
+      .set(deEsperanza)
       .expect(200);
     expect(primera.body.codes).toEqual(['E-001', 'E-002', 'E-003']);
 
     const segunda = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
-      .set(devAuthHeaders(palmar.farmId))
+      .set(dePalmar)
       .expect(200);
     expect(segunda.body.codes).toEqual(['P-001']);
   });
@@ -58,11 +74,11 @@ describe('FarmScope: aislamiento por finca', () => {
   it('los conteos no se mezclan', async () => {
     const primera = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/count')
-      .set(devAuthHeaders(esperanza.farmId))
+      .set(deEsperanza)
       .expect(200);
     const segunda = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/count')
-      .set(devAuthHeaders(palmar.farmId))
+      .set(dePalmar)
       .expect(200);
 
     expect(primera.body.count).toBe(3);
@@ -71,13 +87,27 @@ describe('FarmScope: aislamiento por finca', () => {
     expect(await prisma.animal.count()).toBe(4);
   });
 
-  it('una finca que no existe no ve nada, no los datos de otra', async () => {
+  it('un token con una finca en la que el usuario no tiene membresía no entra', async () => {
+    const token = await signTestToken(app, { userId: esperanza.userId, farmId: uuidv7() });
     const response = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
-      .set(devAuthHeaders(uuidv7()))
-      .expect(200);
+      .set(bearer(token))
+      .expect(401);
 
-    expect(response.body.codes).toEqual([]);
+    expect(response.body.code).toBe('AUTH_TOKEN_EXPIRED');
+    expect(response.body.codes).toBeUndefined();
+  });
+
+  it('un usuario no puede pedir los datos de otra finca firmando su id', async () => {
+    // El usuario de El Palmar pide el ámbito de La Esperanza: no tiene membresía ahí.
+    const token = await signTestToken(app, {
+      userId: palmar.userId,
+      farmId: esperanza.farmId,
+    });
+    await request(app.getHttpServer())
+      .get('/api/v1/probe/animals/codes')
+      .set(bearer(token))
+      .expect(401);
   });
 
   it('el farmId sale de la cabecera de autenticación, nunca del cuerpo ni de la query', async () => {
@@ -86,33 +116,40 @@ describe('FarmScope: aislamiento por finca', () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
       .query({ farmId: esperanza.farmId })
-      .set(devAuthHeaders(palmar.farmId))
+      .set(dePalmar)
       .expect(200);
 
     expect(response.body.codes).toEqual(['P-001']);
   });
 
-  it('sin cabecera de finca responde 403 y no devuelve datos', async () => {
+  it('sin token responde 401 y no devuelve datos', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
-      .expect(403);
+      .expect(401);
 
-    expect(response.body.code).toBe('FORBIDDEN_ROLE');
+    expect(response.body.code).toBe('AUTH_TOKEN_EXPIRED');
     expect(response.body.codes).toBeUndefined();
   });
 
-  it('con una finca que no es un UUID responde 403', async () => {
+  it('con un token ilegible responde 401', async () => {
     await request(app.getHttpServer())
       .get('/api/v1/probe/animals/codes')
-      .set({ 'x-dev-farm-id': 'la-esperanza' })
-      .expect(403);
+      .set(bearer('esto.no.es-un-token'))
+      .expect(401);
   });
 
-  it('el ámbito expuesto es el de la cabecera', async () => {
-    const userId = uuidv7();
+  it('el ámbito expuesto sale de la membresía, no de lo que diga el token', async () => {
+    const { userId } = await createMember(prisma, esperanza, ROLE.VET);
+    // El token se firma diciendo ADMIN, pero la membresía es de VET: manda la base.
+    const token = await signTestToken(app, {
+      userId,
+      farmId: esperanza.farmId,
+      role: ROLE.ADMIN,
+    });
+
     const response = await request(app.getHttpServer())
       .get('/api/v1/probe/scope')
-      .set(devAuthHeaders(esperanza.farmId, 'VET', userId))
+      .set(bearer(token))
       .expect(200);
 
     expect(response.body).toEqual({ farmId: esperanza.farmId, userId, role: 'VET' });

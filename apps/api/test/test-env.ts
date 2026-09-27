@@ -47,7 +47,6 @@ export function applyTestEnv(): void {
   process.env.REFRESH_TOKEN_PEPPER ??= 'pepper-de-prueba-solo-para-los-tests-1234567890';
   process.env.CORS_ORIGINS ??= 'http://localhost:5173';
   process.env.PUBLIC_WEB_URL ??= 'http://localhost:5173';
-  process.env.DEV_FAKE_AUTH = 'true';
   process.env.LOG_LEVEL = 'silent';
   delete process.env.SEED_TODAY;
 }

@@ -1,4 +1,4 @@
-import { Injectable, type ArgumentMetadata, type PipeTransform } from '@nestjs/common';
+import { Body, Injectable, type ArgumentMetadata, type PipeTransform } from '@nestjs/common';
 import { DomainError } from '@hato/shared';
 import { z } from 'zod';
 
@@ -10,7 +10,7 @@ import { z } from 'zod';
  * formulario necesita para marcar cada campo (05-api.md, catálogo de errores).
  *
  * Nota: ADR-05 mencionaba `nestjs-zod`, pero su versión 5.5.0 declara peers de NestJS 10 y 11
- * (no soporta NestJS 12) y además exige `@nestjs/swagger`. Ver docs/adr/005-api-commonjs.md.
+ * (no soporta NestJS 12) y además exige `@nestjs/swagger`. Ver docs/adr/005-api-esm.md.
  */
 @Injectable()
 export class ZodValidationPipe<TOutput> implements PipeTransform<unknown, TOutput> {
@@ -34,4 +34,12 @@ export function toFieldErrors(error: z.ZodError): Record<string, string[]> {
     (fields[key] ??= []).push(issue.message);
   }
   return fields;
+}
+
+/**
+ * Atajo para validar el cuerpo con un esquema de `@hato/shared`:
+ * `metodo(@ZodBody(loginSchema) body: LoginInput)`.
+ */
+export function ZodBody<TOutput>(schema: z.ZodType<TOutput>): ParameterDecorator {
+  return Body(new ZodValidationPipe(schema));
 }

@@ -13,4 +13,5 @@ export * from './errors.js';
 export * from './format/index.js';
 export * from './id.js';
 export * from './money.js';
+export * from './schemas/auth.js';
 export * from './schemas/farm-settings.js';

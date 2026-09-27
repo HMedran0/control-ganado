@@ -55,30 +55,10 @@ export const envSchema = z
       .regex(/^\d{4}-\d{2}-\d{2}$/, 'SEED_TODAY debe tener el formato AAAA-MM-DD.')
       .optional(),
 
-    /**
-     * Suplanta la autenticación con las cabeceras `x-dev-farm-id` y `x-dev-role` hasta que
-     * M1 implemente el inicio de sesión. Nunca en producción: el refinamiento de abajo
-     * impide arrancar.
-     */
-    DEV_FAKE_AUTH: z
-      .enum(['true', 'false'])
-      .default('false')
-      .transform((value) => value === 'true'),
-
     // `silent` apaga el log por completo; lo usan las pruebas.
     LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
       .default('info'),
-  })
-  .superRefine((env, ctx) => {
-    if (env.NODE_ENV === 'production' && env.DEV_FAKE_AUTH) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['DEV_FAKE_AUTH'],
-        message:
-          'DEV_FAKE_AUTH no puede estar activo en producción: suplanta la autenticación y dejaría la API abierta.',
-      });
-    }
   });
 
 /** Entorno validado. */

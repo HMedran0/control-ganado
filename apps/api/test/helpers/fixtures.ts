@@ -7,9 +7,11 @@ import {
   toIsoDate,
   uuidv7,
   type IsoDate,
+  type Role,
   type Sex,
 } from '@hato/shared';
 
+import { PasswordService } from '../../src/auth/password.service.js';
 import { toPrismaDate } from '../../src/infra/date-mapper.js';
 import type { PrismaService } from '../../src/infra/prisma.service.js';
 
@@ -123,4 +125,35 @@ export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.farm.deleteMany();
+}
+
+/**
+ * Agrega un usuario con un rol concreto a una finca ya creada.
+ *
+ * Desde M1 el rol efectivo lo lee `AccessGuard` de la membresía en la base, no del token, así
+ * que una prueba de autorización necesita una membresía de verdad con ese rol.
+ */
+export async function createMember(
+  prisma: PrismaService,
+  farm: TestFarm,
+  role: Role,
+  options: { isActive?: boolean; password?: string; mustChangePassword?: boolean } = {},
+): Promise<{ userId: string; username: string }> {
+  const userId = uuidv7();
+  const username = `user.${userId.slice(-12)}`;
+  await prisma.user.create({
+    data: {
+      id: userId,
+      name: `Usuario ${role}`,
+      username,
+      passwordHash:
+        options.password === undefined
+          ? 'sin-contraseña-usable'
+          : await new PasswordService().hash(options.password),
+      isActive: options.isActive ?? true,
+      mustChangePassword: options.mustChangePassword ?? false,
+      memberships: { create: { id: uuidv7(), farmId: farm.farmId, role } },
+    },
+  });
+  return { userId, username };
 }

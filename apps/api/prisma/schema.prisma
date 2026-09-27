@@ -194,6 +194,9 @@ model Membership {
 model RefreshToken {
   id        String    @id @db.Uuid
   userId    String    @map("user_id") @db.Uuid
+  // Finca activa de la sesión: la rotación la conserva, así que renovar el token no
+  // devuelve al usuario a su finca por defecto (M1; ver docs/adr/007-autenticacion.md).
+  farmId    String    @map("farm_id") @db.Uuid
   tokenHash String    @unique @map("token_hash")
   familyId  String    @map("family_id") @db.Uuid
   expiresAt DateTime  @map("expires_at") @db.Timestamptz
@@ -204,6 +207,7 @@ model RefreshToken {
   user User @relation(fields: [userId], references: [id])
 
   @@index([familyId])
+  @@index([userId])
   @@map("refresh_tokens")
 }
 
@@ -331,6 +335,10 @@ model Animal {
   @@index([farmId, lotId])
   @@index([damId])
   @@index([farmId, birthDate])
+  // Los índices GIN de pg_trgm los creó la migración manual, pero se declaran aquí con su
+  // nombre para que `prisma migrate dev` no los tome por sobrantes y los elimine.
+  @@index([code(ops: raw("gin_trgm_ops"))], map: "animals_code_trgm_idx", type: Gin)
+  @@index([name(ops: raw("gin_trgm_ops"))], map: "animals_name_trgm_idx", type: Gin)
   @@map("animals")
 }
 
@@ -366,6 +374,7 @@ model Identifier {
   // Único parcial (farm_id, type, value) WHERE retired_at IS NULL → migración SQL manual.
   @@index([farmId, value])
   @@index([animalId])
+  @@index([value(ops: raw("gin_trgm_ops"))], map: "identifiers_value_trgm_idx", type: Gin)
   @@map("identifiers")
 }
 
@@ -667,4 +676,26 @@ model ImportBatch {
 
   @@index([farmId, createdAt])
   @@map("import_batches")
+}
+
+/// Intentos de inicio de sesión, para el bloqueo por intentos fallidos (AUT-01 CA3).
+///
+/// No tiene `farm_id`: el intento ocurre antes de saber a qué finca pertenece quien
+/// escribe, e incluso antes de saber si el usuario existe. El bloqueo no se almacena, se
+/// deduce de estas filas (docs/adr/007-autenticacion.md).
+///
+/// Guarda una dirección IP, que es un dato personal: las filas de más de 30 días se borran
+/// (`LoginAttemptsService.purgeOld`).
+model LoginAttempt {
+  id        BigInt   @id @default(autoincrement())
+  /// Tal como lo escribió quien intenta entrar, en minúsculas. Puede no existir.
+  login     String
+  ip        String
+  succeeded Boolean
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([login, createdAt])
+  @@index([ip, createdAt])
+  @@index([createdAt])
+  @@map("login_attempts")
 }

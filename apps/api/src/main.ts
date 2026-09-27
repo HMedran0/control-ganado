@@ -1,10 +1,14 @@
 import 'reflect-metadata';
 
+import cookie from '@fastify/cookie';
+import helmet from '@fastify/helmet';
+import rateLimit from '@fastify/rate-limit';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 
 import { AppModule } from './app.module.js';
 import { ProblemJsonFilter } from './common/errors/problem-json.filter.js';
+import { configureSecurity } from './config/security.js';
 import { parseEnv } from './config/env.schema.js';
 import { getLogger } from './infra/logger.js';
 
@@ -27,7 +31,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemJsonFilter(logger));
-  app.enableCors({ origin: env.CORS_ORIGINS, credentials: true });
+  await configureSecurity(app, env, { cookie, helmet, rateLimit });
   app.enableShutdownHooks();
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });
@@ -37,17 +41,10 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       port: env.PORT,
       env: env.NODE_ENV,
       timezone: env.APP_TIMEZONE,
-      devFakeAuth: env.DEV_FAKE_AUTH,
       seedToday: env.SEED_TODAY ?? null,
     },
     'API de Hato lista en /api/v1',
   );
-
-  if (env.DEV_FAKE_AUTH) {
-    logger.warn(
-      'DEV_FAKE_AUTH está activo: la autenticación se suplanta con las cabeceras x-dev-farm-id y x-dev-role. Solo para desarrollo, hasta el hito M1.',
-    );
-  }
 
   return app;
 }

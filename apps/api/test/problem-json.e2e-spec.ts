@@ -1,9 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import { uuidv7 } from '@hato/shared';
+import { ROLE } from '@hato/shared';
 import request from 'supertest';
 
-import { createTestApp, devAuthHeaders } from './helpers/app.js';
+import { PrismaService } from '../src/infra/prisma.service.js';
+import { bearer, createTestApp, signTestToken } from './helpers/app.js';
+import { cleanDatabase, createFarm, createMember, type TestFarm } from './helpers/fixtures.js';
 import { ProbeController } from './helpers/probe.controller.js';
 
 /**
@@ -12,14 +14,28 @@ import { ProbeController } from './helpers/probe.controller.js';
  */
 describe('Filtro de errores problem+json', () => {
   let app: NestFastifyApplication;
-  const headers = devAuthHeaders(uuidv7());
+  let farm: TestFarm;
+  let headers: Record<string, string>;
+
+  /** Cabeceras de un usuario de la finca con el rol indicado. */
+  const as = async (role: Parameters<typeof createMember>[2]): Promise<Record<string, string>> => {
+    const prisma = app.get(PrismaService);
+    const { userId } = await createMember(prisma, farm, role);
+    return bearer(await signTestToken(app, { userId, farmId: farm.farmId }));
+  };
 
   beforeAll(async () => {
     app = await createTestApp({ controllers: [ProbeController] });
     await app.listen({ port: 0, host: '127.0.0.1' });
+
+    const prisma = app.get(PrismaService);
+    await cleanDatabase(prisma);
+    farm = await createFarm(prisma, 'Finca del contrato de errores');
+    headers = bearer(await signTestToken(app, { userId: farm.userId, farmId: farm.farmId }));
   });
 
   afterAll(async () => {
+    await cleanDatabase(app.get(PrismaService));
     await app.close();
   });
 
@@ -92,14 +108,14 @@ describe('Filtro de errores problem+json', () => {
     it('deja pasar al rol autorizado', async () => {
       await request(app.getHttpServer())
         .get('/api/v1/probe/admin-only')
-        .set(devAuthHeaders(uuidv7(), 'ADMIN'))
+        .set(await as(ROLE.ADMIN))
         .expect(200);
     });
 
     it('responde 403 FORBIDDEN_ROLE al rol no autorizado', async () => {
       const response = await request(app.getHttpServer())
         .get('/api/v1/probe/admin-only')
-        .set(devAuthHeaders(uuidv7(), 'OPERATOR'))
+        .set(await as(ROLE.OPERATOR))
         .expect(403);
 
       expect(response.body).toMatchObject({
@@ -111,15 +127,16 @@ describe('Filtro de errores problem+json', () => {
     it('un ADMIN también recibe 403 en un endpoint exclusivo de VET', async () => {
       await request(app.getHttpServer())
         .get('/api/v1/probe/vet-only')
-        .set(devAuthHeaders(uuidv7(), 'ADMIN'))
+        .set(await as(ROLE.ADMIN))
         .expect(403);
     });
 
-    it('rechaza un rol que no existe', async () => {
-      await request(app.getHttpServer())
+    it('sin token responde 401, no 403', async () => {
+      const response = await request(app.getHttpServer())
         .get('/api/v1/probe/admin-only')
-        .set(devAuthHeaders(uuidv7(), 'SUPERUSUARIO'))
-        .expect(403);
+        .expect(401);
+
+      expect(response.body.code).toBe('AUTH_TOKEN_EXPIRED');
     });
   });
 });
