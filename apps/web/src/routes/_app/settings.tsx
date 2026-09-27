@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router';
 import { Settings } from 'lucide-react';
 
 import { PageHeader } from '../../components/layout/PageHeader';
-import { Placeholder } from '../../components/layout/Placeholder';
+import { EmptyState } from '../../components/ui/EmptyState';
 import { RequireRole } from '../../components/layout/RequireRole';
 
 export const Route = createFileRoute('/_app/settings')({
@@ -13,9 +13,11 @@ function SettingsPage() {
   return (
     <RequireRole roles={['ADMIN']} title="Configuración">
       <PageHeader title="Configuración" />
-      <Placeholder icon={Settings}>
-        Aquí vas a configurar la finca: razas, vacunas, lotes, etiquetas y usuarios.
-      </Placeholder>
+      <EmptyState
+        icon={Settings}
+        title="La configuración llega pronto"
+        description="Aquí vas a configurar la finca: razas, vacunas, lotes, etiquetas y usuarios."
+      />
     </RequireRole>
   );
 }
