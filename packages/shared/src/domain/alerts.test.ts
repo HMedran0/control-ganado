@@ -6,6 +6,7 @@ import {
   animalAlerts,
   isCalvingSoon,
   isServiceUnconfirmedOverdue,
+  withdrawalUntilOf,
   type AnimalAlertsInput,
 } from './alerts.js';
 import { VACCINE_STATUS } from './vaccination.js';
@@ -107,5 +108,19 @@ describe('animalAlerts', () => {
   it('retiro vigente hasta hoy inclusive', () => {
     expect(animalAlerts({ ...base, withdrawalUntil: HOY })).toEqual([ANIMAL_ALERT.WITHDRAWAL]);
     expect(animalAlerts({ ...base, withdrawalUntil: d('2026-09-24') })).toEqual([]);
+  });
+});
+
+describe('withdrawalUntilOf', () => {
+  it('el retiro más lejano de los tratamientos no anulados', () => {
+    expect(withdrawalUntilOf([])).toBeNull();
+    expect(
+      withdrawalUntilOf([
+        { withdrawalUntil: d('2026-09-30'), voided: false },
+        { withdrawalUntil: d('2026-12-01'), voided: true },
+        { withdrawalUntil: null, voided: false },
+        { withdrawalUntil: d('2026-10-15'), voided: false },
+      ]),
+    ).toBe('2026-10-15');
   });
 });

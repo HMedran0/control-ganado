@@ -283,6 +283,27 @@ function intervalStatus(input: VaccineStatusInput): VaccineStatus {
 }
 
 /**
+ * Ciclo en curso y último ciclo cerrado en una fecha, entre los ciclos que se le pasan: los
+ * ciclos oficiales activos que incluyen la vacuna (SAN-06). Un ciclo está en curso desde su
+ * inicio hasta su fin, ambos inclusive; está cerrado desde el día siguiente a su fin.
+ */
+export function cyclesAt<T extends VaccinationCycleLike>(
+  cycles: readonly T[],
+  date: IsoDate,
+): { readonly current: T | null; readonly lastClosed: T | null } {
+  let current: T | null = null;
+  let lastClosed: T | null = null;
+  for (const cycle of cycles) {
+    if (isWithin(date, cycle.startsOn, cycle.endsOn)) {
+      if (current === null || cycle.startsOn > current.startsOn) current = cycle;
+    } else if (cycle.endsOn < date && (lastClosed === null || cycle.endsOn > lastClosed.endsOn)) {
+      lastClosed = cycle;
+    }
+  }
+  return { current, lastClosed };
+}
+
+/**
  * Estado de una vacuna en un animal según su tipo de programación (RN-13).
  *
  * - `OFFICIAL_CYCLE`: pendiente si no hay aplicación dentro del ciclo en curso; vencida si

@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import { toIsoDate, type IsoDate } from '../date.js';
 import { DERIVED_TAG, MANAGEMENT_CATEGORY, SEX, type Sex } from '../enums.js';
-import { derivedTags, managementCategory, type DerivedTagsInput } from './classification.js';
+import {
+  derivedTags,
+  managementCategory,
+  summarizePregnancies,
+  type DerivedTagsInput,
+} from './classification.js';
 
 const d = toIsoDate;
 const HOY = d('2026-09-25');
@@ -166,5 +171,60 @@ describe('derivedTags', () => {
         lastCalvingDate: null,
       }),
     ).toEqual([]);
+  });
+});
+
+describe('summarizePregnancies', () => {
+  const pregnancy = (
+    outcome: 'PENDING' | 'CALVED' | 'ABORTED' | 'FAILED',
+    service: string,
+    extra: Partial<{ outcomeDate: string; confirmedAt: string; voided: boolean }> = {},
+  ) => ({
+    outcome,
+    serviceDate: d(service),
+    outcomeDate: extra.outcomeDate === undefined ? null : d(extra.outcomeDate),
+    confirmedAt: extra.confirmedAt === undefined ? null : d(extra.confirmedAt),
+    expectedCalvingDate: d('2027-01-01'),
+    voided: extra.voided ?? false,
+  });
+
+  it('sin preñeces', () => {
+    expect(summarizePregnancies([])).toEqual({
+      calvingCount: 0,
+      lastCalvingDate: null,
+      openPregnancy: null,
+    });
+  });
+
+  it('cuenta partos no anulados y toma el más reciente', () => {
+    const facts = summarizePregnancies([
+      pregnancy('CALVED', '2023-01-01', { outcomeDate: '2023-10-10' }),
+      pregnancy('CALVED', '2024-02-01', { outcomeDate: '2024-11-12' }),
+      pregnancy('CALVED', '2025-02-01', { outcomeDate: '2025-11-12', voided: true }),
+      pregnancy('ABORTED', '2025-03-01', { outcomeDate: '2025-06-01' }),
+    ]);
+    expect(facts.calvingCount).toBe(2);
+    expect(facts.lastCalvingDate).toBe('2024-11-12');
+    expect(facts.openPregnancy).toBeNull();
+  });
+
+  it('la preñez abierta no anulada, confirmada o no', () => {
+    const facts = summarizePregnancies([
+      pregnancy('PENDING', '2026-01-01', { voided: true }),
+      pregnancy('PENDING', '2026-03-01', { confirmedAt: '2026-05-01' }),
+    ]);
+    expect(facts.openPregnancy).toEqual({
+      serviceDate: '2026-03-01',
+      confirmedAt: '2026-05-01',
+      expectedCalvingDate: '2027-01-01',
+    });
+  });
+
+  it('si hubiera dos abiertas por error de datos, cuenta la de servicio más reciente', () => {
+    const facts = summarizePregnancies([
+      pregnancy('PENDING', '2026-05-01'),
+      pregnancy('PENDING', '2026-02-01', { confirmedAt: '2026-04-01' }),
+    ]);
+    expect(facts.openPregnancy?.serviceDate).toBe('2026-05-01');
   });
 });

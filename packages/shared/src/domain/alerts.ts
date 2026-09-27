@@ -109,3 +109,23 @@ export function animalAlerts(input: AnimalAlertsInput): AnimalAlert[] {
 
   return alerts;
 }
+
+/** Tratamiento, reducido a lo que necesita el retiro. */
+export type WithdrawalRecordLike = {
+  readonly withdrawalUntil: IsoDate | null;
+  /** `voided_at IS NOT NULL`. Los anulados no cuentan (RN-11). */
+  readonly voided: boolean;
+};
+
+/**
+ * Fin del retiro más lejano entre los tratamientos no anulados; `null` si no hay. Si ya pasó,
+ * `derivedTags` y `animalAlerts` no lo cuentan como vigente.
+ */
+export function withdrawalUntilOf(records: readonly WithdrawalRecordLike[]): IsoDate | null {
+  let latest: IsoDate | null = null;
+  for (const record of records) {
+    if (record.voided || record.withdrawalUntil === null) continue;
+    if (latest === null || record.withdrawalUntil > latest) latest = record.withdrawalUntil;
+  }
+  return latest;
+}

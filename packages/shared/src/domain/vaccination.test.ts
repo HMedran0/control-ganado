@@ -6,6 +6,7 @@ import {
   VACCINE_STATUS,
   VACCINE_STATUS_REASON,
   canApplyVaccine,
+  cyclesAt,
   nextDueOnFromInterval,
   vaccineStatus,
   vaccineSexBlockedParams,
@@ -516,5 +517,31 @@ describe('vaccineSexBlockedParams', () => {
       sex: 'machos',
     });
     expect(vaccineSexBlockedParams('Vacuna', SEX.FEMALE).sex).toBe('hembras');
+  });
+});
+
+describe('cyclesAt', () => {
+  const ciclos = [
+    { name: '2025-2', startsOn: toIsoDate('2025-11-01'), endsOn: toIsoDate('2025-12-15') },
+    { name: '2026-1', startsOn: toIsoDate('2026-05-01'), endsOn: toIsoDate('2026-06-23') },
+    { name: '2026-2', startsOn: toIsoDate('2026-11-01'), endsOn: toIsoDate('2026-12-15') },
+  ];
+  const at = (date: string) => {
+    const { current, lastClosed } = cyclesAt(ciclos, toIsoDate(date));
+    return [current?.name ?? null, lastClosed?.name ?? null];
+  };
+
+  it('entre ciclos: ninguno en curso y el último cerrado', () => {
+    expect(at('2026-09-25')).toEqual([null, '2026-1']);
+  });
+
+  it('el primer y el último día del ciclo están en curso', () => {
+    expect(at('2026-05-01')).toEqual(['2026-1', '2025-2']);
+    expect(at('2026-06-23')).toEqual(['2026-1', '2025-2']);
+    expect(at('2026-06-24')).toEqual([null, '2026-1']);
+  });
+
+  it('antes de todo ciclo, nada', () => {
+    expect(at('2025-01-01')).toEqual([null, null]);
   });
 });

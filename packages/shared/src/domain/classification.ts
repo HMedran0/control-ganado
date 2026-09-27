@@ -7,9 +7,11 @@ import { type IsoDate } from '../date.js';
 import {
   DERIVED_TAG,
   MANAGEMENT_CATEGORY,
+  PREGNANCY_OUTCOME,
   SEX,
   type DerivedTag,
   type ManagementCategory,
+  type PregnancyOutcome,
   type Sex,
 } from '../enums.js';
 import { ageInMonths } from './age.js';
@@ -91,4 +93,62 @@ export function derivedTags(input: DerivedTagsInput): DerivedTag[] {
   }
 
   return tags;
+}
+
+/** Preñez, reducida a lo que necesita la clasificación. */
+export type PregnancyFactsInput = {
+  readonly outcome: PregnancyOutcome;
+  /** Fecha del parto, aborto o diagnóstico negativo. */
+  readonly outcomeDate: IsoDate | null;
+  readonly serviceDate: IsoDate;
+  readonly confirmedAt: IsoDate | null;
+  readonly expectedCalvingDate: IsoDate;
+  /** `voided_at IS NOT NULL`. Las anuladas no cuentan (RN-11). */
+  readonly voided: boolean;
+};
+
+/** Hechos reproductivos de una hembra, de donde salen la categoría y las etiquetas. */
+export type PregnancyFacts = {
+  /** Preñeces `CALVED` no anuladas (RN-07). */
+  readonly calvingCount: number;
+  /** Fecha más reciente de esos partos; `null` si no hay ninguno con fecha. */
+  readonly lastCalvingDate: IsoDate | null;
+  /** Preñez `PENDING` no anulada (RN-03: a lo sumo una). */
+  readonly openPregnancy: {
+    readonly serviceDate: IsoDate;
+    readonly confirmedAt: IsoDate | null;
+    readonly expectedCalvingDate: IsoDate;
+  } | null;
+};
+
+/**
+ * Resume las preñeces de una hembra para `managementCategory`, `derivedTags` y las alertas.
+ * Si por un error de datos hubiera más de una abierta, cuenta la de servicio más reciente.
+ */
+export function summarizePregnancies(pregnancies: readonly PregnancyFactsInput[]): PregnancyFacts {
+  let calvingCount = 0;
+  let lastCalvingDate: IsoDate | null = null;
+  let openPregnancy: PregnancyFacts['openPregnancy'] = null;
+
+  for (const pregnancy of pregnancies) {
+    if (pregnancy.voided) continue;
+    if (pregnancy.outcome === PREGNANCY_OUTCOME.CALVED) {
+      calvingCount += 1;
+      const date = pregnancy.outcomeDate;
+      if (date !== null && (lastCalvingDate === null || date > lastCalvingDate)) {
+        lastCalvingDate = date;
+      }
+    } else if (
+      pregnancy.outcome === PREGNANCY_OUTCOME.PENDING &&
+      (openPregnancy === null || pregnancy.serviceDate > openPregnancy.serviceDate)
+    ) {
+      openPregnancy = {
+        serviceDate: pregnancy.serviceDate,
+        confirmedAt: pregnancy.confirmedAt,
+        expectedCalvingDate: pregnancy.expectedCalvingDate,
+      };
+    }
+  }
+
+  return { calvingCount, lastCalvingDate, openPregnancy };
 }
