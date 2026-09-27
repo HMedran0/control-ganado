@@ -171,6 +171,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `ANIMAL_EXITED` | 409 | El animal ya salió de la finca; revierte la salida para modificarlo. |
 | `ANIMAL_ARCHIVED` | 409 | El animal está archivado. |
 | `IDENTIFIER_TAKEN` | 409 | El identificador {value} ya está asignado al animal {code}. |
+| `IDENTIFIER_PREVIOUSLY_USED` | 409 | El identificador {value} perteneció al animal {code}. Solo un administrador puede reasignarlo. (RN-19; el ADMIN lo confirma con `confirmReuse: true`) |
 | `IDENTIFIER_INVALID_RFID` | 422 | El código RFID debe tener exactamente 15 dígitos. |
 | `SEX_NOT_ALLOWED` | 422 | Esta acción solo aplica a hembras. / El padre debe ser macho. |
 | `PREGNANCY_ALREADY_OPEN` | 409 | La hembra ya tiene una preñez abierta. |
@@ -189,4 +190,4 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `RATE_LIMITED` | 429 | Demasiadas solicitudes. Espera un momento. |
 | `INTERNAL_ERROR` | 500 | Ocurrió un error inesperado. Ya quedó registrado. |
 
-Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro).
+Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `DAM_AGE_LOW` (la madre era menor que la edad mínima reproductiva al nacer la cría, RN-23), `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro).

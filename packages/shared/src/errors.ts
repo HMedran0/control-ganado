@@ -50,6 +50,11 @@ export const ERROR_CATALOG = {
     status: 409,
     detail: 'El identificador {value} ya está asignado al animal {code}.',
   },
+  IDENTIFIER_PREVIOUSLY_USED: {
+    status: 409,
+    detail:
+      'El identificador {value} perteneció al animal {code}. Solo un administrador puede reasignarlo.',
+  },
   IDENTIFIER_INVALID_RFID: {
     status: 422,
     detail: 'El código RFID debe tener exactamente 15 dígitos.',
@@ -93,6 +98,8 @@ export const WARNING_CATALOG = {
   RFID_FOREIGN_COUNTRY:
     'El código RFID no empieza por 170 (Colombia); parece de un animal importado.',
   BREEDING_AGE_LOW: 'La hembra tiene {age} y la edad mínima de servicio es {minAge}.',
+  DAM_AGE_LOW:
+    'La madre {code} tenía {age} al nacer la cría; la edad mínima reproductiva es {minAge}.',
   VACCINE_AGE_OUTSIDE_WINDOW:
     'El animal está fuera de la edad recomendada para la vacuna {vaccine}.',
   ALREADY_IN_SESSION: 'Este animal ya fue registrado en la jornada.',

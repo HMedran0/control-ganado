@@ -182,6 +182,38 @@ export const DERIVED_TAG = {
 } as const;
 export type DerivedTag = (typeof DERIVED_TAG)[keyof typeof DERIVED_TAG];
 
+/**
+ * Estado del animal en el inventario (CLS-03). Archivado manda sobre la salida: un animal
+ * archivado no aparece en ningún listado, haya salido o no (ANI-03).
+ */
+export const ANIMAL_STATUS = {
+  ACTIVE: 'ACTIVE',
+  /** Salida por venta: «Vendido». */
+  SOLD: 'SOLD',
+  /** Cualquier otra salida: «Retirado». */
+  RETIRED: 'RETIRED',
+  ARCHIVED: 'ARCHIVED',
+} as const;
+export type AnimalStatus = (typeof ANIMAL_STATUS)[keyof typeof ANIMAL_STATUS];
+
+/**
+ * Alertas activas de un animal (ANI-06, ANI-07). Los valores son los del filtro `alerts` de
+ * `GET /animals` (05-api.md).
+ */
+export const ANIMAL_ALERT = {
+  /** Alguna vacuna vencida según `vaccineStatus` (RN-13). */
+  VACCINE_OVERDUE: 'vaccine_overdue',
+  /** Alguna vacuna pendiente o próxima según `vaccineStatus` (RN-13). */
+  VACCINE_DUE: 'vaccine_due',
+  /** Preñez confirmada con parto previsto dentro de la ventana de alerta de la finca. */
+  CALVING_SOON: 'calving_soon',
+  /** Período de retiro de medicamento vigente (RN-22). */
+  WITHDRAWAL: 'withdrawal',
+  /** Servida hace más de `unconfirmedServiceAlertDays` sin diagnóstico (RN-08). */
+  UNCONFIRMED_SERVICE: 'unconfirmed_service',
+} as const;
+export type AnimalAlert = (typeof ANIMAL_ALERT)[keyof typeof ANIMAL_ALERT];
+
 /** Grupos de edad del reporte ICA (08 §2.2). `OVER_3Y` es solo de machos; `Y3_TO_5` y `OVER_5Y`, solo de hembras. */
 export const ICA_AGE_GROUP = {
   UNDER_3M: 'UNDER_3M',

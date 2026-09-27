@@ -12,15 +12,16 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 33 códigos de error de 05-api.md', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(33);
+  it('tiene los 34 códigos de error de 05-api.md', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(34);
   });
 
-  it('tiene las 8 advertencias de 05-api.md', () => {
+  it('tiene las 9 advertencias de 05-api.md', () => {
     expect(Object.keys(WARNING_CATALOG)).toEqual([
       'WEIGHT_OUTLIER',
       'RFID_FOREIGN_COUNTRY',
       'BREEDING_AGE_LOW',
+      'DAM_AGE_LOW',
       'VACCINE_AGE_OUTSIDE_WINDOW',
       'ALREADY_IN_SESSION',
       'CYCLE_OVERLAP',
