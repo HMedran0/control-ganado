@@ -112,7 +112,7 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 4. Resumir lo hecho, lo pendiente y cualquier desviación de la especificación.
 
 ## Herramientas del repositorio
-- `.claude/settings.json`: permisos y hooks. El hook `protect.sh` bloquea editar `.env*`, `docs/referencia/` y migraciones existentes; `format.sh` aplica Prettier y ESLint al archivo editado y te devuelve los errores. Requieren `jq` instalado.
+- `.claude/settings.json`: permisos y hooks. El hook `protect.sh` bloquea editar `.env*`, `docs/referencia/` y las migraciones ya versionadas en git (una recién generada, sin commit, sí se puede ajustar); `format.sh` aplica Prettier y ESLint al archivo editado y te devuelve los errores. Requieren `jq` instalado.
 - Si un hook te bloquea, no intentes rodearlo: explica al usuario qué necesitas cambiar y por qué.
 
 ## No hacer
