@@ -8,7 +8,7 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 
 import { AppModule } from './app.module.js';
 import { ProblemJsonFilter } from './common/errors/problem-json.filter.js';
-import { configureSecurity } from './config/security.js';
+import { configureSecurity, RATE_LIMIT_PER_USER } from './config/security.js';
 import { parseEnv } from './config/env.schema.js';
 import { getLogger } from './infra/logger.js';
 
@@ -31,7 +31,12 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemJsonFilter(logger));
-  await configureSecurity(app, env, { cookie, helmet, rateLimit });
+  await configureSecurity(
+    app,
+    env,
+    { cookie, helmet, rateLimit },
+    { perUser: RATE_LIMIT_PER_USER, perIp: env.RATE_LIMIT_PER_IP },
+  );
   app.enableShutdownHooks();
 
   await app.listen({ port: env.PORT, host: '0.0.0.0' });

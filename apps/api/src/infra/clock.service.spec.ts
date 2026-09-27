@@ -12,7 +12,7 @@ function env(overrides: Partial<Env> = {}): Env {
     REFRESH_TOKEN_PEPPER: 'y'.repeat(40),
     CORS_ORIGINS: ['http://localhost:5173'],
     PUBLIC_WEB_URL: 'http://localhost:5173',
-
+    RATE_LIMIT_PER_IP: 60,
     LOG_LEVEL: 'silent',
   };
   return { ...base, ...overrides };

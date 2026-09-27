@@ -21,6 +21,12 @@ describe('parseEnv', () => {
     expect(env.APP_TIMEZONE).toBe('America/Bogota');
     expect(env.LOG_LEVEL).toBe('info');
     expect(env.SEED_TODAY).toBeUndefined();
+    expect(env.RATE_LIMIT_PER_IP).toBe(60);
+  });
+
+  it('RATE_LIMIT_PER_IP se puede subir (pruebas de extremo a extremo), nunca a cero', () => {
+    expect(parseEnv({ ...validEnv(), RATE_LIMIT_PER_IP: '1000' }).RATE_LIMIT_PER_IP).toBe(1000);
+    expect(() => parseEnv({ ...validEnv(), RATE_LIMIT_PER_IP: '0' })).toThrow(/RATE_LIMIT_PER_IP/);
   });
 
   it('parte CORS_ORIGINS por comas', () => {

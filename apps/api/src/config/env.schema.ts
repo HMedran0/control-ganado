@@ -54,6 +54,17 @@ export const envSchema = z.object({
     .regex(/^\d{4}-\d{2}-\d{2}$/, 'SEED_TODAY debe tener el formato AAAA-MM-DD.')
     .optional(),
 
+  /**
+   * Peticiones por minuto de una IP sin sesión (ADR-007). Por defecto 60. Solo se sube para
+   * las pruebas de extremo a extremo, que hacen decenas de inicios de sesión desde una sola IP;
+   * en producción se deja el valor por defecto.
+   */
+  RATE_LIMIT_PER_IP: z.coerce
+    .number()
+    .int()
+    .min(1, 'RATE_LIMIT_PER_IP debe ser al menos 1.')
+    .default(60),
+
   // `silent` apaga el log por completo; lo usan las pruebas.
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
 });

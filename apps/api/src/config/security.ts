@@ -25,6 +25,8 @@ export const RATE_LIMIT_PER_USER = 300;
  * `/auth/refresh` y `/health`. El bloqueo por intentos fallidos de AUT-01 es aparte y va por
  * cuenta; este límite frena el barrido de contraseñas desde una misma IP contra muchas
  * cuentas, que el bloqueo por cuenta no detendría.
+ *
+ * Es el valor por defecto de `RATE_LIMIT_PER_IP`; `main.ts` usa el del entorno.
  */
 export const RATE_LIMIT_PER_IP = 60;
 
