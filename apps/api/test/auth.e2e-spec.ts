@@ -226,12 +226,23 @@ describe('Autenticación', () => {
       await login({ login: 'alvaro', password: PASSWORD }).expect(201);
     });
 
-    it('el bloqueo de una cuenta no bloquea a las demás desde otra IP', async () => {
+    it('el bloqueo de una cuenta no afecta a los demás usuarios de la misma IP', async () => {
+      // En una finca todos comparten la IP pública. Las pruebas también salen de una sola IP,
+      // que es justo ese caso: alvaro queda bloqueado y wilmer sigue entrando.
       for (let intento = 0; intento < MAX_FAILED_ATTEMPTS; intento += 1) await fallar();
-      // Misma IP en las pruebas, así que el bloqueo por IP también aplica: se comprueba
-      // que el rechazo llega y que es por bloqueo, no por credenciales.
-      const response = await login({ login: 'wilmer', password: OTHER_PASSWORD }).expect(423);
-      expect(response.body.code).toBe('AUTH_ACCOUNT_LOCKED');
+      await login({ login: 'alvaro', password: PASSWORD }).expect(423);
+
+      await login({ login: 'wilmer', password: OTHER_PASSWORD }).expect(201);
+    });
+
+    it('fallos repartidos entre varias cuentas desde una IP no bloquean a nadie', async () => {
+      // Cinco errores en total desde la misma IP, ninguna cuenta con cinco.
+      for (const cuenta of ['alvaro', 'alvaro', 'wilmer', 'wilmer', 'fantasma']) {
+        await login({ login: cuenta, password: 'equivocada' }).expect(401);
+      }
+
+      await login({ login: 'alvaro', password: PASSWORD }).expect(201);
+      await login({ login: 'wilmer', password: OTHER_PASSWORD }).expect(201);
     });
   });
 

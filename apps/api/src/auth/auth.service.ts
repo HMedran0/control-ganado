@@ -62,7 +62,7 @@ export class AuthService {
   /**
    * Inicio de sesión (AUT-01).
    *
-   * @throws {DomainError} `AUTH_ACCOUNT_LOCKED` si la cuenta o la IP están bloqueadas.
+   * @throws {DomainError} `AUTH_ACCOUNT_LOCKED` si la cuenta está bloqueada.
    * @throws {DomainError} `AUTH_INVALID_CREDENTIALS` en cualquier otro fallo.
    */
   async login(input: LoginInput, context: RequestContext): Promise<Session> {
@@ -71,11 +71,12 @@ export class AuthService {
     // El bloqueo se comprueba antes de tocar la contraseña. El intento rechazado por
     // bloqueo **no se registra**: si se registrara, prolongaría el bloqueo y cualquiera
     // podría dejar a un usuario fuera de su cuenta para siempre (ADR-007).
-    const [byAccount, byIp] = await Promise.all([
-      this.attempts.lockStateForLogin(login),
-      this.attempts.lockStateForIp(context.ip),
-    ]);
-    if (byAccount.locked || byIp.locked) {
+    //
+    // Es solo por cuenta, nunca por IP: en una finca todos salen a internet por el mismo
+    // router o el mismo punto de datos, así que cinco errores de un operario dejarían sin
+    // acceso a todos los demás. Contra el barrido desde una IP basta el límite de peticiones.
+    const lock = await this.attempts.lockStateForLogin(login);
+    if (lock.locked) {
       throw new DomainError('AUTH_ACCOUNT_LOCKED');
     }
 

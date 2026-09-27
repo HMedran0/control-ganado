@@ -143,7 +143,7 @@ Alcance **núcleo** (debe estar para el piloto): AUT, ANI, IDN-01 a 03, CLS, REP
 El usuario inicia sesión con **nombre de usuario** o correo, y contraseña. El nombre de usuario es obligatorio y el correo opcional, porque los operarios de campo normalmente no tienen correo (08 §1.8).
 - CA1: Credenciales válidas → acceso al tablero según su rol.
 - CA2: Credenciales inválidas → mensaje "Usuario o contraseña incorrectos" sin revelar cuál falló.
-- CA3: Tras 5 intentos fallidos en 15 minutos, la cuenta se bloquea temporalmente 15 minutos.
+- CA3: Tras 5 intentos fallidos en 15 minutos, la cuenta se bloquea temporalmente 15 minutos. El bloqueo es **por cuenta**: los fallos de un usuario no bloquean a los demás aunque compartan la misma conexión a internet (en la finca todos salen por la misma IP). Desde una misma IP solo aplica el límite de peticiones (ADR-007).
 - CA4: La sesión persiste con refresh token (30 días) y se renueva sin pedir credenciales.
 
 **AUT-02 — Cierre de sesión** · M · F1

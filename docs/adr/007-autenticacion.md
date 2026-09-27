@@ -55,9 +55,28 @@ cualquiera podría dejar a un usuario fuera de su cuenta indefinidamente con sol
 contraseñas equivocadas contra su nombre de usuario.
 
 El bloqueo **no se almacena**. No hay columna `locked_until` que mantener: se deduce de la
-tabla `login_attempts`, que además registra la IP para aplicar la misma regla por origen. Es
-la misma idea de RN-16 —los derivados se calculan— aplicada a la seguridad, y evita que un
-reinicio o una escritura perdida dejen a alguien bloqueado para siempre.
+tabla `login_attempts`. Es la misma idea de RN-16 —los derivados se calculan— aplicada a la
+seguridad, y evita que un reinicio o una escritura perdida dejen a alguien bloqueado para
+siempre.
+
+### Revisión en M2a — el bloqueo es solo por cuenta
+
+La primera versión aplicaba la misma regla también por dirección IP. Se retiró antes del
+piloto porque **en una finca todos los usuarios comparten la IP pública**: el mismo router o
+el mismo punto de datos móviles. Con bloqueo por IP, cinco errores de un operario dejaban sin
+acceso a la finca entera durante 15 minutos, y una prueba de M1 afirmaba justamente ese
+comportamiento («el bloqueo de alvaro rechaza a wilmer»).
+
+Regla vigente:
+
+- el bloqueo por fallos es **por cuenta** (el `login` normalizado), nunca por IP;
+- contra el barrido de contraseñas desde una misma IP basta el **límite de peticiones**:
+  60 por minuto sin sesión (Consecuencias), que no depende de que las contraseñas fallen y
+  se libera solo al minuto;
+- la IP se sigue guardando en `login_attempts` para la trazabilidad de un incidente.
+
+Pruebas: «el bloqueo de una cuenta no afecta a los demás usuarios de la misma IP» y «fallos
+repartidos entre varias cuentas desde una IP no bloquean a nadie» (`test/auth.e2e-spec.ts`).
 
 `login_attempts` guarda direcciones IP, que son datos personales: las filas de más de 30 días
 se borran al arrancar la API.
@@ -114,16 +133,18 @@ adelantar el reloj—. Ninguna prueba puede ya fabricarse un ámbito con una cab
 - El límite de peticiones distingue usuario autenticado (300/min) de IP sin autenticar
   (60/min). El segundo es más bajo porque quien no ha entrado solo necesita `/auth/login`,
   `/auth/refresh` y `/health`, y porque el bloqueo por cuenta no frena un barrido de
-  contraseñas desde una IP contra muchas cuentas distintas.
+  contraseñas desde una IP contra muchas cuentas distintas. Es la única defensa por IP: no
+  hay bloqueo por IP basado en fallos (revisión de M2a en la Decisión 2).
 
 ## Alternativas descartadas
 
-| Alternativa                                      | Por qué no                                                                                                                                                            |
-| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Sesión en servidor con cookie de sesión          | Obliga a consultar el almacén en cada petición y complica el móvil de la fase 2, que guarda el token en el llavero del sistema. El JWT corto ya se valida sin estado. |
-| JWT largo sin refresco                           | Revocar se vuelve imposible sin lista negra, y AUT-03 CA2 exige que desactivar a alguien corte sus sesiones.                                                          |
-| Guardar el refresco en claro                     | Quien leyera la tabla se llevaría todas las sesiones abiertas.                                                                                                        |
-| Columna `locked_until` en `users`                | Un dato derivable convertido en almacenado, y una escritura que puede perderse dejando a alguien bloqueado. No cubre el bloqueo por IP.                               |
-| Contar solo los fallos de los últimos 15 minutos | Incumple AUT-01 CA3: desbloquea antes de tiempo (el caso 0, 1, 2, 3, 14).                                                                                             |
-| Rol y permisos tomados del token                 | Desactivar a alguien tardaría hasta quince minutos en aplicar.                                                                                                        |
-| Login que exige siempre `farmId`                 | Estorba al 100 % de los usuarios actuales, que tienen una sola finca, para resolver un caso que todavía no existe.                                                    |
+| Alternativa                                                   | Por qué no                                                                                                                                                            |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sesión en servidor con cookie de sesión                       | Obliga a consultar el almacén en cada petición y complica el móvil de la fase 2, que guarda el token en el llavero del sistema. El JWT corto ya se valida sin estado. |
+| JWT largo sin refresco                                        | Revocar se vuelve imposible sin lista negra, y AUT-03 CA2 exige que desactivar a alguien corte sus sesiones.                                                          |
+| Guardar el refresco en claro                                  | Quien leyera la tabla se llevaría todas las sesiones abiertas.                                                                                                        |
+| Columna `locked_until` en `users`                             | Un dato derivable convertido en almacenado, y una escritura que puede perderse dejando a alguien bloqueado.                                                           |
+| Contar solo los fallos de los últimos 15 minutos              | Incumple AUT-01 CA3: desbloquea antes de tiempo (el caso 0, 1, 2, 3, 14).                                                                                             |
+| Bloqueo por IP tras 5 fallos (vigente en M1, retirado en M2a) | Toda la finca comparte la IP pública: los errores de una persona dejarían fuera a todas. El límite de peticiones ya frena el barrido desde una IP.                    |
+| Rol y permisos tomados del token                              | Desactivar a alguien tardaría hasta quince minutos en aplicar.                                                                                                        |
+| Login que exige siempre `farmId`                              | Estorba al 100 % de los usuarios actuales, que tienen una sola finca, para resolver un caso que todavía no existe.                                                    |

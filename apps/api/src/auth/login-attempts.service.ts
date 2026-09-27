@@ -22,6 +22,12 @@ import { PrismaService } from '../infra/prisma.service.js';
  * Que los intentos durante el bloqueo no lo extiendan también importa: si lo extendieran,
  * cualquiera podría dejar a un usuario fuera de su cuenta indefinidamente con solo repetir
  * contraseñas equivocadas.
+ *
+ * El bloqueo es **por cuenta, nunca por IP**. En una finca todos los usuarios comparten la
+ * dirección pública del router o del punto de datos móviles: un bloqueo por IP convertiría
+ * los cinco errores de un operario en un bloqueo de la finca entera. La IP se sigue
+ * guardando para la trazabilidad; el barrido desde una misma IP lo frena el límite de
+ * peticiones (60 por minuto sin sesión, `config/security.ts`).
  */
 
 /** Fallos que disparan el bloqueo. */
@@ -79,18 +85,13 @@ export class LoginAttemptsService implements OnModuleInit {
     return this.lockState({ login: login.trim().toLowerCase() });
   }
 
-  /** ¿Está bloqueada la dirección IP? */
-  async lockStateForIp(ip: string): Promise<LockState> {
-    return this.lockState({ ip });
-  }
-
   /**
-   * Estado del bloqueo de un sujeto (una cuenta o una IP).
+   * Estado del bloqueo de una cuenta.
    *
    * Se miran los últimos intentos en orden inverso: si antes de completar cinco fallos
    * aparece uno exitoso, el conteo se reinicia ahí y no hay bloqueo.
    */
-  private async lockState(subject: { login?: string; ip?: string }): Promise<LockState> {
+  private async lockState(subject: { login: string }): Promise<LockState> {
     const now = this.clock.now();
     const since = new Date(now.getTime() - LOCK_WINDOW_MINUTES * MINUTE_MS);
 
