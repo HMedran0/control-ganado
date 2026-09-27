@@ -1,20 +1,30 @@
 import { createFileRoute, useRouter } from '@tanstack/react-router';
 import { Info } from 'lucide-react';
-import { z } from 'zod';
 
 import { PageHeader } from '../components/layout/PageHeader';
 import { LoginForm } from '../features/auth/LoginForm';
 import { redirectIfAuthenticated, safeRedirect } from '../lib/auth/guards';
 
-const searchSchema = z.object({
+type LoginSearch = {
   /** A dónde iba la persona antes de que se le pidiera iniciar sesión. */
-  redirect: z.string().optional().catch(undefined),
+  redirect?: string;
   /** La sesión se cayó sola (el refresco ya no servía). */
-  expired: z.boolean().optional().catch(undefined),
-});
+  expired?: boolean;
+};
+
+/**
+ * Valida la búsqueda a mano y no con zod: esta ruta se evalúa al abrir la aplicación, y
+ * usar zod aquí lo metía entero (87 KB) en el paquete principal. Lo que no cuadra se ignora.
+ */
+function validateLoginSearch(search: Record<string, unknown>): LoginSearch {
+  return {
+    ...(typeof search.redirect === 'string' ? { redirect: search.redirect } : {}),
+    ...(search.expired === true ? { expired: true } : {}),
+  };
+}
 
 export const Route = createFileRoute('/login')({
-  validateSearch: searchSchema,
+  validateSearch: validateLoginSearch,
   beforeLoad: ({ context, search }) => {
     redirectIfAuthenticated(context.auth.store.get(), search.redirect);
   },
