@@ -27,7 +27,10 @@ export default defineConfig({
   workers: 1,
   forbidOnly: CI,
   retries: 0,
-  reporter: CI ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // En CI, `github` convierte cada fallo en una anotación del job, legible sin permisos.
+  reporter: CI ? [['list'], ['github'], ['html', { open: 'never' }]] : 'list',
+  // Tope para toda la corrida: si algo se cuelga, falla con un mensaje en vez de esperar.
+  globalTimeout: CI ? 8 * 60_000 : 0,
   use: {
     baseURL: WEB_URL,
     locale: 'es-CO',
@@ -48,12 +51,14 @@ export default defineConfig({
       command: 'pnpm --filter @hato/api start',
       url: `${API_URL}/api/v1/health`,
       reuseExistingServer: !CI,
+      stdout: 'pipe',
       timeout: 120_000,
     },
     {
       command: 'pnpm --filter @hato/web preview',
       url: WEB_URL,
       reuseExistingServer: !CI,
+      stdout: 'pipe',
       timeout: 60_000,
     },
   ],
