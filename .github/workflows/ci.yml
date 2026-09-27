@@ -95,3 +95,35 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Pruebas de extremo a extremo (M2): la web compilada con `vite preview` y la API
+      # compilada, contra hato_test ya sembrada por el paso «Seed». Playwright levanta los dos
+      # servidores; la web llega a la API por el proxy de /api (ADR-008).
+      - name: Cachear los navegadores de Playwright
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Instalar Chromium para Playwright
+        run: pnpm --filter @hato/web exec playwright install --with-deps chromium
+
+      - name: Pruebas de extremo a extremo
+        run: pnpm --filter @hato/web test:e2e
+
+      # Las capturas se publican siempre, no solo si algo falla: son parte de la revisión
+      # visual de cada cambio.
+      - name: Publicar capturas
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: capturas-web
+          path: apps/web/e2e/capturas/
+          if-no-files-found: warn
+
+      - name: Publicar el reporte de Playwright
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: reporte-playwright
+          path: apps/web/playwright-report/
