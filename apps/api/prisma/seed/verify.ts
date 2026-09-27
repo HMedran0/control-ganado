@@ -244,7 +244,7 @@ export function verifyHerd(
   );
 
   for (const lot of LOTS) {
-    const expected = EXPECTED_LOTS[lot.name as keyof typeof EXPECTED_LOTS];
+    const expected = EXPECTED_LOTS[lot.name];
     check(
       `Lote ${lot.name}`,
       active.filter((animal) => animal.lotKey === lot.key).length,

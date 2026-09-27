@@ -52,7 +52,7 @@ export function createRandom(seed: number): SeededRandom {
     return min + Math.floor(next() * (max - min + 1));
   };
 
-  const pick = <T,>(items: readonly T[]): T => {
+  const pick = <T>(items: readonly T[]): T => {
     if (items.length === 0) throw new Error('No se puede elegir de una lista vacía.');
     // `noUncheckedIndexedAccess` obliga a la comprobación; el índice siempre es válido.
     const item = items[int(0, items.length - 1)];
@@ -60,7 +60,7 @@ export function createRandom(seed: number): SeededRandom {
     return item;
   };
 
-  const weighted = <T,>(items: readonly T[], weights: readonly number[]): T => {
+  const weighted = <T>(items: readonly T[], weights: readonly number[]): T => {
     if (items.length !== weights.length) {
       throw new Error('Los pesos deben tener el mismo largo que los elementos.');
     }
@@ -79,7 +79,7 @@ export function createRandom(seed: number): SeededRandom {
     return pick(items);
   };
 
-  const shuffle = <T,>(items: readonly T[]): T[] => {
+  const shuffle = <T>(items: readonly T[]): T[] => {
     const copy = [...items];
     for (let i = copy.length - 1; i > 0; i -= 1) {
       const j = int(0, i);

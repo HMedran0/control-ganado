@@ -134,7 +134,8 @@ function presentOn(animal: SeedAnimal, date: IsoDate): boolean {
  * ser un modelo zootécnico, solo dar cifras coherentes para probar listados y reportes.
  */
 function tapeWeight(ageDays: number, birthWeight: number, dailyGain: number): number {
-  const growth = ageDays <= 210 ? ageDays * dailyGain : 210 * dailyGain + (ageDays - 210) * dailyGain * 0.7;
+  const growth =
+    ageDays <= 210 ? ageDays * dailyGain : 210 * dailyGain + (ageDays - 210) * dailyGain * 0.7;
   return Math.round((birthWeight + growth) * 2) / 2;
 }
 
@@ -161,14 +162,20 @@ export function buildHistory(
       id: ids.next(),
       name: 'Ciclo oficial 2025-2: aftosa y rabia',
       sessionDate: VACCINATION_DAYS.cycle2025,
-      activities: officialVaccines.map((vaccine) => ({ type: 'VACCINATION', vaccine: vaccine.name })),
+      activities: officialVaccines.map((vaccine) => ({
+        type: 'VACCINATION',
+        vaccine: vaccine.name,
+      })),
     },
     {
       key: 'CICLO-2026-1',
       id: ids.next(),
       name: 'Ciclo oficial 2026-1: aftosa y rabia',
       sessionDate: VACCINATION_DAYS.cycle2026,
-      activities: officialVaccines.map((vaccine) => ({ type: 'VACCINATION', vaccine: vaccine.name })),
+      activities: officialVaccines.map((vaccine) => ({
+        type: 'VACCINATION',
+        vaccine: vaccine.name,
+      })),
     },
     {
       key: 'CLOSTRIDIAL-2026',
@@ -189,11 +196,12 @@ export function buildHistory(
   // --- Aftosa y rabia: una jornada por ciclo oficial, con RUV ---
   // Los seis que se perdieron la jornada de 2026 se eligen entre los que ya estaban en la
   // finca: son los que quedan vencidos en el tablero.
-  const eligibleForMiss = active.filter((animal) =>
-    presentOn(animal, VACCINATION_DAYS.cycle2026),
-  );
+  const eligibleForMiss = active.filter((animal) => presentOn(animal, VACCINATION_DAYS.cycle2026));
   const missed = new Set(
-    random.shuffle(eligibleForMiss).slice(0, MISSED_OFFICIAL_CYCLE).map((animal) => animal.id),
+    random
+      .shuffle(eligibleForMiss)
+      .slice(0, MISSED_OFFICIAL_CYCLE)
+      .map((animal) => animal.id),
   );
 
   const cycleDays = [
@@ -244,7 +252,10 @@ export function buildHistory(
       ageInDays(animal.birthDate, today) <= maxAge,
   );
   const pendingBrucellosis = new Set(
-    random.shuffle(femalesInWindow).slice(0, BRUCELLOSIS_PENDING).map((animal) => animal.id),
+    random
+      .shuffle(femalesInWindow)
+      .slice(0, BRUCELLOSIS_PENDING)
+      .map((animal) => animal.id),
   );
 
   for (const animal of animals) {
@@ -278,9 +289,7 @@ export function buildHistory(
   if (clostridial === undefined) throw new Error('Falta la clostridial en el catálogo.');
   const clostridialMinAge = clostridial.minAgeDays ?? 90;
   const bullsAndOxen = new Set(
-    active
-      .filter((animal) => animal.lotKey === 'TOROS')
-      .map((animal) => animal.id),
+    active.filter((animal) => animal.lotKey === 'TOROS').map((animal) => animal.id),
   );
 
   const clostridialDays = [

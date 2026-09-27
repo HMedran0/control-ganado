@@ -45,6 +45,9 @@ jobs:
       REFRESH_TOKEN_PEPPER: pepper-de-integracion-continua-1234567890abcd
       CORS_ORIGINS: http://localhost:5173
       PUBLIC_WEB_URL: http://localhost:5173
+      # Contraseña de los usuarios de demostración del seed. De prueba: no sirve en ningún
+      # entorno real.
+      SEED_PASSWORD: seed-de-integracion-continua
 
     steps:
       - name: Descargar el repositorio
@@ -83,6 +86,12 @@ jobs:
       # ADR-002: las fechas de negocio no deben depender de la zona horaria del proceso.
       - name: Pruebas en dos zonas horarias
         run: pnpm test:tz
+
+      # Las pruebas importan el seed como módulo, así que no pasan por el gancho de
+      # resolución de ADR-006. Este paso ejecuta el comando de verdad para que ese camino
+      # no se rompa sin que nadie se entere. La suite deja el esquema aplicado en hato_test.
+      - name: Seed de la finca de referencia
+        run: pnpm db:seed
 
       - name: Build
         run: pnpm build

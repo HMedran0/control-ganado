@@ -573,7 +573,10 @@ export function buildHerd(
 
   // --- Partos históricos y fecha de nacimiento de cada vaca ---
   for (const cow of cowPlans) {
-    const known = [...(cow.recentCalving === null ? [] : [cow.recentCalving]), ...cow.earlierCalvings];
+    const known = [
+      ...(cow.recentCalving === null ? [] : [cow.recentCalving]),
+      ...cow.earlierCalvings,
+    ];
     const oldestKnown = known.length === 0 ? null : minIsoDate(known[0] ?? HISTORY_START, ...known);
 
     // La paridez total de cada vaca queda entre 1 y 7 partos (08 §3.2).
@@ -607,9 +610,10 @@ export function buildHerd(
       sireId: null,
       sireExternalRef: null,
       birthPregnancyId: null,
-      lotKey: cow.exit === null && cow.recentCalving !== null && !cow.recentIsStillbirth
-        ? 'PARIDAS'
-        : 'HORRAS',
+      lotKey:
+        cow.exit === null && cow.recentCalving !== null && !cow.recentIsStillbirth
+          ? 'PARIDAS'
+          : 'HORRAS',
       forSale: false,
       exitType: cow.exit?.type ?? null,
       exitDate: cow.exit?.date ?? null,

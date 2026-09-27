@@ -37,12 +37,21 @@ Desde la raíz del monorepo:
 | `pnpm db:generate` | Genera el cliente de Prisma desde el esquema. No se versiona; `build`, `typecheck` y `test` dependen de él. |
 | `pnpm db:migrate` | `prisma migrate dev`: crea y aplica una migración nueva. |
 | `pnpm db:reset` | **Borra y recrea la base**, aplica las migraciones y corre el seed. Solo en desarrollo. |
-| `pnpm db:seed` | Carga la finca de referencia. **Pendiente del hito M0.3b**: hoy solo avisa. |
+| `pnpm db:seed` | Carga la finca de referencia (08 §3): 297 animales, 284 activos, historial 2024–2026. Necesita `SEED_PASSWORD`. Se puede repetir: borra su finca antes de sembrarla. |
+| `pnpm db:seed:load` | Carga 5.000 animales y 50.000 eventos en una finca aparte, para las pruebas de rendimiento (RNF-01). Muestra el tiempo por etapa. |
 
 Por paquete: `pnpm --filter @hato/shared test:watch`, `pnpm --filter @hato/api typecheck`.
 
 La base de datos de las pruebas de integración (`hato_test`) la crea y migra la propia suite;
 su URL sale de `TEST_DATABASE_URL`, nunca de un puerto fijo en el código.
+
+Los dos seeds se niegan a ejecutarse con `NODE_ENV=production` o contra una base que no sea
+local (`localhost`, `127.0.0.1`, `db` o `postgres`): borran y reescriben los datos de su finca.
+El seed de referencia es **determinista** —generador con semilla fija, «hoy» en `SEED_TODAY`,
+identificadores y marcas de tiempo incluidos—, así que dos ejecuciones seguidas dejan la base
+idéntica. Sus cifras están en `apps/api/prisma/seed/expected.ts` y las comprueba
+`test/seed.e2e-spec.ts` con SQL directo. Si cambias el generador y alguna cifra se mueve,
+actualiza ese archivo en el mismo commit y explica por qué.
 
 Mientras no exista el inicio de sesión (hito M1), la API usa `DEV_FAKE_AUTH=true` y toma la
 finca y el rol de las cabeceras `x-dev-farm-id`, `x-dev-role` y `x-dev-user-id`. Con
@@ -54,6 +63,7 @@ finca y el rol de las cabeceras `x-dev-farm-id`, `x-dev-role` y `x-dev-user-id`.
 - **ADR-003** `@hato/shared` expone su código fuente con la condición `development`: lint y typecheck no compilan antes. Consecuencia: **shared no puede usar APIs de Node** (también corre en web y en Expo).
 - **ADR-004** Elegibilidad en ciclos oficiales: un animal que nació o ingresó a la finca después del cierre del ciclo no queda vencido (RN-13).
 - **ADR-005** `apps/api` es **ESM** porque NestJS 12 se publica solo como módulos ES; Prisma genera el cliente en ESM. El compilador es **SWC** (no esbuild) porque hace falta `emitDecoratorMetadata` para la inyección de dependencias, y por eso las pruebas de la API van con Vitest + `unplugin-swc`.
+- **ADR-006** Los comandos del seed cargan un gancho de resolución `.js` → `.ts` (`prisma/seed/ts-resolve.mjs`), porque el cliente generado por Prisma son archivos `.ts` que se importan con extensión `.js` y el borrado de tipos de Node no reescribe extensiones. Solo afecta al proceso del seed.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.

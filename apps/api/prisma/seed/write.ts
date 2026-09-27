@@ -46,7 +46,10 @@ function dayOrNull(date: IsoDate | null): Date | null {
   return date === null ? null : day(date);
 }
 
-async function inChunks<T>(rows: readonly T[], write: (chunk: T[]) => Promise<unknown>): Promise<void> {
+async function inChunks<T>(
+  rows: readonly T[],
+  write: (chunk: T[]) => Promise<unknown>,
+): Promise<void> {
   for (let index = 0; index < rows.length; index += CHUNK) {
     await write(rows.slice(index, index + CHUNK));
   }
@@ -304,8 +307,7 @@ export async function writeSeed(
     const chunk = born.slice(index, index + CHUNK);
     const values = Prisma.join(
       chunk.map(
-        (animal) =>
-          Prisma.sql`(${animal.id}::uuid, ${animal.birthPregnancyId ?? ''}::uuid)`,
+        (animal) => Prisma.sql`(${animal.id}::uuid, ${animal.birthPregnancyId ?? ''}::uuid)`,
       ),
     );
     await prisma.$executeRaw`
@@ -367,11 +369,12 @@ export async function writeSeed(
         dose: record.dose,
         batchNumber: record.batchNumber,
         ruvNumber: record.ruvNumber,
-        cycleId: record.cycleName === null ? null : catalog.cycleIds.get(record.cycleName) ?? null,
+        cycleId:
+          record.cycleName === null ? null : (catalog.cycleIds.get(record.cycleName) ?? null),
         responsible: record.responsible,
         nextDueOn: dayOrNull(record.nextDueOn),
         workSessionId:
-          record.workSessionKey === null ? null : sessionIds.get(record.workSessionKey) ?? null,
+          record.workSessionKey === null ? null : (sessionIds.get(record.workSessionKey) ?? null),
         createdById: author,
         createdAt: instantOf(record.appliedOn),
       })),
@@ -389,7 +392,7 @@ export async function writeSeed(
         method: record.method,
         isBirthWeight: record.isBirthWeight,
         workSessionId:
-          record.workSessionKey === null ? null : sessionIds.get(record.workSessionKey) ?? null,
+          record.workSessionKey === null ? null : (sessionIds.get(record.workSessionKey) ?? null),
         createdById: author,
         createdAt: instantOf(record.weighedOn),
       })),
@@ -497,10 +500,7 @@ export async function writeSeed(
     'movimientos de lote': history.lotMovements.length,
     jornadas: history.workSessions.length,
     gastos: economics.expenses.length,
-    asignaciones: economics.expenses.reduce(
-      (sum, expense) => sum + expense.allocations.length,
-      0,
-    ),
+    asignaciones: economics.expenses.reduce((sum, expense) => sum + expense.allocations.length, 0),
     ventas: economics.sales.length,
     avalúos: economics.valuations.length,
   };

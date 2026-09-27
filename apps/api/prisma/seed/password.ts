@@ -61,10 +61,7 @@ export function readSeedPassword(env: NodeJS.ProcessEnv): string {
 }
 
 /** Hash Argon2id determinista de la contraseña de demostración. */
-export async function hashSeedPassword(
-  password: string,
-  random: SeededRandom,
-): Promise<string> {
+export async function hashSeedPassword(password: string, random: SeededRandom): Promise<string> {
   return argon2Hash(password, {
     algorithm: ARGON2ID,
     version: ARGON2_V19,

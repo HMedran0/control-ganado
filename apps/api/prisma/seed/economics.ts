@@ -152,7 +152,9 @@ export function buildEconomics(
       EXPENSE_TYPE.PURCHASE,
       animal.entryDate,
       isBull ? random.int(58, 72) * 100_000 : random.int(34, 42) * 100_000,
-      isBull ? `Compra del toro ${animal.name ?? animal.code}` : `Compra del buey ${animal.name ?? animal.code}`,
+      isBull
+        ? `Compra del toro ${animal.name ?? animal.code}`
+        : `Compra del buey ${animal.name ?? animal.code}`,
       animal.id,
     );
   }
@@ -215,7 +217,11 @@ export function buildEconomics(
       animalId: animal.id,
       soldOn,
       amount: pesos(amount),
-      buyer: random.pick(['Comercializadora El Carmen', 'Subasta de San Juan', 'Frigorífico del Sur']),
+      buyer: random.pick([
+        'Comercializadora El Carmen',
+        'Subasta de San Juan',
+        'Frigorífico del Sur',
+      ]),
       notes: `Peso en pie estimado: ${kg} kg a $${PRICE_PER_KG}/kg.`,
     });
 

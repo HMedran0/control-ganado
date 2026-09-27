@@ -21,6 +21,10 @@ export default defineConfig({
     // Node 24 ejecuta TypeScript borrando los tipos, sin necesidad de un ejecutor aparte.
     // `--conditions=development` resuelve @hato/shared a su código fuente (ADR-003) y el
     // gancho `ts-resolve` traduce las importaciones `.js` del cliente generado (ADR-006).
+    //
+    // Este comando lo ejecuta `prisma db seed`. Al contrario de lo que se anotó en M0.3a,
+    // `prisma migrate reset` de Prisma 7.10 **no** siembra (tampoco tiene ya `--skip-seed`),
+    // así que el script `db:reset` encadena los dos comandos a mano.
     seed: 'node --conditions=development --import ./prisma/seed/ts-resolve.mjs prisma/seed/seed.ts',
   },
   datasource: {

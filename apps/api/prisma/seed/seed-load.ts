@@ -50,8 +50,7 @@ const SIZE = {
 } as const;
 
 /** Eventos totales: 50.000. */
-const TOTAL_EVENTS =
-  SIZE.vaccinations + SIZE.weights + SIZE.pregnancies + SIZE.treatments;
+const TOTAL_EVENTS = SIZE.vaccinations + SIZE.weights + SIZE.pregnancies + SIZE.treatments;
 
 /** Filas por inserción. Más grande no acelera y hace los mensajes de error inmanejables. */
 const CHUNK = 1_000;
@@ -85,13 +84,18 @@ function stopwatch(): { lap: (label: string, rows: number) => void; total: () =>
       const elapsed = Math.round(now - previous);
       previous = now;
       const perSecond = elapsed === 0 ? rows : Math.round((rows / elapsed) * 1000);
-      write(`  ${String(rows).padStart(7)} ${label.padEnd(16)} ${String(elapsed).padStart(6)} ms  (${perSecond}/s)`);
+      write(
+        `  ${String(rows).padStart(7)} ${label.padEnd(16)} ${String(elapsed).padStart(6)} ms  (${perSecond}/s)`,
+      );
     },
     total: () => Math.round(performance.now() - started),
   };
 }
 
-async function inChunks<T>(rows: readonly T[], write_: (chunk: T[]) => Promise<unknown>): Promise<void> {
+async function inChunks<T>(
+  rows: readonly T[],
+  write_: (chunk: T[]) => Promise<unknown>,
+): Promise<void> {
   for (let index = 0; index < rows.length; index += CHUNK) {
     await write_(rows.slice(index, index + CHUNK));
   }
@@ -310,8 +314,7 @@ async function main(): Promise<void> {
     await inChunks(treatments, (chunk) => prisma.treatmentRecord.createMany({ data: chunk }));
     clock.lap('tratamientos', treatments.length);
 
-    const events =
-      vaccinations.length + weights.length + pregnancies.length + treatments.length;
+    const events = vaccinations.length + weights.length + pregnancies.length + treatments.length;
     write(
       `Listo en ${clock.total()} ms: ${animals.length} animales y ${events} eventos en la finca «${LOAD_FARM.name}».`,
     );
