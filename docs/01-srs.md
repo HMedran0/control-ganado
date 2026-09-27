@@ -157,6 +157,7 @@ El ADMIN crea, edita, desactiva usuarios y asigna rol.
 **AUT-04 — Cambio y restablecimiento de contraseña** · M · F1
 - CA1: El usuario cambia su contraseña indicando la actual.
 - CA2: El ADMIN puede generar una contraseña temporal para otro usuario, que debe cambiarse en el siguiente inicio de sesión (no depende de correo electrónico, porque la finca puede no tenerlo configurado).
+- CA3: Cambiar la contraseña revoca todas las sesiones abiertas del usuario (en cualquier dispositivo) y la respuesta entrega una sesión nueva, de modo que quien la cambió sigue trabajando sin volver a iniciar sesión (ADR-007).
 
 ### 3.2 Gestión de animales (ANI)
 
