@@ -24,12 +24,13 @@ Desde la raíz del monorepo:
 | Comando | Qué hace |
 |---|---|
 | `pnpm install` | Instala todo el workspace. En CI se usa `--frozen-lockfile --strict-peer-dependencies`. |
-| `pnpm dev` | Levanta la API en `http://localhost:3000/api/v1` con recarga, y `shared` compilando en vigilancia. Necesita `.env` y la base arriba. |
+| `pnpm dev` | Levanta la API en `http://localhost:3000/api/v1` con recarga, la web en `http://localhost:5173` (Vite reenvía `/api` a `API_PROXY_TARGET`, ADR-008) y `shared` compilando en vigilancia. Necesita `.env` y la base arriba. |
 | `pnpm build` | `turbo run build`. Compila `shared` con `tsc` y la API con el CLI de Nest y SWC. |
 | `pnpm lint` | `eslint .` con una sola flat config raíz, con información de tipos. No necesita build (ADR-003). |
 | `pnpm lint:fix` | Igual, con `--fix`. |
 | `pnpm typecheck` | `tsc` por paquete, sin emitir. |
-| `pnpm test` | Vitest. En `shared`, con cobertura y umbral de 90 % en `src/domain`; en `api`, unitarias e integración contra PostgreSQL real. |
+| `pnpm test` | Vitest. En `shared`, con cobertura y umbral de 90 % en `src/domain`; en `api`, unitarias e integración contra PostgreSQL real; en `web`, componentes y cliente de la API con jsdom. |
+| `pnpm --filter @hato/web test:e2e` | Playwright (Chromium, móvil y escritorio) con axe-core: web compilada con `vite preview` + API compilada contra la base sembrada. Requiere `pnpm build`, `pnpm db:seed` y `SEED_PASSWORD`. Deja capturas en `apps/web/e2e/capturas/` (ignorado por git). |
 | `pnpm test:tz` | La suite de `shared` con `TZ=America/Bogota` y `TZ=Asia/Tokyo` (ADR-002). |
 | `pnpm format` / `pnpm format:check` | Prettier sobre el repositorio. `docs/*.md` y `CLAUDE.md` están excluidos. |
 | `docker compose up -d db` | PostgreSQL 16 para desarrollo (servicio `db`, volumen `hato-db-data`, healthcheck). |
@@ -72,7 +73,8 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 - **ADR-004** Elegibilidad en ciclos oficiales: un animal que nació o ingresó a la finca después del cierre del ciclo no queda vencido (RN-13).
 - **ADR-005** `apps/api` es **ESM** porque NestJS 12 se publica solo como módulos ES; Prisma genera el cliente en ESM. El compilador es **SWC** (no esbuild) porque hace falta `emitDecoratorMetadata` para la inyección de dependencias, y por eso las pruebas de la API van con Vitest + `unplugin-swc`.
 - **ADR-006** Los comandos del seed cargan un gancho de resolución `.js` → `.ts` (`prisma/seed/ts-resolve.mjs`), porque el cliente generado por Prisma son archivos `.ts` que se importan con extensión `.js` y el borrado de tipos de Node no reescribe extensiones. Solo afecta al proceso del seed.
-- **ADR-007** Autenticación: JWT de 15 min + refresh opaco rotado con revocación de familia; el bloqueo por intentos se **deduce** de `login_attempts` y dura 15 minutos completos desde el último fallo; el rol y el estado de la cuenta se leen de la base en cada petición, no del token; la finca activa va en el token y la sesión la recuerda. Retira `DEV_FAKE_AUTH`.
+- **ADR-007** Autenticación: JWT de 15 min + refresh opaco rotado con revocación de familia; el bloqueo por intentos se **deduce** de `login_attempts` y dura 15 minutos completos desde el último fallo; el rol y el estado de la cuenta se leen de la base en cada petición, no del token; la finca activa va en el token y la sesión la recuerda. Retira `DEV_FAKE_AUTH`. El bloqueo es **solo por cuenta**, nunca por IP (en la finca todos comparten la IP); por IP solo aplica el límite de peticiones.
+- **ADR-008** Web y API en el mismo origen: proxy de `/api` en Vite (desarrollo y `preview`) y Caddy en producción. La cookie del refresco (`SameSite=Strict`) funciona sin CORS. El access token vive solo en memoria; los refrescos se serializan entre pestañas con Web Locks.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.

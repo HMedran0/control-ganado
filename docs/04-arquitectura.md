@@ -85,7 +85,7 @@ hato/
 │   │       ├── domain/         # age.ts, classification.ts, pregnancy.ts, allocation.ts, identifiers.ts
 │   │       ├── format/         # fechas, moneda, peso, edad (es-CO)
 │   │       └── id.ts           # uuidv7
-│   ├── api-client/             # cliente tipado generado o escrito a mano sobre fetch
+│   ├── api-client/             # cliente tipado sobre fetch (en F1 vive en apps/web/src/lib/api; se extrae aquí al llegar el móvil, F2)
 │   └── config/                 # tsconfig, eslint, prettier compartidos
 ├── docker-compose.yml          # postgres para desarrollo
 ├── docker-compose.prod.yml

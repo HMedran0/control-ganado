@@ -238,7 +238,7 @@ Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categor�
 | `EmptyState` | Explica qué va aquí y ofrece la acción para llenarlo. |
 | `DataTable` (escritorio) | Listados con columnas ordenables; en móvil se transforma en lista de filas. |
 
-Base técnica: primitivas accesibles de Radix UI estilizadas con Tailwind y tokens en CSS custom properties (`apps/web/src/styles/tokens.css`), mapeados en `tailwind.config`. Íconos: Lucide, 24 px, trazo 2.
+Base técnica: primitivas accesibles de Radix UI estilizadas con Tailwind y tokens en CSS custom properties (`apps/web/src/styles/tokens.css`), mapeados en la configuración de Tailwind (con Tailwind 4 es CSS: el bloque `@theme inline` de `apps/web/src/styles/app.css`; no hay `tailwind.config`). Íconos: Lucide, 24 px, trazo 2.
 
 ## 7. Redacción de la interfaz
 
