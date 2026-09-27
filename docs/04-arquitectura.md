@@ -128,7 +128,7 @@ Transversales (`common/`):
 - TanStack Query para datos del servidor (caché, reintentos, invalidación tras mutaciones). Sin estado global adicional salvo sesión.
 - Formularios con react-hook-form + resolvers de zod usando los esquemas de `shared`.
 - Rutas protegidas por rol; el servidor sigue siendo la autoridad.
-- Búsqueda global siempre accesible (atajo `/` en escritorio). Un lector RFID en modo teclado escribe en el campo con foco; además, un listener global detecta ráfagas de 15 dígitos + Enter escritas en menos de 100 ms y ejecuta la búsqueda aunque no haya foco en el campo.
+- Búsqueda global siempre accesible (atajo `/` en escritorio). Un lector RFID en modo teclado escribe en el campo con foco; además, un listener global (`useRfidReader`) detecta ráfagas de exactamente 15 dígitos + Enter en las que **ningún intervalo entre teclas consecutivas supera 50 ms** (configurable con `maxKeyIntervalMs`), y ejecuta la búsqueda aunque no haya foco en el campo. Se mide el intervalo entre teclas y no la duración total: un lector Bluetooth en modo teclado envía un carácter cada 10–30 ms (una lectura completa tarda 150–450 ms), mientras que una persona deja más de 100 ms entre teclas. El umbral se ajusta al probar con el lector real. Dentro de un campo marcado con `data-rfid-field` (p. ej. «Identificador» al crear un animal) la lectura queda escrita en el campo, el Enter se absorbe para no enviar el formulario y el foco pasa al siguiente campo; en cualquier otro campo editable el listener no interviene.
 - Borradores de formularios largos guardados en `sessionStorage` para no perder datos si se cae la conexión (RNF-16).
 
 ### Móvil (F2) — diseño anticipado
