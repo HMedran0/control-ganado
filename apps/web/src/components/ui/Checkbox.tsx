@@ -24,9 +24,11 @@ export function Checkbox({ label, description, id, className = '', ...input }: C
 
   return (
     <div
-      className={`grid grid-cols-[1.5rem_1fr] items-start gap-x-3 has-disabled:opacity-60 ${className}`}
+      className={`group grid grid-cols-[1.5rem_1fr] items-start gap-x-3 ${className}`}
     >
-      <span className="relative mt-3 inline-flex size-6">
+      {/* Deshabilitada, se atenúan la casilla y su etiqueta, no la descripción: el texto que
+          explica por qué sigue necesitando contraste completo (axe, WCAG 1.4.3). */}
+      <span className="relative mt-3 inline-flex size-6 group-has-disabled:opacity-60">
         <input
           id={inputId}
           type="checkbox"
@@ -42,7 +44,7 @@ export function Checkbox({ label, description, id, className = '', ...input }: C
       </span>
       <label
         htmlFor={inputId}
-        className="flex min-h-touch cursor-pointer items-center has-[+p]:min-h-0 has-[+p]:pt-3"
+        className="flex min-h-touch cursor-pointer items-center group-has-disabled:cursor-not-allowed group-has-disabled:opacity-60 has-[+p]:min-h-0 has-[+p]:pt-3"
       >
         {label}
       </label>
