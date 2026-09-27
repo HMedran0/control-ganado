@@ -342,6 +342,7 @@ model Animal {
   @@index([farmId])
   @@index([farmId, lotId])
   @@index([damId])
+  @@index([sireId])
   @@index([farmId, birthDate])
   // Los índices GIN de pg_trgm los creó la migración manual, pero se declaran aquí con su
   // nombre para que `prisma migrate dev` no los tome por sobrantes y los elimine.
@@ -360,6 +361,7 @@ model AnimalTag {
   tag    Tag    @relation(fields: [tagId], references: [id])
 
   @@id([animalId, tagId])
+  @@index([tagId])
   @@map("animal_tags")
 }
 
