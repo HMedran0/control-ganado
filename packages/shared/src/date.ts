@@ -90,18 +90,33 @@ export function isoDateParts(date: IsoDate): IsoDateParts {
 }
 
 /**
+ * Un formateador por zona horaria. Crear un `Intl.DateTimeFormat` cuesta del orden de 100 µs
+ * y la API convierte decenas de miles de fechas por consulta (las alertas de vacunas de 5.000
+ * animales pasaban de 4 s sin esta caché); formatear con uno ya creado es casi gratis.
+ */
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+function formatterFor(timeZone: string): Intl.DateTimeFormat {
+  let formatter = formatters.get(timeZone);
+  if (formatter === undefined) {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    formatters.set(timeZone, formatter);
+  }
+  return formatter;
+}
+
+/**
  * Día del calendario que corresponde a un instante en una zona horaria.
  * Único punto donde una fecha de negocio nace de un instante: lo usan el servicio `Clock`
  * de la API (con `America/Bogota`) y la conversión de las columnas `date` de Prisma (con `UTC`).
  */
 export function isoDateFromInstant(instant: Date, timeZone: string): IsoDate {
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  });
-  const parts = formatter.formatToParts(instant);
+  const parts = formatterFor(timeZone).formatToParts(instant);
   const find = (type: string): number => Number(parts.find((p) => p.type === type)?.value ?? NaN);
   return isoDateFromParts(find('year'), find('month'), find('day'));
 }
