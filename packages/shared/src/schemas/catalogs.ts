@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { isAfter, isBefore, isIsoDate, type IsoDate } from '../date.js';
 import { DEFAULT_GESTATION_DAYS_BY_GROUP } from '../domain/pregnancy.js';
 import type { BreedGroup, Role, Sex, VaccineScheduleType } from '../enums.js';
+import type { Warning } from '../errors.js';
 import { farmSettingsPatchSchema, type FarmSettings } from './farm-settings.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -443,3 +444,9 @@ export function farmSettingsFor(role: Role, settings: FarmSettings): FarmView['s
  * lo advierte antes de guardar.
  */
 export const CATEGORY_AFFECTING_SETTINGS = ['weaningAgeMonths', 'gestationDays'] as const;
+
+/** Respuesta de una escritura con sus advertencias no bloqueantes (05, «Catálogo de errores»). */
+export type WithWarnings<T> = T & { readonly warnings: readonly Warning[] };
+
+/** `GET /<catálogo>/:id/deactivation-warnings`: lo que pasaría al desactivar, antes de hacerlo. */
+export type DeactivationWarnings = { readonly warnings: readonly Warning[] };
