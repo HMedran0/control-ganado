@@ -23,9 +23,7 @@ export function Checkbox({ label, description, id, className = '', ...input }: C
   const descriptionId = description === undefined ? undefined : `${inputId}-detalle`;
 
   return (
-    <div
-      className={`group grid grid-cols-[1.5rem_1fr] items-start gap-x-3 ${className}`}
-    >
+    <div className={`group grid grid-cols-[1.5rem_1fr] items-start gap-x-3 ${className}`}>
       {/* Deshabilitada, se atenúan la casilla y su etiqueta, no la descripción: el texto que
           explica por qué sigue necesitando contraste completo (axe, WCAG 1.4.3). */}
       <span className="relative mt-3 inline-flex size-6 group-has-disabled:opacity-60">

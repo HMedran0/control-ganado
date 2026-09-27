@@ -62,9 +62,7 @@ function optionalText(max: number) {
 }
 
 /** Fecha de negocio `YYYY-MM-DD` (ADR-002). */
-export const isoDateSchema = z
-  .string()
-  .refine(isIsoDate, { message: 'Escribe una fecha válida.' });
+export const isoDateSchema = z.string().refine(isIsoDate, { message: 'Escribe una fecha válida.' });
 
 /** Versión del registro para el control de concurrencia de `PATCH` (05, «Convenciones»). */
 export const versionSchema = z.int().min(1);
