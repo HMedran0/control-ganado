@@ -125,6 +125,8 @@ describe('rendimiento con el seed de carga (RNF-01)', () => {
     search('código exacto', 'C-02500'),
     search('RFID exacto', '170000000002499'),
     search('RFID anterior (retirado)', '982000000002451'),
+    // Una lectura del lector que no está registrada: no hay exacta y corre la difusa.
+    search('RFID no registrado', '170999999999999'),
     search('difusa por nombre', 'estrel'),
     search('difusa por parte del código', '0250'),
     list('primera página', 'limit=50'),

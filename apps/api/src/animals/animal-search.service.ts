@@ -57,7 +57,7 @@ function priority(match: SearchMatch): number {
  *    todas las coincidencias son del mismo animal (lo normal: chapeta «087» y código «087»),
  *    responde `exactMatch` y la interfaz abre la ficha. Si son de animales distintos, no hay
  *    `exactMatch`: se listan, cada uno con el porqué.
- * 2. **Difusa** (desde dos caracteres): `pg_trgm` y `ILIKE` sobre código, nombre e
+ * 2. **Difusa**, solo si no hubo coincidencia exacta y desde dos caracteres: `pg_trgm` y `ILIKE` sobre código, nombre e
  *    identificadores.
  *
  * Los archivados no aparecen; los que salieron sí, con su estado.
@@ -78,8 +78,13 @@ export class AnimalSearchService {
       if (via !== undefined) exactMatch = { animalId: onlyId, via, matches };
     }
 
+    // La difusa solo corre si no hubo ninguna coincidencia exacta: con una lectura del lector
+    // que sí existe, buscar además parecidos entre miles de RFID que comparten el prefijo
+    // 170000… es caro y no aporta nada.
     const fuzzy =
-      q.length >= FUZZY_SEARCH_MIN_LENGTH ? await this.fuzzyMatches(scope, q, exactIds) : [];
+      exactIds.length === 0 && q.length >= FUZZY_SEARCH_MIN_LENGTH
+        ? await this.fuzzyMatches(scope, q, exactIds)
+        : [];
 
     const animals = await this.summaries(scope, [
       ...exactIds,

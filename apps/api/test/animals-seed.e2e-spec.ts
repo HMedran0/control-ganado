@@ -321,6 +321,8 @@ describe('animales sobre la finca de referencia', () => {
       expect(exact.find((item) => item.code === '057')?.matches).toEqual([
         { kind: 'IDENTIFIER', identifierType: 'OTHER', value: '066', previous: false },
       ]);
+      // Con coincidencias exactas no se agrega la difusa.
+      expect(result.items.every((item) => item.exact)).toBe(true);
       expect(exact.find((item) => item.code === '066')?.matches.map((match) => match.kind)).toEqual(
         ['IDENTIFIER', 'CODE'],
       );
