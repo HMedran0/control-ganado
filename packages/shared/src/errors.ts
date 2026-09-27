@@ -35,6 +35,11 @@ export const ERROR_CATALOG = {
   },
   USERNAME_TAKEN: { status: 409, detail: 'Ya existe un usuario con ese nombre.' },
   LAST_ADMIN: { status: 409, detail: 'La finca debe tener al menos un administrador activo.' },
+  CATALOG_NAME_TAKEN: { status: 409, detail: 'Ya existe {what} con el nombre «{name}».' },
+  SYSTEM_TAG_PROTECTED: {
+    status: 409,
+    detail: 'La etiqueta «{label}» es del sistema: no se puede desactivar ni cambiar su nombre.',
+  },
   ANIMAL_CODE_TAKEN: { status: 409, detail: 'Ya existe un animal con el código {code}.' },
   ANIMAL_EXITED: {
     status: 409,
@@ -91,6 +96,10 @@ export const WARNING_CATALOG = {
   VACCINE_AGE_OUTSIDE_WINDOW:
     'El animal está fuera de la edad recomendada para la vacuna {vaccine}.',
   ALREADY_IN_SESSION: 'Este animal ya fue registrado en la jornada.',
+  CYCLE_OVERLAP: 'Las fechas se cruzan con el ciclo {name} ({from} a {to}).',
+  LOT_HAS_ACTIVE_ANIMALS: '{count} animales siguen en este lote.',
+  VACCINE_IN_ACTIVE_CYCLE:
+    'La vacuna está en el ciclo {name} ({from} a {to}), en curso o por empezar.',
 } as const satisfies Record<string, string>;
 
 /** Código de advertencia estable. */
@@ -168,4 +177,18 @@ export class DomainError extends Error {
 /** ¿El valor es un `DomainError`? Útil en los filtros de excepciones de la API. */
 export function isDomainError(value: unknown): value is DomainError {
   return value instanceof DomainError;
+}
+
+/**
+ * Advertencia de lote con animales activos, con el verbo en singular o plural:
+ * «1 animal sigue en este lote.», «12 animales siguen en este lote.»
+ */
+export function lotHasActiveAnimalsWarning(count: number): Warning {
+  return {
+    code: 'LOT_HAS_ACTIVE_ANIMALS',
+    message:
+      count === 1
+        ? '1 animal sigue en este lote.'
+        : warningMessage('LOT_HAS_ACTIVE_ANIMALS', { count }),
+  };
 }

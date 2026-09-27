@@ -161,6 +161,8 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `VERSION_CONFLICT` | 409 | Otra persona modificó este registro. Recarga para ver los cambios. |
 | `USERNAME_TAKEN` | 409 | Ya existe un usuario con ese nombre. |
 | `LAST_ADMIN` | 409 | La finca debe tener al menos un administrador activo. |
+| `CATALOG_NAME_TAKEN` | 409 | Ya existe {what} con el nombre «{name}». (sin distinguir mayúsculas ni espacios) |
+| `SYSTEM_TAG_PROTECTED` | 409 | La etiqueta «{label}» es del sistema: no se puede desactivar ni cambiar su nombre. |
 | `ANIMAL_CODE_TAKEN` | 409 | Ya existe un animal con el código {code}. |
 | `ANIMAL_EXITED` | 409 | El animal ya salió de la finca; revierte la salida para modificarlo. |
 | `ANIMAL_ARCHIVED` | 409 | El animal está archivado. |
@@ -183,4 +185,4 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `RATE_LIMITED` | 429 | Demasiadas solicitudes. Espera un momento. |
 | `INTERNAL_ERROR` | 500 | Ocurrió un error inesperado. Ya quedó registrado. |
 
-Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`.
+Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro).
