@@ -39,6 +39,11 @@ El sistema toma sus señas del objeto más característico del manejo del ganado
 | `--color-alerta` | `#B42318` | Vencido, error, acción destructiva. |
 | `--color-aviso` | `#9A4B00` | Próximo a vencer, advertencias. |
 | `--color-info` | `#1D4E89` | Información neutra, preñez. |
+| `--color-info-claro` · `--color-alerta-claro` · `--color-aviso-claro` · `--color-neutro-claro` | `#E3EBF5` · `#FCEBEA` · `#FBEFE3` · `#E8EBE4` | Tintes de fondo para `Tag` y `AlertBanner` (M2b, tomados del prototipo). |
+| `--color-info-intenso` · `--color-alerta-intenso` · `--color-aviso-intenso` | `#173F70` · `#8E1B12` · `#6E3500` | Texto principal sobre los tintes: con el tono base no se llega a 7:1 (el rojo de alerta no lo alcanza ni sobre blanco). |
+| `--color-chapeta-borde` | `#C99E00` | Borde de la chapeta (`docs/referencia/prototipo/LEEME.md`). |
+
+Contrastes exigidos por `apps/web/src/styles/tokens.test.ts`: 7:1 para el texto principal (también sobre los tintes, con los tonos intensos) y 4,5:1 para el texto de `Tag` (14 px en negrita).
 
 Reglas: el amarillo de chapeta nunca se usa para botones ni alertas (perdería su significado). El rojo solo para lo que requiere acción. Modo oscuro: no en F1 (el contexto principal es exterior diurno); los tokens permiten agregarlo después.
 
@@ -224,13 +229,13 @@ Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categor�
 | Componente | Descripción y reglas |
 |---|---|
 | `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños: s (listas, 44 px), m (ficha, 72 px), l (jornada, 96 px). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
-| `SearchBar` | Acepta texto y lecturas RFID. Resultados agrupados: coincidencia exacta primero ("Chip 170…"). Estado "leyendo" con borde chapeta. |
+| `SearchBar` | Acepta texto y lecturas RFID (`useRfidReader`, 04 §6). Resultados agrupados: coincidencia exacta primero ("Chip 170…"). Estado "leyendo" con borde chapeta. Excepción aprobada en M2b a «etiquetas visibles» (§8): su etiqueta («Buscar animal») es solo para lectores de pantalla; se ven el ícono y el placeholder. |
 | `QuestionRow` | Pregunta + resumen + cifra; fila completa enlazada. |
 | `Tag` | Etiquetas de clasificación: fondo claro del color semántico, texto en el tono oscuro del mismo color, siempre con texto (no solo color). |
 | `AlertBanner` | Alerta accionable dentro de la ficha: texto de lo que pasa + botón de la acción que lo resuelve. |
 | `SegmentedChoice` | Grupo de botones grandes para 2–4 opciones (sexo, tipo de parto, estado). Reemplaza listas desplegables. |
-| `DateQuickPick` | Hoy · Ayer · Otra fecha (abre calendario). Por defecto Hoy. |
-| `NumberField` | Teclado numérico (`inputmode="decimal"`), unidades visibles (kg, $), separadores es-CO al perder foco. |
+| `DateQuickPick` | Hoy · Ayer · Otra fecha (abre el selector de fecha nativo del sistema). Por defecto Hoy; «hoy» es el día en America/Bogota (`useToday`), y no admite fechas futuras. |
+| `NumberField` | Teclado numérico (`inputmode="decimal"`), unidades visibles (kg, $), separadores es-CO al perder foco. Interpreta con `parseDecimalEsCo` de `shared` y entrega una cadena decimal, nunca `number`. Con decimales, un punto seguido de 1–2 dígitos es decimal (`452.5`); en pesos el punto es siempre de miles (`1.25` → 125). |
 | `Stepper` | − valor + para cantidades pequeñas (crías). |
 | `Timeline` | Eventos con ícono por tipo, fecha, autor y enlace al detalle; eventos anulados en gris con motivo. |
 | `UndoToast` | "Vacuna registrada · Deshacer" 6 s. |

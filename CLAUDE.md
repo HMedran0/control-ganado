@@ -30,7 +30,8 @@ Desde la raíz del monorepo:
 | `pnpm lint:fix` | Igual, con `--fix`. |
 | `pnpm typecheck` | `tsc` por paquete, sin emitir. |
 | `pnpm test` | Vitest. En `shared`, con cobertura y umbral de 90 % en `src/domain`; en `api`, unitarias e integración contra PostgreSQL real; en `web`, componentes y cliente de la API con jsdom. |
-| `pnpm --filter @hato/web test:e2e` | Playwright (Chromium, móvil y escritorio) con axe-core: web compilada con `vite preview` + API compilada contra la base sembrada. Requiere `pnpm build`, `pnpm db:seed` y `SEED_PASSWORD`. Deja capturas en `apps/web/e2e/capturas/` (ignorado por git). |
+| `pnpm --filter @hato/web test:e2e` | Playwright (Chromium, móvil y escritorio) con axe-core: web compilada con `vite preview` + API compilada contra la base sembrada, y `/dev/ui` contra el servidor de desarrollo de Vite. Requiere `pnpm build`, `pnpm db:seed` y `SEED_PASSWORD`. Levanta la API con `RATE_LIMIT_PER_IP=1000`. Deja capturas en `apps/web/e2e/capturas/` (ignorado por git). |
+| `http://localhost:5173/dev/ui` | Muestra de los componentes del sistema de diseño en todos sus estados. Solo en `pnpm dev`: el build la excluye y lo verifica (`apps/web/scripts/check-dev-ui-excluded.mjs`). |
 | `pnpm test:tz` | La suite de `shared` con `TZ=America/Bogota` y `TZ=Asia/Tokyo` (ADR-002). |
 | `pnpm format` / `pnpm format:check` | Prettier sobre el repositorio. `docs/*.md` y `CLAUDE.md` están excluidos. |
 | `docker compose up -d db` | PostgreSQL 16 para desarrollo (servicio `db`, volumen `hato-db-data`, healthcheck). |
