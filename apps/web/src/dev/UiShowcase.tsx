@@ -6,6 +6,7 @@ import { Logo } from '../components/layout/Logo';
 import { AlertBanner } from '../components/ui/AlertBanner';
 import { Button } from '../components/ui/Button';
 import { Chapeta } from '../components/ui/Chapeta';
+import { Checkbox } from '../components/ui/Checkbox';
 import { ConnectionBanner } from '../components/ui/ConnectionBanner';
 import { DataTable, type DataColumn, type SortState } from '../components/ui/DataTable';
 import { DateQuickPick } from '../components/ui/DateQuickPick';
@@ -53,6 +54,7 @@ export function UiShowcase() {
         <SearchDemo />
         <RfidFieldDemo />
         <ChoicesDemo />
+        <CheckboxDemo />
         <NumbersDemo />
         <FeedbackDemo />
         <TimelineDemo />
@@ -341,6 +343,52 @@ function ChoicesDemo() {
           today={today}
           min={toIsoDate('2024-01-01')}
         />
+      </div>
+    </Section>
+  );
+}
+
+function CheckboxDemo() {
+  const [official, setOfficial] = useState(true);
+  const [vaccines, setVaccines] = useState<string[]>(['aftosa']);
+  const toggle = (id: string, checked: boolean) => {
+    setVaccines((current) => (checked ? [...current, id] : current.filter((v) => v !== id)));
+  };
+  return (
+    <Section id="checkbox" title="Checkbox">
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="flex flex-col">
+          <Checkbox
+            label="Ciclo oficial del ICA"
+            description="Vacunación de aftosa, brucelosis o rabia ejecutada por Fedegán."
+            checked={official}
+            onChange={(event) => {
+              setOfficial(event.target.checked);
+            }}
+          />
+          <Checkbox label="Mostrar desactivados" />
+          <Checkbox label="Deshabilitada" disabled />
+          <Checkbox label="Deshabilitada y marcada" disabled defaultChecked />
+        </div>
+        <fieldset className="flex flex-col rounded-panel border border-cerca p-4">
+          <legend className="px-1 font-bold">Vacunas del ciclo</legend>
+          <Checkbox
+            label="Aftosa"
+            description="Fiebre aftosa"
+            checked={vaccines.includes('aftosa')}
+            onChange={(event) => {
+              toggle('aftosa', event.target.checked);
+            }}
+          />
+          <Checkbox
+            label="Rabia silvestre"
+            description="Rabia de origen silvestre"
+            checked={vaccines.includes('rabia')}
+            onChange={(event) => {
+              toggle('rabia', event.target.checked);
+            }}
+          />
+        </fieldset>
       </div>
     </Section>
   );
