@@ -51,17 +51,19 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
 
 ### 2.2 Catálogos
 
-**Breed** — `id, farm_id, name, group (INDICUS|TAURUS|CROSS), gestation_days?, is_active`. Único (`farm_id`, `name`).
+**Breed** — `id, farm_id, name, group (INDICUS|TAURUS|CROSS), gestation_days?, is_active, version`. Único (`farm_id`, `lower(name)`).
 Semilla (grupo · gestación): Brahman, Cebú comercial, Gyr, Guzerá, Nelore (INDICUS · 293); Holstein, Pardo suizo, Simmental, Angus, Romosinuano, Costeño con cuernos, Blanco orejinegro (TAURUS · 283); Cruce, Girolando, Brahman × Pardo (CROSS · 288). Fuente y justificación: `08-dominio-y-finca-referencia.md` §1.4.
 
-**Vaccine** — `id, farm_id, name, disease, default_dose, route, schedule_type (OFFICIAL_CYCLE|AGE_WINDOW|INTERVAL|NONE), booster_interval_days?, eligible_sex?, min_age_days?, max_age_days?, block_ineligible_sex, is_active`.
+**Vaccine** — `id, farm_id, name, disease, default_dose, route, schedule_type (OFFICIAL_CYCLE|AGE_WINDOW|INTERVAL|NONE), booster_interval_days?, eligible_sex?, min_age_days?, max_age_days?, block_ineligible_sex, is_active, version`. Único (`farm_id`, `lower(name)`).
 Semilla (08 §3.3): Aftosa (`OFFICIAL_CYCLE`); Brucelosis RB51 (`AGE_WINDOW`, FEMALE, 90–270 días, bloquea machos); Rabia silvestre (`OFFICIAL_CYCLE`, solo si `rabiesRiskZone`); Clostridial polivalente (`INTERVAL` 365, desde 90 días; valor ficticio).
 
-**VaccinationCycle** — ciclos oficiales. `id, farm_id, name ("2026-1"), starts_on, ends_on, is_official`. Único (`farm_id`, `name`). **VaccinationCycleVaccine** — vacunas del ciclo (N:M). Semilla: 2025-2 (27/10/2025–16/12/2025) y 2026-1 (04/05/2026–23/06/2026) reales; 2026-2 ficticio (01/11/2026–15/12/2026).
+**VaccinationCycle** — ciclos oficiales. `id, farm_id, name ("2026-1"), starts_on, ends_on, is_official, is_active, version`. Único (`farm_id`, `lower(name)`). **VaccinationCycleVaccine** — vacunas del ciclo (N:M). Semilla: 2025-2 (27/10/2025–16/12/2025) y 2026-1 (04/05/2026–23/06/2026) reales; 2026-2 ficticio (01/11/2026–15/12/2026).
 
-**Lot** — `id, farm_id, name, description?, is_active`. Único (`farm_id`, `name`).
+**Lot** — `id, farm_id, name, description?, is_active, version`. Único (`farm_id`, `lower(name)`).
 
-**Tag** — etiquetas manuales. `id, farm_id, key, label, is_system`. Semilla de sistema: `COTERO`.
+**Tag** — etiquetas manuales. `id, farm_id, key, label, description?, is_system, is_active, version`. Único (`farm_id`, `key`) y (`farm_id`, `lower(label)`). La `key` se genera del nombre al crear la etiqueta y no cambia al renombrarla. Semilla de sistema: `COTERO`, que no se puede desactivar ni renombrar (solo se edita su descripción).
+
+**Catálogos (M3).** Los nombres se guardan normalizados (sin espacios al inicio ni al final, sin espacios dobles) y son únicos por finca **sin distinguir mayúsculas**: «Brahman», «brahman » y «Brahman» son el mismo. Los catálogos no se borran: se desactivan (`is_active = false`), dejan de ofrecerse en los formularios y conservan su historial. `Farm` y los catálogos llevan `version` para el control de concurrencia de `PATCH` (05, «Convenciones»).
 
 ### 2.3 Animal e identificación
 

@@ -6,8 +6,8 @@
 // @prisma/adapter-pg.
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
   // apps/api es ESM porque NestJS 12 se publica solo como módulos ES. La documentación de
   // Prisma 7 advierte que el generador infiere el formato del entorno, así que se fija a mano.
   // Ver docs/adr/005-api-esm.md.
@@ -136,24 +136,25 @@ enum AuditAction {
 }
 
 model Farm {
-  id              String   @id @db.Uuid
-  name            String
-  municipality    String?
-  department      String?
-  icaPremiseCode  String?  @map("ica_premise_code")
-  settings        Json
-  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id             String   @id @db.Uuid
+  name           String
+  municipality   String?
+  department     String?
+  icaPremiseCode String?  @map("ica_premise_code")
+  settings       Json
+  version        Int      @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
-  memberships  Membership[]
-  animals      Animal[]
-  breeds       Breed[]
-  vaccines     Vaccine[]
-  lots         Lot[]
-  tags         Tag[]
-  expenses     Expense[]
-  workSessions WorkSession[]
-  cycles       VaccinationCycle[]
+  memberships   Membership[]
+  animals       Animal[]
+  breeds        Breed[]
+  vaccines      Vaccine[]
+  lots          Lot[]
+  tags          Tag[]
+  expenses      Expense[]
+  workSessions  WorkSession[]
+  cycles        VaccinationCycle[]
   importBatches ImportBatch[]
 
   @@map("farms")
@@ -212,12 +213,13 @@ model RefreshToken {
 }
 
 model Breed {
-  id             String     @id @db.Uuid
-  farmId         String     @map("farm_id") @db.Uuid
-  name           String
-  group          BreedGroup @default(CROSS)
-  gestationDays  Int?       @map("gestation_days")
-  isActive       Boolean    @default(true) @map("is_active")
+  id            String     @id @db.Uuid
+  farmId        String     @map("farm_id") @db.Uuid
+  name          String
+  group         BreedGroup @default(CROSS)
+  gestationDays Int?       @map("gestation_days")
+  isActive      Boolean    @default(true) @map("is_active")
+  version       Int        @default(1)
 
   farm    Farm     @relation(fields: [farmId], references: [id])
   animals Animal[]
@@ -227,21 +229,22 @@ model Breed {
 }
 
 model Vaccine {
-  id                  String  @id @db.Uuid
-  farmId              String  @map("farm_id") @db.Uuid
+  id                  String              @id @db.Uuid
+  farmId              String              @map("farm_id") @db.Uuid
   name                String
   disease             String
-  defaultDose         String? @map("default_dose")
+  defaultDose         String?             @map("default_dose")
   route               String?
   scheduleType        VaccineScheduleType @default(INTERVAL) @map("schedule_type")
-  boosterIntervalDays Int?    @map("booster_interval_days")
-  eligibleSex         Sex?    @map("eligible_sex")
-  minAgeDays          Int?    @map("min_age_days")
-  maxAgeDays          Int?    @map("max_age_days")
-  blockIneligibleSex  Boolean @default(false) @map("block_ineligible_sex")
-  isActive            Boolean @default(true) @map("is_active")
+  boosterIntervalDays Int?                @map("booster_interval_days")
+  eligibleSex         Sex?                @map("eligible_sex")
+  minAgeDays          Int?                @map("min_age_days")
+  maxAgeDays          Int?                @map("max_age_days")
+  blockIneligibleSex  Boolean             @default(false) @map("block_ineligible_sex")
+  isActive            Boolean             @default(true) @map("is_active")
+  version             Int                 @default(1)
 
-  farm    Farm                     @relation(fields: [farmId], references: [id])
+  farm    Farm                      @relation(fields: [farmId], references: [id])
   records VaccinationRecord[]
   cycles  VaccinationCycleVaccine[]
 
@@ -255,6 +258,7 @@ model Lot {
   name        String
   description String?
   isActive    Boolean @default(true) @map("is_active")
+  version     Int     @default(1)
 
   farm    Farm     @relation(fields: [farmId], references: [id])
   animals Animal[]
@@ -264,11 +268,15 @@ model Lot {
 }
 
 model Tag {
-  id       String  @id @db.Uuid
-  farmId   String  @map("farm_id") @db.Uuid
-  key      String
-  label    String
-  isSystem Boolean @default(false) @map("is_system")
+  id          String  @id @db.Uuid
+  farmId      String  @map("farm_id") @db.Uuid
+  // Se genera del nombre al crear la etiqueta y no cambia aunque se renombre (M3).
+  key         String
+  label       String
+  description String?
+  isSystem    Boolean @default(false) @map("is_system")
+  isActive    Boolean @default(true) @map("is_active")
+  version     Int     @default(1)
 
   farm    Farm        @relation(fields: [farmId], references: [id])
   animals AnimalTag[]
@@ -308,14 +316,14 @@ model Animal {
   deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
   deletedReason      String?   @map("deleted_reason")
 
-  farm           Farm       @relation(fields: [farmId], references: [id])
-  breed          Breed      @relation(fields: [breedId], references: [id])
-  lot            Lot?       @relation(fields: [lotId], references: [id])
-  dam            Animal?    @relation("DamOffspring", fields: [damId], references: [id])
-  offspringAsDam Animal[]   @relation("DamOffspring")
-  sire           Animal?    @relation("SireOffspring", fields: [sireId], references: [id])
-  offspringAsSire Animal[]  @relation("SireOffspring")
-  birthPregnancy Pregnancy? @relation("PregnancyCalves", fields: [birthPregnancyId], references: [id])
+  farm            Farm       @relation(fields: [farmId], references: [id])
+  breed           Breed      @relation(fields: [breedId], references: [id])
+  lot             Lot?       @relation(fields: [lotId], references: [id])
+  dam             Animal?    @relation("DamOffspring", fields: [damId], references: [id])
+  offspringAsDam  Animal[]   @relation("DamOffspring")
+  sire            Animal?    @relation("SireOffspring", fields: [sireId], references: [id])
+  offspringAsSire Animal[]   @relation("SireOffspring")
+  birthPregnancy  Pregnancy? @relation("PregnancyCalves", fields: [birthPregnancyId], references: [id])
 
   pregnancies        Pregnancy[]         @relation("DamPregnancies")
   pregnanciesAsSire  Pregnancy[]         @relation("SirePregnancies")
@@ -367,8 +375,8 @@ model Identifier {
   replacedById String?                 @map("replaced_by_id") @db.Uuid
   createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz
 
-  animal     Animal      @relation(fields: [animalId], references: [id])
-  replacedBy Identifier? @relation("IdentifierReplacement", fields: [replacedById], references: [id])
+  animal     Animal       @relation(fields: [animalId], references: [id])
+  replacedBy Identifier?  @relation("IdentifierReplacement", fields: [replacedById], references: [id])
   replaces   Identifier[] @relation("IdentifierReplacement")
 
   // Único parcial (farm_id, type, value) WHERE retired_at IS NULL → migración SQL manual.
@@ -436,7 +444,7 @@ model VaccinationRecord {
   animal      Animal            @relation(fields: [animalId], references: [id])
   vaccine     Vaccine           @relation(fields: [vaccineId], references: [id])
   cycle       VaccinationCycle? @relation(fields: [cycleId], references: [id])
-  workSession WorkSession? @relation(fields: [workSessionId], references: [id])
+  workSession WorkSession?      @relation(fields: [workSessionId], references: [id])
 
   @@index([farmId, animalId, vaccineId, appliedOn(sort: Desc)])
   @@index([farmId, nextDueOn])
@@ -633,13 +641,15 @@ model AuditLog {
 }
 
 model VaccinationCycle {
-  id        String   @id @db.Uuid
-  farmId    String   @map("farm_id") @db.Uuid
-  name      String
-  startsOn  DateTime @map("starts_on") @db.Date
-  endsOn    DateTime @map("ends_on") @db.Date
-  isOfficial Boolean @default(true) @map("is_official")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id         String   @id @db.Uuid
+  farmId     String   @map("farm_id") @db.Uuid
+  name       String
+  startsOn   DateTime @map("starts_on") @db.Date
+  endsOn     DateTime @map("ends_on") @db.Date
+  isOfficial Boolean  @default(true) @map("is_official")
+  isActive   Boolean  @default(true) @map("is_active")
+  version    Int      @default(1)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   farm         Farm                      @relation(fields: [farmId], references: [id])
   vaccines     VaccinationCycleVaccine[]
@@ -662,15 +672,15 @@ model VaccinationCycleVaccine {
 }
 
 model ImportBatch {
-  id           String   @id @db.Uuid
-  farmId       String   @map("farm_id") @db.Uuid
-  fileName     String   @map("file_name")
-  totalRows    Int      @map("total_rows")
-  createdRows  Int      @map("created_rows")
-  errorRows    Int      @map("error_rows")
-  summary      Json
-  createdById  String   @map("created_by_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String   @id @db.Uuid
+  farmId      String   @map("farm_id") @db.Uuid
+  fileName    String   @map("file_name")
+  totalRows   Int      @map("total_rows")
+  createdRows Int      @map("created_rows")
+  errorRows   Int      @map("error_rows")
+  summary     Json
+  createdById String   @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   farm Farm @relation(fields: [farmId], references: [id])
 
