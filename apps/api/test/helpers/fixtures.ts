@@ -86,11 +86,40 @@ export async function createAnimal(
   return id;
 }
 
-/** Borra los datos de las pruebas en orden de dependencia. */
+/**
+ * Vacía la base de datos de pruebas, en orden de dependencia.
+ *
+ * Borra **todas** las tablas de negocio, no solo las que crea `createFarm`: la base de
+ * pruebas puede traer la finca de referencia (el paso `pnpm db:seed` de la integración
+ * continua la carga ahí), y entonces un borrado parcial falla por clave foránea al intentar
+ * eliminar animales que todavía tienen preñeces, identificadores o pesajes.
+ */
 export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.auditLog.deleteMany();
+  await prisma.workSessionEntry.deleteMany();
+  await prisma.expenseAllocation.deleteMany();
+  await prisma.expense.deleteMany();
+  await prisma.sale.deleteMany();
+  await prisma.valuation.deleteMany();
+  await prisma.lotMovement.deleteMany();
+  await prisma.weightRecord.deleteMany();
+  await prisma.treatmentRecord.deleteMany();
+  await prisma.vaccinationRecord.deleteMany();
+  await prisma.identifier.deleteMany();
+  await prisma.animalTag.deleteMany();
+  await prisma.workSession.deleteMany();
+  // Las referencias cruzadas entre animales y preñeces se sueltan antes de borrar.
+  await prisma.animal.updateMany({ data: { birthPregnancyId: null, damId: null, sireId: null } });
+  await prisma.pregnancy.deleteMany();
   await prisma.animal.deleteMany();
+  await prisma.vaccinationCycleVaccine.deleteMany();
+  await prisma.vaccinationCycle.deleteMany();
+  await prisma.vaccine.deleteMany();
+  await prisma.lot.deleteMany();
+  await prisma.tag.deleteMany();
   await prisma.breed.deleteMany();
+  await prisma.importBatch.deleteMany();
+  await prisma.refreshToken.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.farm.deleteMany();
