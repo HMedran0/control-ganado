@@ -22,6 +22,7 @@ import { Route as AppRecordRouteImport } from './routes/_app/record'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
 import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppWorkSessionsRouteImport } from './routes/_app/work-sessions'
+import { Route as DevUiRouteImport } from './routes/dev.ui'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -87,6 +88,11 @@ const AppWorkSessionsRoute = AppWorkSessionsRouteImport.update({
   path: '/work-sessions',
   getParentRoute: () => AppRoute,
 } as any)
+const DevUiRoute = DevUiRouteImport.update({
+  id: '/dev/ui',
+  path: '/dev/ui',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/work-sessions': typeof AppWorkSessionsRoute
+  '/dev/ui': typeof DevUiRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/reports': typeof AppReportsRoute
   '/settings': typeof AppSettingsRoute
   '/work-sessions': typeof AppWorkSessionsRoute
+  '/dev/ui': typeof DevUiRoute
   '/': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/_app/reports': typeof AppReportsRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/work-sessions': typeof AppWorkSessionsRoute
+  '/dev/ui': typeof DevUiRoute
   '/_app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/work-sessions'
+    | '/dev/ui'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/change-password'
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/settings'
     | '/work-sessions'
+    | '/dev/ui'
     | '/'
   id:
     | '__root__'
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/_app/reports'
     | '/_app/settings'
     | '/_app/work-sessions'
+    | '/dev/ui'
     | '/_app/'
   fileRoutesById: FileRoutesById
 }
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   ChangePasswordRoute: typeof ChangePasswordRoute
   LoginRoute: typeof LoginRoute
+  DevUiRoute: typeof DevUiRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppWorkSessionsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/dev/ui': {
+      id: '/dev/ui'
+      path: '/dev/ui'
+      fullPath: '/dev/ui'
+      preLoaderRoute: typeof DevUiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -312,6 +332,7 @@ const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   ChangePasswordRoute: ChangePasswordRoute,
   LoginRoute: LoginRoute,
+  DevUiRoute: DevUiRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

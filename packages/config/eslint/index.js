@@ -97,11 +97,16 @@ export function hato({ tsconfigRootDir }) {
       extends: [reactHooks.configs.flat.recommended],
       languageOptions: { globals: globals.browser },
       rules: {
-        // TanStack Router corta una navegación lanzando `redirect()`, que no es un Error por
-        // diseño. Se permite ese tipo y solo ese; cualquier otro `throw` sigue exigiendo Error.
+        // TanStack Router corta una navegación lanzando `redirect()` o `notFound()`, que no son
+        // Error por diseño. Se permiten esos dos tipos; cualquier otro `throw` exige Error.
         '@typescript-eslint/only-throw-error': [
           'error',
-          { allow: [{ from: 'package', package: '@tanstack/router-core', name: 'Redirect' }] },
+          {
+            allow: [
+              { from: 'package', package: '@tanstack/router-core', name: 'Redirect' },
+              { from: 'package', package: '@tanstack/router-core', name: 'NotFoundError' },
+            ],
+          },
         ],
       },
     },
