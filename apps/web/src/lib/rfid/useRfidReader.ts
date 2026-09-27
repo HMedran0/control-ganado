@@ -26,8 +26,13 @@ export type RfidReaderOptions = {
   readonly enabled?: boolean;
   readonly digits?: number;
   readonly maxKeyIntervalMs?: number;
-  /** Reloj en milisegundos; las pruebas lo reemplazan. Monotónico, no la fecha. */
-  readonly now?: () => number;
+  /**
+   * Instante de cada tecla en milisegundos; las pruebas lo reemplazan. Por defecto,
+   * `event.timeStamp`: cuándo el sistema generó la tecla, no cuándo la página alcanzó a
+   * procesarla. Si el celular está ocupado y atiende varias teclas juntas, el ritmo que se mide
+   * sigue siendo el del lector. Monotónico, no la fecha.
+   */
+  readonly now?: (event: KeyboardEvent) => number;
 };
 
 /**
@@ -75,7 +80,7 @@ export function useRfidReader({
 
     const onKeyDown = (event: KeyboardEvent): void => {
       const options = latest.current;
-      const at = options.now();
+      const at = options.now(event);
       const gap = at - lastKeyAt;
       lastKeyAt = at;
 
@@ -124,8 +129,8 @@ export function useRfidReader({
 
 const MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock']);
 
-function defaultNow(): number {
-  return performance.now();
+function defaultNow(event: KeyboardEvent): number {
+  return event.timeStamp;
 }
 
 /** ¿El elemento recibe texto? Ahí la lectura pertenece al campo, no a la búsqueda. */
