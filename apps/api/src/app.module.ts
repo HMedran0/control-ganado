@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
+import { AnimalsModule } from './animals/animals.module.js';
 import { AccessGuard } from './auth/access.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { PasswordChangeGuard } from './auth/password-change.guard.js';
@@ -25,7 +26,15 @@ import { UsersModule } from './users/users.module.js';
  * registra, sin tener que acordarse de añadirlos.
  */
 @Module({
-  imports: [EnvModule, InfraModule, AuthModule, UsersModule, CatalogsModule, HealthModule],
+  imports: [
+    EnvModule,
+    InfraModule,
+    AuthModule,
+    UsersModule,
+    CatalogsModule,
+    AnimalsModule,
+    HealthModule,
+  ],
   providers: [
     { provide: APP_GUARD, useClass: AccessGuard },
     { provide: APP_GUARD, useClass: PasswordChangeGuard },
