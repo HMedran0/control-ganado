@@ -542,5 +542,28 @@ describe('seed de la finca de referencia', () => {
       expect(Object.fromEntries(after.perTable)).toEqual(Object.fromEntries(before.perTable));
       expect(after.overall).toBe(before.overall);
     }, 120_000);
+
+    it('se puede repetir aunque los usuarios de demostración hayan iniciado sesión', async () => {
+      // Una sesión abierta y un intento fallido, como los que dejan las pruebas de la web.
+      const alvaro = await prisma.user.findUniqueOrThrow({ where: { username: 'alvaro' } });
+      await prisma.refreshToken.create({
+        data: {
+          id: '0190a000-0000-7000-8000-00000000abcd',
+          userId: alvaro.id,
+          farmId,
+          familyId: '0190a000-0000-7000-8000-00000000abce',
+          tokenHash: 'hash-de-prueba-del-seed',
+          expiresAt: new Date('2027-01-01T00:00:00Z'),
+        },
+      });
+      await prisma.loginAttempt.create({
+        data: { login: 'alvaro', ip: '127.0.0.1', succeeded: false },
+      });
+
+      await runReferenceSeed(prisma, { password: PASSWORD, today: SEED_TODAY });
+
+      expect(await prisma.refreshToken.count({ where: { userId: alvaro.id } })).toBe(0);
+      expect(await prisma.loginAttempt.count({ where: { login: 'alvaro' } })).toBe(0);
+    }, 120_000);
   });
 });

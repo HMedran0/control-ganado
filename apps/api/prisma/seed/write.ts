@@ -100,6 +100,13 @@ export async function resetFarmData(
   await prisma.tag.deleteMany({ where: { farmId } });
   await prisma.breed.deleteMany({ where: { farmId } });
   await prisma.importBatch.deleteMany({ where: { farmId } });
+  // Sesiones e intentos de inicio de sesión de los usuarios de demostración: sin esto, el seed
+  // no se podía repetir después de que alguien entrara (la clave foránea de refresh_tokens
+  // impedía borrar los usuarios) y un bloqueo por intentos sobrevivía a la resiembra.
+  await prisma.refreshToken.deleteMany({
+    where: { OR: [{ farmId }, { user: { username: { in: [...usernames] } } }] },
+  });
+  await prisma.loginAttempt.deleteMany({ where: { login: { in: [...usernames] } } });
   await prisma.membership.deleteMany({ where: { farmId } });
   await prisma.farm.deleteMany({ where: { id: farmId } });
   await prisma.user.deleteMany({ where: { username: { in: [...usernames] } } });
@@ -230,6 +237,7 @@ export async function writeSeed(
       farmId,
       key: tag.key,
       label: tag.label,
+      description: tag.description,
       isSystem: tag.isSystem,
     })),
   });
