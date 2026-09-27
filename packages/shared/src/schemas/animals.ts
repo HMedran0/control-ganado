@@ -18,6 +18,7 @@ import {
   MANAGEMENT_CATEGORY,
   ORIGIN,
   SEX,
+  WEIGHT_METHOD,
   type AnimalAlert,
   type AnimalStatus,
   type DerivedTag,
@@ -157,6 +158,8 @@ export type ReplaceIdentifierResult = {
 
 export const initialWeightSchema = z.object({
   weightKg: weightKgSchema,
+  /** Sin valor, báscula. La finca de referencia pesa con cinta (08 §1.7). */
+  method: z.enum(Object.values(WEIGHT_METHOD) as [WeightMethod, ...WeightMethod[]]).optional(),
   /** Sin valor, hoy. */
   weighedOn: isoDateSchema.optional(),
 });
