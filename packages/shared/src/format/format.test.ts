@@ -4,7 +4,7 @@ import { toIsoDate } from '../date.js';
 import { formatAge } from './age.js';
 import { formatDate, formatOptionalDate } from './date.js';
 import { formatCop } from './money.js';
-import { formatDecimalEsCo, groupThousands } from './number.js';
+import { formatDecimalEsCo, groupThousands, parseDecimalEsCo } from './number.js';
 import { formatWeight } from './weight.js';
 
 const d = toIsoDate;
@@ -121,5 +121,51 @@ describe('formatAge (ANI-08 CA2)', () => {
     const bisiesto = d('2024-02-29');
     expect(formatAge({ birthDate: bisiesto, today: d('2026-02-28') })).toBe('2 a 0 m');
     expect(formatAge({ birthDate: bisiesto, today: d('2026-02-27') })).toBe('23 meses');
+  });
+});
+
+describe('parseDecimalEsCo (NumberField)', () => {
+  it.each([
+    ['452,5', 1, '452.5'],
+    ['1.250.000', 0, '1250000'],
+    ['1.250.000', 2, '1250000'],
+    ['1.250.000,75', 2, '1250000.75'],
+    ['32', 1, '32'],
+    ['0,5', 1, '0.5'],
+    [',5', 1, '0.5'],
+    ['007', 0, '7'],
+    ['452,50', 1, '452.5'],
+    ['452,0', 0, '452'],
+    ['$ 1.250.000', 0, '1250000'],
+    ['1 250 000', 0, '1250000'],
+    [' 452,5 ', 2, '452.5'],
+  ])('«%s» con %i decimales → %s', (text, decimals, expected) => {
+    expect(parseDecimalEsCo(text, decimals)).toBe(expected);
+  });
+
+  it('con decimales permitidos, un punto seguido de 1 o 2 dígitos es decimal', () => {
+    expect(parseDecimalEsCo('452.5', 2)).toBe('452.5');
+    expect(parseDecimalEsCo('452.25', 2)).toBe('452.25');
+    // Tres dígitos después del punto: separador de miles.
+    expect(parseDecimalEsCo('1.250', 2)).toBe('1250');
+  });
+
+  it('en pesos (0 decimales) el punto es siempre separador de miles', () => {
+    expect(parseDecimalEsCo('1.25', 0)).toBe('125');
+    expect(parseDecimalEsCo('1.250', 0)).toBe('1250');
+    expect(parseDecimalEsCo('1.250.000', 0)).toBe('1250000');
+  });
+
+  it.each([[''], ['   '], ['abc'], ['-5'], ['1,2,3'], ['1.25.0,5'], ['12,'], ['1,2.5'], ['4e5']])(
+    '«%s» no es un número válido',
+    (text) => {
+      expect(parseDecimalEsCo(text, 2)).toBeNull();
+    },
+  );
+
+  it('rechaza más decimales de los permitidos en lugar de redondear', () => {
+    expect(parseDecimalEsCo('452,55', 1)).toBeNull();
+    expect(parseDecimalEsCo('1.250,5', 0)).toBeNull();
+    expect(parseDecimalEsCo('452.555', 2)).toBe('452555');
   });
 });
