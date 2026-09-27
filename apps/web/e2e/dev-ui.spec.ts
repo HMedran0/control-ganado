@@ -63,10 +63,32 @@ test('en «Identificador» la lectura queda escrita, no envía el formulario y p
   await expect(page.getByText(/Animal guardado/)).toHaveCount(0);
 });
 
-test('captura de la muestra completa', async ({ page }, testInfo) => {
+test('ningún código se sale de su chapeta, con la fuente real', async ({ page }) => {
+  await page.evaluate(() => document.fonts.ready);
+  const overflow = await page.locator('[data-chapeta-code]').evaluateAll((codes) =>
+    codes
+      .map((code) => ({
+        code: code.textContent,
+        text: code.scrollWidth,
+        box: (code.parentElement as HTMLElement).clientWidth,
+      }))
+      .filter((item) => item.text > item.box),
+  );
+  expect(overflow).toEqual([]);
+});
+
+test('capturas de la muestra completa y de cada sección', async ({ page }, testInfo) => {
   await page.evaluate(() => document.fonts.ready);
   await page.screenshot({
     path: `${capturas}${testInfo.project.name}.png`,
     fullPage: true,
   });
+
+  // La página completa en móvil mide más de 17.000 px: por sección se revisa mejor.
+  const sections = page.locator('main section');
+  for (let index = 0; index < (await sections.count()); index += 1) {
+    const section = sections.nth(index);
+    const id = (await section.getAttribute('aria-labelledby')) ?? String(index);
+    await section.screenshot({ path: `${capturas}secciones/${testInfo.project.name}-${id}.png` });
+  }
 });

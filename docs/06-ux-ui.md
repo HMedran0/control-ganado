@@ -228,7 +228,7 @@ Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categor�
 
 | Componente | Descripción y reglas |
 |---|---|
-| `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños: s (listas, 44 px), m (ficha, 72 px), l (jornada, 96 px). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
+| `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños (ancho): s (listas, 56 px), m (ficha, 72 px), l (jornada, 96 px); alto 1,2 veces el ancho. Letra del código ≈ 0,4 del ancho (22, 30 y 40 px); los códigos largos (`26-045`) se achican, pero nunca por debajo de 18, 23 y 31 px respectivamente: en una lista al sol, menos de 18 px no se lee. La silueta también forma el logo (chapeta pequeña con «H» + «Hato»). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
 | `SearchBar` | Acepta texto y lecturas RFID (`useRfidReader`, 04 §6). Resultados agrupados: coincidencia exacta primero ("Chip 170…"). Estado "leyendo" con borde chapeta. Excepción aprobada en M2b a «etiquetas visibles» (§8): su etiqueta («Buscar animal») es solo para lectores de pantalla; se ven el ícono y el placeholder. |
 | `QuestionRow` | Pregunta + resumen + cifra; fila completa enlazada. |
 | `Tag` | Etiquetas de clasificación: fondo claro del color semántico, texto en el tono oscuro del mismo color, siempre con texto (no solo color). |

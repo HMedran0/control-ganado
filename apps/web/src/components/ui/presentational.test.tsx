@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { renderWithRouter } from '../../test/router-harness';
 import { AlertBanner } from './AlertBanner';
-import { Chapeta } from './Chapeta';
+import { Chapeta, chapetaFontSize } from './Chapeta';
 import { EmptyState } from './EmptyState';
 import { QuestionRow } from './QuestionRow';
 import { Tag } from './Tag';
@@ -21,7 +21,7 @@ describe('Chapeta', () => {
   });
 
   it.each([
-    ['s', 44],
+    ['s', 56],
     ['m', 72],
     ['l', 96],
   ] as const)('tamaño %s mide %i px de ancho', (size, width) => {
@@ -29,15 +29,27 @@ describe('Chapeta', () => {
     expect(screen.getByRole('img')).toHaveStyle({ width: `${width}px` });
   });
 
-  it('achica la letra de los códigos largos para que quepan', () => {
+  it('achica la letra de los códigos largos, pero en s nunca por debajo de 18 px', () => {
     render(
       <>
-        <Chapeta code="P-12" size="s" />
+        <Chapeta code="087" size="s" />
         <Chapeta code="26-045" size="s" />
       </>,
     );
-    const [short, long] = screen.getAllByText(/P-12|26-045/);
-    expect(parseFloat(long!.style.fontSize)).toBeLessThan(parseFloat(short!.style.fontSize));
+    const short = parseFloat(screen.getByText('087').style.fontSize);
+    const long = parseFloat(screen.getByText('26-045').style.fontSize);
+
+    expect(short).toBe(22);
+    expect(long).toBeLessThan(short);
+    expect(long).toBeGreaterThanOrEqual(18);
+  });
+
+  it.each([
+    ['s', 18],
+    ['m', 23],
+    ['l', 31],
+  ] as const)('la letra mínima de %s es %i px, aun con códigos muy largos', (size, min) => {
+    expect(chapetaFontSize('2026-00045', size)).toBe(min);
   });
 
   it('si el animal salió, agrega la etiqueta y NO tacha el código', () => {

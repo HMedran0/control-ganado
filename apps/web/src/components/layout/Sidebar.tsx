@@ -4,6 +4,7 @@ import { LogOut } from 'lucide-react';
 import { useRequiredSession } from '../../lib/auth/context';
 import { ROLE_LABELS } from '../../lib/auth/roles';
 import { useLogout } from '../../lib/auth/use-logout';
+import { Logo } from './Logo';
 import { NAV, SIDEBAR_NAV, visibleFor, type NavItem } from './nav-items';
 
 const LINK_CLASS =
@@ -27,8 +28,8 @@ export function Sidebar() {
   return (
     <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col border-r border-cerca bg-superficie p-4 lg:flex">
       <div className="mb-6 px-3">
-        <p className="font-cifras text-xl leading-none text-potrero">Hato</p>
-        <p className="mt-1 text-aux text-texto-2">{session.farm.name}</p>
+        <Logo />
+        <p className="mt-2 text-aux text-texto-2">{session.farm.name}</p>
       </div>
       <nav aria-label="Principal" className="flex-1 overflow-y-auto">
         <ul className="flex flex-col gap-1">

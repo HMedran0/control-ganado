@@ -2,6 +2,7 @@ import { addDays, toIsoDate, type IsoDate } from '@hato/shared';
 import { Baby, Bell, HeartPulse, Scale, Syringe } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 
+import { Logo } from '../components/layout/Logo';
 import { AlertBanner } from '../components/ui/AlertBanner';
 import { Button } from '../components/ui/Button';
 import { Chapeta } from '../components/ui/Chapeta';
@@ -45,6 +46,7 @@ export function UiShowcase() {
         </header>
 
         <ChapetaDemo />
+        <LogoDemo />
         <TagsDemo />
         <AlertDemo />
         <QuestionDemo />
@@ -86,7 +88,7 @@ function ChapetaDemo() {
       <div className="flex flex-wrap items-end gap-6">
         <figure className="flex flex-col items-center gap-2">
           <Chapeta code="P-12" size="s" />
-          <Caption>s · 44 px</Caption>
+          <Caption>s · 56 px</Caption>
         </figure>
         <figure className="flex flex-col items-center gap-2">
           <Chapeta code="P-12" size="m" />
@@ -97,8 +99,20 @@ function ChapetaDemo() {
           <Caption>l · 96 px</Caption>
         </figure>
         <figure className="flex flex-col items-center gap-2">
+          <Chapeta code="26-045" size="s" />
+          <Caption>s · código largo</Caption>
+        </figure>
+        <figure className="flex flex-col items-center gap-2">
+          <Chapeta code="087" size="s" />
+          <Caption>s · 3 dígitos</Caption>
+        </figure>
+        <figure className="flex flex-col items-center gap-2">
           <Chapeta code="26-045" size="m" />
-          <Caption>Código largo</Caption>
+          <Caption>m · código largo</Caption>
+        </figure>
+        <figure className="flex flex-col items-center gap-2">
+          <Chapeta code="26-045" size="l" />
+          <Caption>l · código largo</Caption>
         </figure>
         <figure className="flex flex-col items-center gap-2">
           <Chapeta code="25-118" size="m" exitLabel="Vendido" />
@@ -120,6 +134,14 @@ function ChapetaDemo() {
           Leer otro animal
         </Button>
       </div>
+    </Section>
+  );
+}
+
+function LogoDemo() {
+  return (
+    <Section id="logo" title="Logo">
+      <Logo />
     </Section>
   );
 }
