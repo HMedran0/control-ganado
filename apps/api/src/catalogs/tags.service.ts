@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AUDIT_ACTION,
   catalogNameKey,
+  DERIVED_TAG,
   DomainError,
   tagKeyFromLabel,
   uuidv7,
@@ -108,16 +109,21 @@ export class TagsService {
   }
 }
 
-/** Primera clave libre: `DESCARTE`, y si ya existe, `DESCARTE_2`, `DESCARTE_3`… */
+/**
+ * Primera clave libre: `DESCARTE`, y si ya existe, `DESCARTE_2`, `DESCARTE_3`… Las claves de
+ * las etiquetas derivadas (`SERVED`, `PREGNANT`…) cuentan como ocupadas: el filtro `tags` de
+ * `GET /animals` recibe las dos clases de etiqueta en la misma lista y no debe haber ambigüedad.
+ */
 async function freeKey(tx: Tx, scope: FarmScope, base: string): Promise<string> {
-  const taken = new Set(
-    (
+  const taken = new Set<string>([
+    ...Object.values(DERIVED_TAG),
+    ...(
       await tx.tag.findMany({
         where: scopedWhere(scope, { key: { startsWith: base } }),
         select: { key: true },
       })
     ).map((tag) => tag.key),
-  );
+  ]);
   if (!taken.has(base)) return base;
   let suffix = 2;
   while (taken.has(`${base}_${suffix}`)) suffix += 1;
