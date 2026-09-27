@@ -220,6 +220,8 @@ served         = EXISTS (pregnancy p WHERE p.dam_id = a.id AND p.outcome = 'PEND
 calving_count  = COUNT(pregnancy WHERE outcome = 'CALVED' AND voided_at IS NULL)
 ```
 
+Implementación (M4a, ADR-009): la CTE `classificationCtes` de `apps/api/src/animals/classification.sql.ts`, con todos los valores como parámetros (hoy, parámetros de la finca, códigos) y la edad con `hato_months_between(from, to)`, función SQL que traduce `monthsBetween` (ADR-002). Solo filtra y cuenta; lo que se muestra de cada animal se calcula con las funciones de shared. `test/classification-equivalence.e2e-spec.ts` comprueba que los dos caminos coinciden animal por animal.
+
 **Estado de vacunas por animal** — depende de `schedule_type` (RN-13). Para `OFFICIAL_CYCLE`: elegibles activos sin registro con `applied_on` dentro del ciclo. Para `AGE_WINDOW`: elegibles por sexo y edad sin ningún registro de esa vacuna. Para `INTERVAL`, última aplicación vigente por vacuna:
 ```sql
 SELECT DISTINCT ON (animal_id, vaccine_id) animal_id, vaccine_id, applied_on, next_due_on

@@ -63,11 +63,18 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | GET | /animals/next-code?birthDate= | T | Siguiente código sugerido según `calfCodePattern` |
 | POST | /animals/qr-sheet | A | `{ animalIds, layout }` → PDF de etiquetas |
 
+**Detalles de M4a.**
+- `GET /animals` responde `{ items, nextCursor, total }`: `total` es el conteo con los filtros aplicados, sin paginar. Filtros: `category` (`CALF_MALE, CALF_FEMALE, HEIFER, COW, YOUNG_MALE, ADULT_MALE`); `tags` recibe etiquetas derivadas (`SERVED, PREGNANT, CALVED, DRY, WITHDRAWAL`) y claves de etiquetas manuales (`COTERO`…) en la misma lista; `alerts` acepta además `unconfirmed_service` (servida sin diagnóstico, RN-08). Varios valores de `category`, `breedId` o `lotId` se combinan con «o»; varios de `tags` o `alerts`, con «y». `status` es `active` por defecto; `archived` solo para ADMIN. `sort`: `code`, `age` (de menor a mayor edad), `lastWeight` y sus inversos con `-`; sin peso, al final. Solo los animales activos tienen alertas.
+- `GET /animals/search?q=` → `{ exactMatch: { animalId, via, matches } | null, items }`. `via` y cada elemento de `matches` dicen por qué coincidió: `{ kind: 'CODE' | 'NAME', value }` o `{ kind: 'IDENTIFIER', identifierType, value, previous }` (`previous: true` es un identificador retirado). Hay `exactMatch` cuando todas las coincidencias exactas son del mismo animal; si son de animales distintos, `exactMatch` es `null` y cada uno aparece en `items` con `exact: true` y su porqué. La búsqueda difusa (`pg_trgm`) empieza en 2 caracteres. No incluye archivados; sí los que salieron, con su `status`.
+- `GET /animals/:id`: `economics: { purchasePrice }` solo existe en la respuesta de ADMIN. `POST /animals` y `PATCH /animals/:id` responden la ficha con `warnings`.
+- `POST /animals/bulk/tags` y `/bulk/lot` son todo o nada: si un animal no es de la finca (404), está archivado (`ANIMAL_ARCHIVED`) o salió (`ANIMAL_EXITED`), no se cambia ninguno. `add` y `remove` son ids de etiquetas manuales. Respuestas: `{ updated }` y `{ moved, unchanged }`.
+- `GET /animals/:id/timeline` → `{ items: [{ key, kind, date, voided, data }], nextCursor }`, del más reciente al más antiguo; los eventos anulados vienen con `voided: true`. No incluye datos económicos.
+
 ## Identificadores
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| POST | /animals/:id/identifiers | T | Agregar `{ type, value, assignedAt }` |
-| POST | /identifiers/:id/replace | T | `{ reason, newValue, date }` (IDN-02) |
+| POST | /animals/:id/identifiers | T | Agregar `{ type, value, assignedAt?, confirmReuse? }` (`confirmReuse` solo ADMIN, RN-19) |
+| POST | /identifiers/:id/replace | T | `{ reason, newValue, date, confirmReuse? }` (IDN-02) → `{ id, previous, current, warnings }` |
 | POST | /identifiers/:id/retire | T | `{ reason, date }` |
 
 ## Reproducción
