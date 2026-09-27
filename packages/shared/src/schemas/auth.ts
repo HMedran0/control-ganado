@@ -140,3 +140,22 @@ export type SessionResponse = {
   readonly role: Role;
   readonly memberships: readonly MembershipView[];
 };
+
+/** Usuario de la finca tal como lo devuelve `/users` (AUT-03). Nunca incluye el hash. */
+export type UserView = {
+  readonly id: string;
+  readonly name: string;
+  readonly username: string;
+  readonly email: string | null;
+  readonly role: Role;
+  readonly isActive: boolean;
+  readonly mustChangePassword: boolean;
+  readonly lastLoginAt: string | null;
+};
+
+/** Resultado de crear un usuario o restablecer su contraseña (AUT-04 CA2). */
+export type UserWithTemporaryPassword = {
+  readonly user: UserView;
+  /** Se muestra una sola vez: no se guarda en claro ni se vuelve a poder consultar. */
+  readonly temporaryPassword: string;
+};

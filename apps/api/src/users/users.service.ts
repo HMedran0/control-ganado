@@ -7,6 +7,8 @@ import {
   type CreateUserInput,
   type Role,
   type UpdateUserInput,
+  type UserView,
+  type UserWithTemporaryPassword,
 } from '@hato/shared';
 
 import { Prisma } from '../generated/prisma/client.js';
@@ -23,24 +25,7 @@ import { PrismaService } from '../infra/prisma.service.js';
  * las consultas parten siempre de `memberships` filtrado por `farmId`, nunca de `users`.
  */
 
-/** Usuario tal como lo devuelve la API. Nunca incluye el hash de la contraseña. */
-export type UserView = {
-  readonly id: string;
-  readonly name: string;
-  readonly username: string;
-  readonly email: string | null;
-  readonly role: Role;
-  readonly isActive: boolean;
-  readonly mustChangePassword: boolean;
-  readonly lastLoginAt: string | null;
-};
-
-/** Resultado de crear un usuario o restablecer su contraseña. */
-export type UserWithTemporaryPassword = {
-  readonly user: UserView;
-  /** Se muestra una sola vez: no se guarda en claro ni se vuelve a poder consultar. */
-  readonly temporaryPassword: string;
-};
+export type { UserView, UserWithTemporaryPassword };
 
 @Injectable()
 export class UsersService {
