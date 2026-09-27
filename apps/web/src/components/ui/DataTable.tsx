@@ -12,7 +12,7 @@ export type DataColumn<T> = {
   readonly align?: 'start' | 'end';
   /**
    * Cómo aparece en la lista de móvil: `leading` a la izquierda (la chapeta), `primary` en la
-   * primera línea, `secondary` en la segunda separado por « · », `hidden` no se muestra.
+   * primera línea, `secondary` en la segunda, `hidden` no se muestra.
    */
   readonly mobile?: 'leading' | 'primary' | 'secondary' | 'hidden';
 };
@@ -130,10 +130,10 @@ export function DataTable<T>({
                 ))}
               </div>
               {secondary.length === 0 ? null : (
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-texto-2">
-                  {secondary.map((column, index) => (
-                    <span key={column.key} className="inline-flex items-center gap-2">
-                      {index === 0 ? null : <span aria-hidden="true">·</span>}
+                // Sin separadores: al partirse la línea, un «·» quedaba suelto al comienzo.
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-texto-2">
+                  {secondary.map((column) => (
+                    <span key={column.key} className="inline-flex items-center">
                       {column.cell(row)}
                     </span>
                   ))}

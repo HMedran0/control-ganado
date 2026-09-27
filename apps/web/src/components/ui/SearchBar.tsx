@@ -93,25 +93,28 @@ export function SearchBar({
           {...{ [RFID_TARGET_ATTRIBUTE]: '' }}
           value={value}
           placeholder={
-            placeholder ??
-            (readerReady ? 'Leer chip o escribir código' : 'Buscar por código, chapeta o chip')
+            placeholder ?? (readerReady ? 'Leer chip o escribir código' : 'Código, chapeta o chip')
           }
           onChange={(event) => {
             onChange(event.target.value);
           }}
           aria-describedby={shortcut ? `${id}-atajo` : undefined}
-          className={`min-h-touch-primary w-full rounded-panel bg-superficie pr-12 pl-13 text-md text-monte placeholder:text-texto-2 ${
+          className={`min-h-touch-primary w-full rounded-panel bg-superficie pl-13 text-base text-monte lg:text-md ${shortcut ? 'pr-12' : 'pr-4'} placeholder:text-texto-2 ${
             readerReady ? 'border-4 border-chapeta' : 'border-2 border-texto-2'
           }`}
         />
         {shortcut ? (
-          <kbd
-            id={`${id}-atajo`}
-            aria-label="Atajo: tecla barra"
-            className="pointer-events-none absolute top-1/2 right-4 hidden -translate-y-1/2 rounded border border-cerca px-2 font-sans text-aux text-texto-2 lg:inline"
-          >
-            /
-          </kbd>
+          <>
+            <kbd
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 right-4 hidden -translate-y-1/2 rounded border border-texto-2 px-2 font-sans text-aux text-texto-2 lg:inline"
+            >
+              /
+            </kbd>
+            <span id={`${id}-atajo`} className="sr-only">
+              Atajo: tecla barra.
+            </span>
+          </>
         ) : null}
       </div>
       <p role="status" className="sr-only">

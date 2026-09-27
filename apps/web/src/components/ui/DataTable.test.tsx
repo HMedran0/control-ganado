@@ -84,7 +84,8 @@ describe('DataTable', () => {
     expect(items).toHaveLength(2);
     expect(items[1]).toHaveTextContent('P-12');
     expect(items[1]).toHaveTextContent('Canela');
-    expect(items[1]).toHaveTextContent('Brahman·452 kg');
+    expect(items[1]).toHaveTextContent('Brahman');
+    expect(items[1]).toHaveTextContent('452 kg');
   });
 
   it('sin filas muestra el vacío que se le pase', () => {

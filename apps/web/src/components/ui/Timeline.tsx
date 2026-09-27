@@ -46,7 +46,8 @@ export function Timeline({ items, label }: { items: readonly TimelineItem[]; lab
                 ) : (
                   <Link
                     to={item.to}
-                    className="inline-flex min-h-touch items-center font-bold text-potrero underline underline-offset-4"
+                    // Objetivo táctil de 48 px sin separar el título de su fecha.
+                    className="-my-3 inline-flex min-h-touch items-center font-bold text-potrero underline underline-offset-4"
                   >
                     {item.title}
                   </Link>

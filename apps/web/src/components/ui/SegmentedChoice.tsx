@@ -25,7 +25,8 @@ export type SegmentedChoiceProps<T extends string> = {
  *
  * Para la accesibilidad es un grupo de opciones (`radiogroup`) de Radix: Tab entra al grupo,
  * las flechas cambian la opción y el lector anuncia «Macho, opción 1 de 2, seleccionada».
- * La elegida se marca con color, negrita **y** un ícono, no solo con color.
+ * La elegida se marca con color, negrita **y** un ícono, no solo con color. El ícono va en la
+ * esquina para no quitarle ancho al texto («Otra fecha» cabe en una línea en el celular).
  */
 export function SegmentedChoice<T extends string>({
   label,
@@ -64,11 +65,11 @@ export function SegmentedChoice<T extends string>({
           <RadioGroup.Item
             key={option.value}
             value={option.value}
-            className="group flex min-h-touch-primary items-center justify-center gap-1.5 border-l border-cerca bg-superficie px-2 text-base text-monte first:border-l-0 focus-visible:z-10 focus-visible:outline-offset-[-3px] disabled:cursor-not-allowed disabled:opacity-60 data-[state=checked]:bg-potrero data-[state=checked]:font-bold data-[state=checked]:text-white"
+            className="group relative flex min-h-touch-primary items-center justify-center border-l border-cerca bg-superficie px-2 text-base text-monte first:border-l-0 focus-visible:z-10 focus-visible:outline-offset-[-3px] disabled:cursor-not-allowed disabled:opacity-60 data-[state=checked]:bg-potrero data-[state=checked]:font-bold data-[state=checked]:text-white"
           >
             <Check
               aria-hidden="true"
-              className="hidden size-5 shrink-0 group-data-[state=checked]:block"
+              className="absolute top-1.5 left-1.5 hidden size-4 group-data-[state=checked]:block"
             />
             {option.label}
           </RadioGroup.Item>
