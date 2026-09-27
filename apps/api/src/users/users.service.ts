@@ -58,7 +58,9 @@ export class UsersService {
       include: { user: true },
       orderBy: { user: { username: 'asc' } },
     });
-    return memberships.map((membership) => toView(membership.user, membership.role, membership.isActive));
+    return memberships.map((membership) =>
+      toView(membership.user, membership.role, membership.isActive),
+    );
   }
 
   /** Crea un usuario con contraseña temporal (AUT-03). */
@@ -69,7 +71,10 @@ export class UsersService {
   ): Promise<UserWithTemporaryPassword> {
     const clash = await this.prisma.user.findFirst({
       where: {
-        OR: [{ username: input.username }, ...(input.email === null ? [] : [{ email: input.email }])],
+        OR: [
+          { username: input.username },
+          ...(input.email === null ? [] : [{ email: input.email }]),
+        ],
       },
       select: { username: true },
     });

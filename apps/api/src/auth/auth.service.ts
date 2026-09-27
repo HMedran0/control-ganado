@@ -1,11 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import {
-  AUDIT_ACTION,
-  DomainError,
-  uuidv7,
-  type LoginInput,
-  type Role,
-} from '@hato/shared';
+import { AUDIT_ACTION, DomainError, uuidv7, type LoginInput, type Role } from '@hato/shared';
 
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
@@ -104,13 +98,11 @@ export class AuthService {
     }
 
     const passwordOk = await this.passwords.verify(user.passwordHash, input.password);
-    const memberships = user.memberships.map(
-      (membership): MembershipView => ({
-        farmId: membership.farmId,
-        farmName: membership.farm.name,
-        role: membership.role,
-      }),
-    );
+    const memberships = user.memberships.map((membership): MembershipView => ({
+      farmId: membership.farmId,
+      farmName: membership.farm.name,
+      role: membership.role,
+    }));
 
     // La membresía más antigua es la finca por defecto; el `id` es UUIDv7, así que
     // ordenarlo es ordenar por fecha de creación (ADR-007).
@@ -177,13 +169,11 @@ export class AuthService {
       throw new DomainError('AUTH_TOKEN_EXPIRED');
     }
 
-    const memberships = stored.user.memberships.map(
-      (membership): MembershipView => ({
-        farmId: membership.farmId,
-        farmName: membership.farm.name,
-        role: membership.role,
-      }),
-    );
+    const memberships = stored.user.memberships.map((membership): MembershipView => ({
+      farmId: membership.farmId,
+      farmName: membership.farm.name,
+      role: membership.role,
+    }));
     // La sesión conserva su finca activa; si dejó de ser válida, se cierra.
     const membership = memberships.find((item) => item.farmId === stored.farmId);
     if (!stored.user.isActive || membership === undefined) {
@@ -261,13 +251,11 @@ export class AuthService {
       }),
     ]);
 
-    const memberships = user.memberships.map(
-      (membership): MembershipView => ({
-        farmId: membership.farmId,
-        farmName: membership.farm.name,
-        role: membership.role,
-      }),
-    );
+    const memberships = user.memberships.map((membership): MembershipView => ({
+      farmId: membership.farmId,
+      farmName: membership.farm.name,
+      role: membership.role,
+    }));
     const membership = memberships.find((item) => item.farmId === farmId) ?? memberships[0];
     if (membership === undefined) throw new DomainError('AUTH_TOKEN_EXPIRED');
 

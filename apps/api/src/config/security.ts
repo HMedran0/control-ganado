@@ -35,11 +35,19 @@ export type SecurityPlugins = {
   readonly rateLimit: Parameters<NestFastifyApplication['register']>[0];
 };
 
+/**
+ * Límites efectivos. Las pruebas de integración los suben, porque toda la suite sale de la
+ * misma IP y con el límite real se estrangularía a sí misma; hay una prueba dedicada que los
+ * baja a propósito para comprobar que el límite existe y responde en problem+json.
+ */
+export type RateLimits = { readonly perUser: number; readonly perIp: number };
+
 /** Aplica cookies, helmet, CORS y límite de peticiones. */
 export async function configureSecurity(
   app: NestFastifyApplication,
   env: Env,
   plugins: SecurityPlugins,
+  limits: RateLimits = { perUser: RATE_LIMIT_PER_USER, perIp: RATE_LIMIT_PER_IP },
 ): Promise<void> {
   await app.register(plugins.cookie, { secret: env.REFRESH_TOKEN_PEPPER });
 
@@ -53,16 +61,17 @@ export async function configureSecurity(
   await app.register(plugins.rateLimit, {
     max: (request: FastifyRequest) =>
       (request as FastifyRequest & RequestWithScope).scope === undefined
-        ? RATE_LIMIT_PER_IP
-        : RATE_LIMIT_PER_USER,
+        ? limits.perIp
+        : limits.perUser,
     timeWindow: '1 minute',
     // Por usuario cuando hay sesión; por IP mientras no la haya (login incluido).
     keyGenerator: (request: FastifyRequest) => {
       const scope = (request as FastifyRequest & RequestWithScope).scope;
       return scope?.userId ?? request.ip;
     },
-    // El cuerpo lo arma el filtro de errores del proyecto, en problem+json.
-    errorResponseBuilder: () => ({ statusCode: 429, error: 'Too Many Requests' }),
+    // El cuerpo lo arma el filtro de errores del proyecto: el límite lanza un error con
+    // `statusCode: 429` y `ProblemJsonFilter` lo traduce a problem+json con el código
+    // RATE_LIMITED del catálogo.
   });
 
   // `credentials: true` es indispensable: sin él el navegador no envía la cookie del token

@@ -70,10 +70,7 @@ describe('AuditInterceptor', () => {
   });
 
   it('no registra las lecturas', async () => {
-    await request(app.getHttpServer())
-      .get('/api/v1/probe/scope')
-      .set(headers)
-      .expect(200);
+    await request(app.getHttpServer()).get('/api/v1/probe/scope').set(headers).expect(200);
 
     await new Promise((resolve) => setTimeout(resolve, 150));
     expect(await prisma.auditLog.count()).toBe(0);

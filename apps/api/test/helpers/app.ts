@@ -9,7 +9,7 @@ import { ROLE, type Role } from '@hato/shared';
 import { AppModule } from '../../src/app.module.js';
 import { ProblemJsonFilter } from '../../src/common/errors/problem-json.filter.js';
 import { parseEnv } from '../../src/config/env.schema.js';
-import { configureSecurity } from '../../src/config/security.js';
+import { configureSecurity, type RateLimits } from '../../src/config/security.js';
 import { Clock } from '../../src/infra/clock.service.js';
 import { getLogger } from '../../src/infra/logger.js';
 import { TokenService } from '../../src/auth/token.service.js';
@@ -30,7 +30,7 @@ export class FakeClock extends Clock {
   private current: Date;
 
   constructor(start = new Date('2026-09-25T12:00:00.000Z')) {
-    super({ APP_TIMEZONE: 'America/Bogota', SEED_TODAY: undefined } as never);
+    super({ APP_TIMEZONE: 'America/Bogota', SEED_TODAY: undefined });
     this.current = start;
   }
 
@@ -50,6 +50,14 @@ export type TestApp = {
   readonly clock: FakeClock;
 };
 
+/**
+ * Límite de peticiones holgado para las pruebas.
+ *
+ * Toda la suite sale de 127.0.0.1, así que con el límite real (60/min sin autenticar) se
+ * estrangularía a sí misma. La prueba que comprueba el límite lo baja a propósito.
+ */
+const TEST_RATE_LIMITS: RateLimits = { perUser: 100_000, perIp: 100_000 };
+
 /** Levanta la aplicación completa. */
 export async function createTestApp(
   extra: Pick<ModuleMetadata, 'controllers' | 'providers' | 'imports'> = {},
@@ -60,6 +68,7 @@ export async function createTestApp(
 /** Igual que `createTestApp`, y además devuelve el reloj para poder adelantarlo. */
 export async function createTestAppWithClock(
   extra: Pick<ModuleMetadata, 'controllers' | 'providers' | 'imports'> = {},
+  limits: RateLimits = TEST_RATE_LIMITS,
 ): Promise<TestApp> {
   const env = parseEnv(process.env);
   const logger = getLogger(env);
@@ -69,7 +78,9 @@ export async function createTestAppWithClock(
     imports: [AppModule, ...(extra.imports ?? [])],
     controllers: extra.controllers ?? [],
     providers: extra.providers ?? [],
-  }).overrideProvider(Clock).useValue(clock);
+  })
+    .overrideProvider(Clock)
+    .useValue(clock);
 
   const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(
@@ -78,7 +89,7 @@ export async function createTestAppWithClock(
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemJsonFilter(logger));
-  await configureSecurity(app, env, { cookie, helmet, rateLimit });
+  await configureSecurity(app, env, { cookie, helmet, rateLimit }, limits);
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();

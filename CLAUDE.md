@@ -53,9 +53,17 @@ idéntica. Sus cifras están en `apps/api/prisma/seed/expected.ts` y las comprue
 `test/seed.e2e-spec.ts` con SQL directo. Si cambias el generador y alguna cifra se mueve,
 actualiza ese archivo en el mismo commit y explica por qué.
 
-Mientras no exista el inicio de sesión (hito M1), la API usa `DEV_FAKE_AUTH=true` y toma la
-finca y el rol de las cabeceras `x-dev-farm-id`, `x-dev-role` y `x-dev-user-id`. Con
-`NODE_ENV=production` la API **no arranca** si esa variable está activa.
+La autenticación es real desde M1 (ADR-007): `Authorization: Bearer <accessToken>` en todo
+salvo `/auth/login`, `/auth/refresh` y `/health`. El token dura 15 minutos y prueba que hubo
+un inicio de sesión, pero **el rol y el estado de la cuenta se leen de la base en cada
+petición**, así que desactivar a alguien o cambiarle el rol aplica de inmediato. El token de
+refresco es opaco, se guarda solo como hash y viaja en una cookie `HttpOnly` limitada a
+`/api/v1/auth`. El mecanismo temporal `DEV_FAKE_AUTH` se retiró: ya no hay variable de
+entorno capaz de dejar la API abierta.
+
+Las pruebas de integración se autentican de verdad: `login` contra la API, o `signTestToken`
+para casos que necesitan un token concreto (de otra finca, vencido, de un usuario que luego
+se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 
 ## Decisiones registradas (docs/adr/)
 - **ADR-001** TypeScript 6.0.3, no 7: `typescript-eslint` aún no soporta TS 7 y se perdería el lint con tipos.
@@ -64,6 +72,7 @@ finca y el rol de las cabeceras `x-dev-farm-id`, `x-dev-role` y `x-dev-user-id`.
 - **ADR-004** Elegibilidad en ciclos oficiales: un animal que nació o ingresó a la finca después del cierre del ciclo no queda vencido (RN-13).
 - **ADR-005** `apps/api` es **ESM** porque NestJS 12 se publica solo como módulos ES; Prisma genera el cliente en ESM. El compilador es **SWC** (no esbuild) porque hace falta `emitDecoratorMetadata` para la inyección de dependencias, y por eso las pruebas de la API van con Vitest + `unplugin-swc`.
 - **ADR-006** Los comandos del seed cargan un gancho de resolución `.js` → `.ts` (`prisma/seed/ts-resolve.mjs`), porque el cliente generado por Prisma son archivos `.ts` que se importan con extensión `.js` y el borrado de tipos de Node no reescribe extensiones. Solo afecta al proceso del seed.
+- **ADR-007** Autenticación: JWT de 15 min + refresh opaco rotado con revocación de familia; el bloqueo por intentos se **deduce** de `login_attempts` y dura 15 minutos completos desde el último fallo; el rol y el estado de la cuenta se leen de la base en cada petición, no del token; la finca activa va en el token y la sesión la recuerda. Retira `DEV_FAKE_AUTH`.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.

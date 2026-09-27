@@ -17,18 +17,17 @@ export const MAX_PASSWORD_LENGTH = 200;
 export const USERNAME_PATTERN = /^[a-z0-9._-]{3,30}$/;
 
 /** Esquema de un nombre de usuario válido. */
-export const usernameSchema = z
-  .string()
-  .trim()
-  .toLowerCase()
-  .regex(USERNAME_PATTERN, {
-    message: 'El usuario usa de 3 a 30 caracteres: letras minúsculas, números, punto, guion y guion bajo.',
-  });
+export const usernameSchema = z.string().trim().toLowerCase().regex(USERNAME_PATTERN, {
+  message:
+    'El usuario usa de 3 a 30 caracteres: letras minúsculas, números, punto, guion y guion bajo.',
+});
 
 /** Contraseña que el usuario elige o recibe. */
 export const passwordSchema = z
   .string()
-  .min(MIN_PASSWORD_LENGTH, { message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.` })
+  .min(MIN_PASSWORD_LENGTH, {
+    message: `La contraseña debe tener al menos ${MIN_PASSWORD_LENGTH} caracteres.`,
+  })
   .max(MAX_PASSWORD_LENGTH, { message: 'La contraseña es demasiado larga.' });
 
 /**
@@ -93,7 +92,9 @@ export const updateUserSchema = z
     email: z
       .union([z.email({ message: 'El correo no es válido.' }), z.literal('')])
       .optional()
-      .transform((value) => (value === undefined ? undefined : value === '' ? null : value.toLowerCase())),
+      .transform((value) =>
+        value === undefined ? undefined : value === '' ? null : value.toLowerCase(),
+      ),
     role: assignableRoleSchema.optional(),
     isActive: z.boolean().optional(),
   })

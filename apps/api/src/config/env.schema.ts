@@ -33,33 +33,30 @@ const commaSeparated = z
   )
   .pipe(z.array(httpUrl).min(1, 'Indica al menos un origen permitido.'));
 
-export const envSchema = z
-  .object({
-    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-    PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-    APP_TIMEZONE: z.string().min(1).default('America/Bogota'),
+export const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  APP_TIMEZONE: z.string().min(1).default('America/Bogota'),
 
-    DATABASE_URL: z
-      .string()
-      .startsWith('postgresql://', 'DATABASE_URL debe ser una URL de PostgreSQL.'),
+  DATABASE_URL: z
+    .string()
+    .startsWith('postgresql://', 'DATABASE_URL debe ser una URL de PostgreSQL.'),
 
-    JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
-    REFRESH_TOKEN_PEPPER: secret('REFRESH_TOKEN_PEPPER'),
+  JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
+  REFRESH_TOKEN_PEPPER: secret('REFRESH_TOKEN_PEPPER'),
 
-    CORS_ORIGINS: commaSeparated,
-    PUBLIC_WEB_URL: httpUrl,
+  CORS_ORIGINS: commaSeparated,
+  PUBLIC_WEB_URL: httpUrl,
 
-    /** Fecha fija de «hoy» para el seed y las pruebas deterministas (08 §3). */
-    SEED_TODAY: z
-      .string()
-      .regex(/^\d{4}-\d{2}-\d{2}$/, 'SEED_TODAY debe tener el formato AAAA-MM-DD.')
-      .optional(),
+  /** Fecha fija de «hoy» para el seed y las pruebas deterministas (08 §3). */
+  SEED_TODAY: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'SEED_TODAY debe tener el formato AAAA-MM-DD.')
+    .optional(),
 
-    // `silent` apaga el log por completo; lo usan las pruebas.
-    LOG_LEVEL: z
-      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
-      .default('info'),
-  });
+  // `silent` apaga el log por completo; lo usan las pruebas.
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
+});
 
 /** Entorno validado. */
 export type Env = z.infer<typeof envSchema>;

@@ -97,6 +97,23 @@ export class ProblemJsonFilter implements ExceptionFilter {
       };
     }
 
+    // Errores de Fastify y sus complementos (límite de peticiones, cuerpo ilegible, cuerpo
+    // demasiado grande). No son `HttpException`, pero traen su estado: sin este caso, un
+    // 429 del limitador llegaría al cliente como un 500 sin código útil.
+    const status = fastifyStatus(exception);
+    if (status !== null && status < 500) {
+      const code = codeForStatus(status);
+      return {
+        type: problemTypeFor(code),
+        title: titleFor(status),
+        status,
+        detail: errorDetail(code),
+        code,
+        instance,
+        ...(requestId === undefined ? {} : { requestId }),
+      };
+    }
+
     return {
       type: problemTypeFor('INTERNAL_ERROR'),
       title: titleFor(500),
@@ -107,6 +124,15 @@ export class ProblemJsonFilter implements ExceptionFilter {
       ...(requestId === undefined ? {} : { requestId }),
     };
   }
+}
+
+/** Estado HTTP de un error de Fastify, que lo lleva en `statusCode`. */
+function fastifyStatus(exception: unknown): number | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const { statusCode } = exception as { statusCode?: unknown };
+  return typeof statusCode === 'number' && statusCode >= 400 && statusCode <= 599
+    ? statusCode
+    : null;
 }
 
 /** Código del catálogo que corresponde a un estado HTTP de NestJS. */

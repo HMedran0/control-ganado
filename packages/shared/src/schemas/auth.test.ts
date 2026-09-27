@@ -40,9 +40,9 @@ describe('loginSchema', () => {
   });
 
   it('acepta una finca opcional y la exige como UUID', () => {
-    expect(
-      loginSchema.safeParse({ login: 'a', password: 'b', farmId: 'no-es-uuid' }).success,
-    ).toBe(false);
+    expect(loginSchema.safeParse({ login: 'a', password: 'b', farmId: 'no-es-uuid' }).success).toBe(
+      false,
+    );
   });
 });
 
@@ -70,7 +70,9 @@ describe('changePasswordSchema', () => {
 
 describe('createUserSchema', () => {
   it('deja el correo en nulo cuando no viene o viene vacío (08 §1.8)', () => {
-    expect(createUserSchema.parse({ name: 'Wilmer Ortega', username: 'wilmer', role: 'OPERATOR' }).email).toBeNull();
+    expect(
+      createUserSchema.parse({ name: 'Wilmer Ortega', username: 'wilmer', role: 'OPERATOR' }).email,
+    ).toBeNull();
     expect(
       createUserSchema.parse({
         name: 'Wilmer Ortega',

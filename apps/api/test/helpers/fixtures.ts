@@ -122,6 +122,7 @@ export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.breed.deleteMany();
   await prisma.importBatch.deleteMany();
   await prisma.refreshToken.deleteMany();
+  await prisma.loginAttempt.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
   await prisma.farm.deleteMany();

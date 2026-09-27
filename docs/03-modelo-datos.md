@@ -45,7 +45,9 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
 
 **Membership** — relación usuario–finca con rol. `id, user_id, farm_id, role (ADMIN|OPERATOR|VET), is_active`. Único (`user_id`, `farm_id`).
 
-**RefreshToken** — `id, user_id, token_hash, family_id, expires_at, revoked_at, created_at, user_agent`. La rotación usa `family_id` para detectar reutilización y revocar toda la familia.
+**RefreshToken** — `id, user_id, farm_id, token_hash, family_id, expires_at, revoked_at, created_at, user_agent`. La rotación usa `family_id` para detectar reutilización y revocar toda la familia. `farm_id` es la finca activa de la sesión: la rotación la conserva, de modo que renovar el token no devuelve al usuario a su finca por defecto (M1, ADR-007).
+
+**LoginAttempt** — intentos de inicio de sesión, para el bloqueo de AUT-01 CA3. `id bigserial, login, ip, succeeded, created_at`. No tiene `farm_id`: el intento ocurre antes de saber quién escribe, e incluso antes de saber si el usuario existe. El bloqueo **no se almacena**, se deduce de estas filas: cinco fallos en los 15 minutos anteriores al último fallo bloquean hasta *último fallo + 15 min*; un ingreso exitoso reinicia el conteo (ADR-007). Guarda direcciones IP, que son dato personal: las filas de más de 30 días se borran al arrancar la API. Índices: (`login`, `created_at`), (`ip`, `created_at`), (`created_at`).
 
 ### 2.2 Catálogos
 
