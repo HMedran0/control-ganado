@@ -106,8 +106,12 @@ export default defineConfig({
     },
     {
       command: 'node node_modules/vite/bin/vite.js',
+      // También apunta a la API de las pruebas: /dev/ui restaura la sesión al cargar, y sin
+      // una API en el destino del proxy la página no termina de pintar.
+      env: { API_PROXY_TARGET: API_URL },
       url: DEV_URL,
-      reuseExistingServer: !CI,
+      // Un `pnpm dev` ya levantado reenviaría /api a la API de desarrollo: no se reutiliza.
+      reuseExistingServer: false,
       stdout: 'pipe',
       timeout: 60_000,
       gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
