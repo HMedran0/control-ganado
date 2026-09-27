@@ -95,6 +95,16 @@ jobs:
       - name: Seed de la finca de referencia
         run: pnpm db:seed
 
+      # RNF-01: 5.000 animales y 50.000 eventos en una finca aparte, y las pruebas de
+      # rendimiento de búsqueda y listado sobre ella. En la integración continua solo reportan
+      # los tiempos (resumen del job y anotaciones): el runner compartido no es el servidor de
+      # la finca. El umbral se aplica al correrlas en local.
+      - name: Seed de carga
+        run: pnpm db:seed:load
+
+      - name: Rendimiento (RNF-01)
+        run: pnpm --filter @hato/api test:perf
+
       - name: Build
         run: pnpm build
 

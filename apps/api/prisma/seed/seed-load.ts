@@ -22,6 +22,8 @@ import {
   compareIsoDates,
   defaultGestationDaysForGroup,
   EXIT_TYPE,
+  IDENTIFIER_RETIRE_REASON,
+  IDENTIFIER_TYPE,
   nextDueOnFromInterval,
   ORIGIN,
   PREGNANCY_OUTCOME,
@@ -30,6 +32,8 @@ import {
   SEX,
   VACCINE_SCHEDULE_TYPE,
   WEIGHT_METHOD,
+  type IdentifierRetireReason,
+  type IdentifierType,
   type IsoDate,
 } from '@hato/shared';
 
@@ -51,6 +55,43 @@ const SIZE = {
 
 /** Eventos totales: 50.000. */
 const TOTAL_EVENTS = SIZE.vaccinations + SIZE.weights + SIZE.pregnancies + SIZE.treatments;
+
+/**
+ * Nombres para uno de cada cinco animales, para que la búsqueda difusa por nombre tenga dónde
+ * buscar. Se eligen por el índice, sin consumir el generador aleatorio: así los eventos que
+ * vienen después no cambian respecto a versiones anteriores del seed.
+ */
+const NAMES = [
+  'Lucero',
+  'Canela',
+  'Palomo',
+  'Manchas',
+  'Estrella',
+  'Bonita',
+  'Sultán',
+  'Faraón',
+  'Pinta',
+  'Gitana',
+  'Mariposa',
+  'Paloma',
+  'Negrita',
+  'Morena',
+  'Clavel',
+  'Azucena',
+] as const;
+
+/** Identificador tal como se inserta. */
+type IdentifierRow = {
+  readonly id: string;
+  readonly farmId: string;
+  readonly animalId: string;
+  readonly type: IdentifierType;
+  readonly value: string;
+  readonly assignedAt: Date;
+  readonly createdAt: Date;
+  readonly retiredAt?: Date;
+  readonly retireReason?: IdentifierRetireReason;
+};
 
 /** Filas por inserción. Más grande no acelera y hace los mensajes de error inmanejables. */
 const CHUNK = 1_000;
@@ -184,6 +225,8 @@ async function main(): Promise<void> {
         origin: ORIGIN.BORN_ON_FARM,
         entryDate: day(birthDate),
         lotId,
+        name:
+          index % 5 === 0 ? `${NAMES[index % NAMES.length] ?? 'Sin nombre'} ${index + 1}` : null,
         forSale: random.chance(0.05),
         exitType: exited ? EXIT_TYPE.SALE : null,
         exitDate: exited ? day(addDays(today, -random.int(1, 400))) : null,
@@ -313,6 +356,51 @@ async function main(): Promise<void> {
     });
     await inChunks(treatments, (chunk) => prisma.treatmentRecord.createMany({ data: chunk }));
     clock.lap('tratamientos', treatments.length);
+
+    // --- Identificadores (ANI-05) ---
+    // Chapeta para todos, RFID para 6 de cada 10, DIN para 4 de cada 10 y un RFID anterior,
+    // retirado por pérdida, para 1 de cada 50. Derivados del índice, como los nombres.
+    const identifiers = animals.flatMap((animal, index) => {
+      const serial = String(index + 1).padStart(12, '0');
+      const base = {
+        farmId,
+        animalId: animal.id,
+        assignedAt: animal.birthDate,
+        createdAt,
+      };
+      const rows: IdentifierRow[] = [
+        {
+          ...base,
+          id: ids.next(),
+          type: IDENTIFIER_TYPE.VISUAL_TAG,
+          value: String(index + 1).padStart(5, '0'),
+        },
+      ];
+      if (index % 10 < 6) {
+        rows.push({ ...base, id: ids.next(), type: IDENTIFIER_TYPE.RFID, value: `170${serial}` });
+      }
+      if (index % 10 < 4) {
+        rows.push({
+          ...base,
+          id: ids.next(),
+          type: IDENTIFIER_TYPE.DIN,
+          value: `CO13657${serial.slice(-6)}`,
+        });
+      }
+      if (index % 50 === 0) {
+        rows.push({
+          ...base,
+          id: ids.next(),
+          type: IDENTIFIER_TYPE.RFID,
+          value: `982${serial}`,
+          retiredAt: day(today),
+          retireReason: IDENTIFIER_RETIRE_REASON.LOST,
+        });
+      }
+      return rows;
+    });
+    await inChunks(identifiers, (chunk) => prisma.identifier.createMany({ data: chunk }));
+    clock.lap('identificadores', identifiers.length);
 
     const events = vaccinations.length + weights.length + pregnancies.length + treatments.length;
     write(

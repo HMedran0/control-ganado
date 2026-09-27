@@ -20,6 +20,7 @@
     "src/**/*.ts",
     "test/**/*.ts",
     "vitest.config.ts",
+    "vitest.perf.config.ts",
     "prisma.config.ts",
     "prisma/seed/**/*.ts"
   ],

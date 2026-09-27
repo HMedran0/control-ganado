@@ -41,7 +41,8 @@ Desde la raíz del monorepo:
 | `pnpm db:migrate` | `prisma migrate dev`: crea y aplica una migración nueva. |
 | `pnpm db:reset` | **Borra y recrea la base**, aplica las migraciones y corre el seed. Solo en desarrollo. |
 | `pnpm db:seed` | Carga la finca de referencia (08 §3): 297 animales, 284 activos, historial 2024–2026. Necesita `SEED_PASSWORD`. Se puede repetir: borra su finca antes de sembrarla. |
-| `pnpm db:seed:load` | Carga 5.000 animales y 50.000 eventos en una finca aparte, para las pruebas de rendimiento (RNF-01). Muestra el tiempo por etapa. |
+| `pnpm db:seed:load` | Carga 5.000 animales y 50.000 eventos (más identificadores y nombres) en una finca aparte, para las pruebas de rendimiento (RNF-01). Muestra el tiempo por etapa. |
+| `pnpm --filter @hato/api test:perf` | Pruebas de rendimiento (RNF-01): p95 de búsqueda < 1 s y de listado filtrado < 2 s sobre la finca de carga en `hato_test`. Antes: `DATABASE_URL=$TEST_DATABASE_URL pnpm db:seed:load` (repetirlo después de `pnpm test`, que vacía esa base). En local aplica los umbrales; en CI solo reporta los tiempos en el resumen del job. |
 
 Por paquete: `pnpm --filter @hato/shared test:watch`, `pnpm --filter @hato/api typecheck`.
 
