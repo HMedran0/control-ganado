@@ -64,6 +64,33 @@
   --breakpoint-lg: 64rem; /* 1024 px: barra lateral */
 }
 
+/* Movimiento solo como respuesta a una acción (06 §3.4). `prefers-reduced-motion` lo anula
+   en la capa base. */
+@theme {
+  --animate-chapeta-entra: chapeta-entra 150ms ease-out;
+  --animate-aviso-sube: aviso-sube 200ms ease-out;
+  --animate-aviso-baja: aviso-baja 150ms ease-in forwards;
+
+  @keyframes chapeta-entra {
+    from {
+      opacity: 0;
+      transform: scale(0.85) translateY(6px);
+    }
+  }
+  @keyframes aviso-sube {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+  @keyframes aviso-baja {
+    to {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+  }
+}
+
 @layer base {
   html {
     background-color: var(--color-sabana);
