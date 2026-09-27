@@ -18,6 +18,7 @@
 import js from '@eslint/js';
 import prettier from 'eslint-config-prettier/flat';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 /** Rutas que nunca se revisan. */
@@ -32,6 +33,12 @@ export const ignores = [
   'docs/**',
   // Cliente de Prisma: código generado, se regenera con `pnpm db:generate`.
   '**/src/generated/**',
+  // Árbol de rutas de TanStack Router: lo genera el plugin de Vite.
+  '**/routeTree.gen.ts',
+  // Reportes y capturas de Playwright.
+  '**/playwright-report/**',
+  '**/test-results/**',
+  '**/e2e/capturas/**',
 ];
 
 /**
@@ -79,6 +86,22 @@ export function hato({ tsconfigRootDir }) {
         '@typescript-eslint/no-unused-vars': [
           'error',
           { argsIgnorePattern: '^_', varsIgnorePattern: '^_' },
+        ],
+      },
+    },
+
+    // Web (React): reglas de hooks y globales del navegador. Solo el código de `src/`: la
+    // configuración de Vite y las pruebas de extremo a extremo corren en Node.
+    {
+      files: ['apps/web/src/**/*.{ts,tsx}'],
+      extends: [reactHooks.configs.flat.recommended],
+      languageOptions: { globals: globals.browser },
+      rules: {
+        // TanStack Router corta una navegación lanzando `redirect()`, que no es un Error por
+        // diseño. Se permite ese tipo y solo ese; cualquier otro `throw` sigue exigiendo Error.
+        '@typescript-eslint/only-throw-error': [
+          'error',
+          { allow: [{ from: 'package', package: '@tanstack/router-core', name: 'Redirect' }] },
         ],
       },
     },

@@ -1,17 +1,7 @@
 {
-  // M2 cambiará la resolución a la de empaquetador cuando entre Vite.
-  "extends": "@hato/config/tsconfig/base.json",
-  "compilerOptions": {
-    "lib": ["es2023", "dom", "dom.iterable"],
-    "types": [],
-    // Resuelve @hato/shared a su código fuente (ADR-003); Vite lo empaqueta desde ahí.
-    "customConditions": ["development"],
-    "noEmit": true,
-    "declaration": false,
-    "declarationMap": false,
-    "sourceMap": false,
-    // La web se compila con Vite (transpilación por archivo): sin sintaxis no borrable.
-    "erasableSyntaxOnly": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  // Configuración «de solución»: el código del navegador y el que corre en Node (configuración
+  // de Vite, Vitest y Playwright, y las pruebas de extremo a extremo) tienen tipos globales
+  // distintos. Separarlos evita que `process` o `node:fs` compilen dentro de `src/`.
+  "files": [],
+  "references": [{ "path": "./tsconfig.app.json" }, { "path": "./tsconfig.node.json" }]
 }

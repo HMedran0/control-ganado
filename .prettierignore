@@ -5,6 +5,12 @@ coverage/
 .turbo/
 pnpm-lock.yaml
 
+# Generados: árbol de rutas de TanStack Router y salidas de Playwright.
+**/routeTree.gen.ts
+playwright-report/
+test-results/
+apps/web/e2e/capturas/
+
 # Especificación de partida: se mantiene tal como fue escrita.
 # Los ADR de docs/adr/ sí se formatean.
 docs/*.md

@@ -1,0 +1,20 @@
+{
+  "extends": "@hato/config/tsconfig/base.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom", "dom.iterable"],
+    // Vite empaqueta: resolución de empaquetador y JSX automático de React.
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    // Resuelve @hato/shared a su código fuente (ADR-003); Vite lo empaqueta desde ahí.
+    "customConditions": ["development"],
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    // Vite transpila archivo por archivo: sin sintaxis que no se pueda borrar.
+    "erasableSyntaxOnly": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx"]
+}

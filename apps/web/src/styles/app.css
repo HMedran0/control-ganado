@@ -1,0 +1,90 @@
+/*
+ * Hoja de estilos de la aplicación: fuentes locales, Tailwind y estilos base.
+ *
+ * Tailwind 4 se configura en CSS, no en `tailwind.config` (desviación aprobada en M2a respecto
+ * a 06-ux-ui.md §6): el bloque `@theme inline` de abajo asigna cada token de `tokens.css` a
+ * una clase. `inline` hace que la clase use `var(--token)` directamente, de modo que el valor
+ * vive en un solo lugar.
+ */
+
+/* Fuentes servidas por el propio proyecto (06 §3.3), solo el subconjunto latino: cubre el
+   español completo (á, é, ñ, ¿, ¡) sin descargar alfabetos que no se usan. */
+@import '@fontsource/atkinson-hyperlegible/latin-400.css';
+@import '@fontsource/atkinson-hyperlegible/latin-700.css';
+@import '@fontsource/barlow-condensed/latin-600.css';
+
+@import 'tailwindcss';
+@import './tokens.css';
+
+@theme inline {
+  /* Solo la paleta de Hato: sin los colores por defecto de Tailwind, nadie puede usar por
+     descuido un gris que no cumpla el contraste a pleno sol. */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+  --color-monte: var(--color-monte);
+  --color-sabana: var(--color-sabana);
+  --color-superficie: var(--color-superficie);
+  --color-potrero: var(--color-potrero);
+  --color-potrero-claro: var(--color-potrero-claro);
+  --color-chapeta: var(--color-chapeta);
+  --color-cerca: var(--color-cerca);
+  --color-texto-2: var(--color-texto-2);
+  --color-alerta: var(--color-alerta);
+  --color-aviso: var(--color-aviso);
+  --color-info: var(--color-info);
+
+  --font-sans: var(--font-interfaz);
+  --font-cifras: var(--font-cifras);
+
+  --text-aux: var(--font-size-aux);
+  --text-base: var(--font-size-base);
+  --text-md: var(--font-size-md);
+  --text-lg: var(--font-size-lg);
+  --text-xl: var(--font-size-xl);
+  --text-cifra: var(--font-size-cifra);
+  --text-cifra--line-height: var(--line-height-cifras);
+
+  --radius-control: var(--radius-control);
+  --radius-panel: var(--radius-panel);
+
+  --spacing-touch: var(--touch-min);
+  --spacing-touch-primary: var(--touch-primary);
+
+  --breakpoint-md: 48rem; /* 768 px, 06 §9 */
+  --breakpoint-lg: 64rem; /* 1024 px: barra lateral */
+}
+
+@layer base {
+  html {
+    background-color: var(--color-sabana);
+    color: var(--color-monte);
+    font-family: var(--font-interfaz);
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: var(--font-size-base);
+    line-height: var(--line-height-texto);
+    min-height: 100dvh;
+  }
+
+  /* Foco visible de 3 px en potrero (06 §8). Solo con teclado: el dedo no lo necesita. */
+  :focus-visible {
+    outline: var(--focus-ring-width) solid var(--color-potrero);
+    outline-offset: 2px;
+  }
+
+  /* 06 §3.4: el movimiento responde a una acción; quien lo desactiva no lo ve. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

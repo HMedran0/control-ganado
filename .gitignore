@@ -20,6 +20,11 @@ apps/api/src/generated/
 .turbo/
 .eslintcache
 coverage/
+
+# Playwright: reportes, resultados y capturas (las capturas se publican como artefacto de CI)
+playwright-report/
+test-results/
+apps/web/e2e/capturas/
 *.log
 npm-debug.log*
 pnpm-debug.log*
