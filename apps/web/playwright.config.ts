@@ -46,20 +46,27 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 1280, height: 800 } },
     },
   ],
+  // Los servidores se lanzan con `node` directamente, sin `pnpm` de por medio. En Linux, pnpm
+  // deja el proceso de Node fuera del grupo que Playwright detiene al terminar, y la corrida se
+  // quedaba esperando el cierre hasta agotar el tiempo aunque todas las pruebas hubieran pasado.
+  // Se detienen con SIGTERM: la API cierra ordenadamente (`enableShutdownHooks`).
   webServer: [
     {
-      command: 'pnpm --filter @hato/api start',
+      command: 'node dist/main.js',
+      cwd: fileURLToPath(new URL('../api', import.meta.url)),
       url: `${API_URL}/api/v1/health`,
       reuseExistingServer: !CI,
       stdout: 'pipe',
       timeout: 120_000,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
     {
-      command: 'pnpm --filter @hato/web preview',
+      command: 'node node_modules/vite/bin/vite.js preview',
       url: WEB_URL,
       reuseExistingServer: !CI,
       stdout: 'pipe',
       timeout: 60_000,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
     },
   ],
 });
