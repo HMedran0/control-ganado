@@ -10,6 +10,8 @@ export type TextFieldProps = ComponentProps<'input'> & {
   readonly hint?: ReactNode;
   /** Control dentro del campo, a la derecha (por ejemplo, mostrar la contraseña). */
   readonly trailing?: ReactNode;
+  /** Contenido dentro del campo, a la izquierda (por ejemplo, el signo de pesos). */
+  readonly leading?: ReactNode;
 };
 
 /** Campo de texto con etiqueta, ayuda y error enlazados para lectores de pantalla. */
@@ -18,6 +20,7 @@ export function TextField({
   error,
   hint,
   trailing,
+  leading,
   id,
   className = '',
   ...input
@@ -34,13 +37,18 @@ export function TextField({
         {label}
       </label>
       <div className="relative">
+        {leading === undefined ? null : (
+          <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+            {leading}
+          </div>
+        )}
         <input
           id={inputId}
           aria-invalid={error === undefined ? undefined : true}
           aria-describedby={describedBy}
           // Borde en texto-2: los bordes de un control necesitan 3:1 de contraste (WCAG 1.4.11),
           // y el gris de las cercas no los alcanza.
-          className={`min-h-touch w-full rounded-control border-2 border-texto-2 bg-superficie px-3 text-base text-monte aria-invalid:border-alerta ${trailing === undefined ? '' : 'pr-14'} ${className}`}
+          className={`min-h-touch w-full rounded-control border-2 border-texto-2 bg-superficie px-3 text-base text-monte aria-invalid:border-alerta ${trailing === undefined ? '' : 'pr-14'} ${leading === undefined ? '' : 'pl-9'} ${className}`}
           {...input}
         />
         {trailing === undefined ? null : (
