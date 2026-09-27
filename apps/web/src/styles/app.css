@@ -34,6 +34,14 @@
   --color-alerta: var(--color-alerta);
   --color-aviso: var(--color-aviso);
   --color-info: var(--color-info);
+  --color-info-claro: var(--color-info-claro);
+  --color-alerta-claro: var(--color-alerta-claro);
+  --color-aviso-claro: var(--color-aviso-claro);
+  --color-neutro-claro: var(--color-neutro-claro);
+  --color-alerta-intenso: var(--color-alerta-intenso);
+  --color-aviso-intenso: var(--color-aviso-intenso);
+  --color-info-intenso: var(--color-info-intenso);
+  --color-chapeta-borde: var(--color-chapeta-borde);
 
   --font-sans: var(--font-interfaz);
   --font-cifras: var(--font-cifras);

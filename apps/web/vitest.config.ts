@@ -14,5 +14,7 @@ export default defineConfig({
     include: ['src/**/*.test.{ts,tsx}'],
     setupFiles: ['./src/test/setup.ts'],
     restoreMocks: true,
+    // Vitest cambia el CSS por texto vacío; tokens.test.ts lee los colores de tokens.css.
+    css: { include: [/tokens\.css/] },
   },
 });

@@ -20,6 +20,23 @@
   --color-aviso: #9a4b00; /* próximo a vencer, advertencias */
   --color-info: #1d4e89; /* información neutra, preñez */
 
+  /* Tintes para Tag y AlertBanner (M2b, tomados del prototipo). Fondo claro del color
+     semántico; el texto va en el tono del mismo color. Los contrastes los exige
+     tokens.test.ts: 4,5:1 para el texto de Tag y 7:1 para el texto principal. */
+  --color-info-claro: #e3ebf5;
+  --color-alerta-claro: #fcebea;
+  --color-aviso-claro: #fbefe3;
+  --color-neutro-claro: #e8ebe4;
+
+  /* Tonos intensos para el texto principal sobre los tintes: con el tono base no se llega a
+     7:1 (el rojo de alerta ni siquiera lo alcanza sobre blanco). */
+  --color-alerta-intenso: #8e1b12;
+  --color-aviso-intenso: #6e3500;
+  --color-info-intenso: #173f70;
+
+  /* Borde de la chapeta (docs/referencia/prototipo/LEEME.md). */
+  --color-chapeta-borde: #c99e00;
+
   /* §3.3 Tipografía */
   --font-interfaz: 'Atkinson Hyperlegible', system-ui, sans-serif;
   --font-cifras: 'Barlow Condensed', 'Arial Narrow', sans-serif;
