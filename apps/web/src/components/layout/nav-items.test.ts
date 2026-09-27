@@ -18,12 +18,24 @@ describe('navegación por rol', () => {
     );
   });
 
-  it.each(['OPERATOR', 'VET'] as const)('%s no ve Finanzas ni Configuración', (role) => {
+  it('OPERATOR no ve Finanzas ni Configuración', () => {
     for (const items of [SIDEBAR_NAV, MORE_NAV, BOTTOM_NAV]) {
-      const visible = labels(visibleFor(items, role));
+      const visible = labels(visibleFor(items, 'OPERATOR'));
       expect(visible).not.toContain('Finanzas');
       expect(visible).not.toContain('Configuración');
     }
-    expect(labels(visibleFor(MORE_NAV, role))).toEqual(['Jornadas', 'Reportes', 'Mi cuenta']);
+    expect(labels(visibleFor(MORE_NAV, 'OPERATOR'))).toEqual(['Jornadas', 'Reportes', 'Mi cuenta']);
+  });
+
+  it('VET ve Configuración (para el catálogo de vacunas), pero no Finanzas', () => {
+    const visible = labels(visibleFor(SIDEBAR_NAV, 'VET'));
+    expect(visible).toContain('Configuración');
+    expect(visible).not.toContain('Finanzas');
+    expect(labels(visibleFor(MORE_NAV, 'VET'))).toEqual([
+      'Jornadas',
+      'Reportes',
+      'Configuración',
+      'Mi cuenta',
+    ]);
   });
 });

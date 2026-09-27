@@ -20,9 +20,28 @@ import { Route as AppFinanceRouteImport } from './routes/_app/finance'
 import { Route as AppMoreRouteImport } from './routes/_app/more'
 import { Route as AppRecordRouteImport } from './routes/_app/record'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
-import { Route as AppSettingsRouteImport } from './routes/_app/settings'
 import { Route as AppWorkSessionsRouteImport } from './routes/_app/work-sessions'
 import { Route as DevUiRouteImport } from './routes/dev.ui'
+import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
+import { Route as AppSettingsFarmRouteImport } from './routes/_app/settings/farm'
+import { Route as AppSettingsBreedsIndexRouteImport } from './routes/_app/settings/breeds/index'
+import { Route as AppSettingsBreedsIdRouteImport } from './routes/_app/settings/breeds/$id'
+import { Route as AppSettingsBreedsNewRouteImport } from './routes/_app/settings/breeds/new'
+import { Route as AppSettingsCyclesIndexRouteImport } from './routes/_app/settings/cycles/index'
+import { Route as AppSettingsCyclesIdRouteImport } from './routes/_app/settings/cycles/$id'
+import { Route as AppSettingsCyclesNewRouteImport } from './routes/_app/settings/cycles/new'
+import { Route as AppSettingsLotsIndexRouteImport } from './routes/_app/settings/lots/index'
+import { Route as AppSettingsLotsIdRouteImport } from './routes/_app/settings/lots/$id'
+import { Route as AppSettingsLotsNewRouteImport } from './routes/_app/settings/lots/new'
+import { Route as AppSettingsTagsIndexRouteImport } from './routes/_app/settings/tags/index'
+import { Route as AppSettingsTagsIdRouteImport } from './routes/_app/settings/tags/$id'
+import { Route as AppSettingsTagsNewRouteImport } from './routes/_app/settings/tags/new'
+import { Route as AppSettingsUsersIndexRouteImport } from './routes/_app/settings/users/index'
+import { Route as AppSettingsUsersIdRouteImport } from './routes/_app/settings/users/$id'
+import { Route as AppSettingsUsersNewRouteImport } from './routes/_app/settings/users/new'
+import { Route as AppSettingsVaccinesIndexRouteImport } from './routes/_app/settings/vaccines/index'
+import { Route as AppSettingsVaccinesIdRouteImport } from './routes/_app/settings/vaccines/$id'
+import { Route as AppSettingsVaccinesNewRouteImport } from './routes/_app/settings/vaccines/new'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -78,11 +97,6 @@ const AppReportsRoute = AppReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AppRoute,
 } as any)
-const AppSettingsRoute = AppSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppWorkSessionsRoute = AppWorkSessionsRouteImport.update({
   id: '/work-sessions',
   path: '/work-sessions',
@@ -92,6 +106,107 @@ const DevUiRoute = DevUiRouteImport.update({
   id: '/dev/ui',
   path: '/dev/ui',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
+  id: '/settings/',
+  path: '/settings/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsFarmRoute = AppSettingsFarmRouteImport.update({
+  id: '/settings/farm',
+  path: '/settings/farm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsBreedsIndexRoute = AppSettingsBreedsIndexRouteImport.update({
+  id: '/settings/breeds/',
+  path: '/settings/breeds/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsBreedsIdRoute = AppSettingsBreedsIdRouteImport.update({
+  id: '/settings/breeds/$id',
+  path: '/settings/breeds/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsBreedsNewRoute = AppSettingsBreedsNewRouteImport.update({
+  id: '/settings/breeds/new',
+  path: '/settings/breeds/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsCyclesIndexRoute = AppSettingsCyclesIndexRouteImport.update({
+  id: '/settings/cycles/',
+  path: '/settings/cycles/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsCyclesIdRoute = AppSettingsCyclesIdRouteImport.update({
+  id: '/settings/cycles/$id',
+  path: '/settings/cycles/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsCyclesNewRoute = AppSettingsCyclesNewRouteImport.update({
+  id: '/settings/cycles/new',
+  path: '/settings/cycles/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsLotsIndexRoute = AppSettingsLotsIndexRouteImport.update({
+  id: '/settings/lots/',
+  path: '/settings/lots/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsLotsIdRoute = AppSettingsLotsIdRouteImport.update({
+  id: '/settings/lots/$id',
+  path: '/settings/lots/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsLotsNewRoute = AppSettingsLotsNewRouteImport.update({
+  id: '/settings/lots/new',
+  path: '/settings/lots/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsTagsIndexRoute = AppSettingsTagsIndexRouteImport.update({
+  id: '/settings/tags/',
+  path: '/settings/tags/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsTagsIdRoute = AppSettingsTagsIdRouteImport.update({
+  id: '/settings/tags/$id',
+  path: '/settings/tags/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsTagsNewRoute = AppSettingsTagsNewRouteImport.update({
+  id: '/settings/tags/new',
+  path: '/settings/tags/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsUsersIndexRoute = AppSettingsUsersIndexRouteImport.update({
+  id: '/settings/users/',
+  path: '/settings/users/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsUsersIdRoute = AppSettingsUsersIdRouteImport.update({
+  id: '/settings/users/$id',
+  path: '/settings/users/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsUsersNewRoute = AppSettingsUsersNewRouteImport.update({
+  id: '/settings/users/new',
+  path: '/settings/users/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsVaccinesIndexRoute =
+  AppSettingsVaccinesIndexRouteImport.update({
+    id: '/settings/vaccines/',
+    path: '/settings/vaccines/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppSettingsVaccinesIdRoute = AppSettingsVaccinesIdRouteImport.update({
+  id: '/settings/vaccines/$id',
+  path: '/settings/vaccines/$id',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsVaccinesNewRoute = AppSettingsVaccinesNewRouteImport.update({
+  id: '/settings/vaccines/new',
+  path: '/settings/vaccines/new',
+  getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -105,9 +220,28 @@ export interface FileRoutesByFullPath {
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/reports': typeof AppReportsRoute
-  '/settings': typeof AppSettingsRoute
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
+  '/settings/farm': typeof AppSettingsFarmRoute
+  '/settings/': typeof AppSettingsIndexRoute
+  '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
+  '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
+  '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
+  '/settings/cycles/new': typeof AppSettingsCyclesNewRoute
+  '/settings/lots/$id': typeof AppSettingsLotsIdRoute
+  '/settings/lots/new': typeof AppSettingsLotsNewRoute
+  '/settings/tags/$id': typeof AppSettingsTagsIdRoute
+  '/settings/tags/new': typeof AppSettingsTagsNewRoute
+  '/settings/users/$id': typeof AppSettingsUsersIdRoute
+  '/settings/users/new': typeof AppSettingsUsersNewRoute
+  '/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
+  '/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/settings/breeds/': typeof AppSettingsBreedsIndexRoute
+  '/settings/cycles/': typeof AppSettingsCyclesIndexRoute
+  '/settings/lots/': typeof AppSettingsLotsIndexRoute
+  '/settings/tags/': typeof AppSettingsTagsIndexRoute
+  '/settings/users/': typeof AppSettingsUsersIndexRoute
+  '/settings/vaccines/': typeof AppSettingsVaccinesIndexRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
@@ -119,10 +253,29 @@ export interface FileRoutesByTo {
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/reports': typeof AppReportsRoute
-  '/settings': typeof AppSettingsRoute
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/': typeof AppIndexRoute
+  '/settings/farm': typeof AppSettingsFarmRoute
+  '/settings': typeof AppSettingsIndexRoute
+  '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
+  '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
+  '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
+  '/settings/cycles/new': typeof AppSettingsCyclesNewRoute
+  '/settings/lots/$id': typeof AppSettingsLotsIdRoute
+  '/settings/lots/new': typeof AppSettingsLotsNewRoute
+  '/settings/tags/$id': typeof AppSettingsTagsIdRoute
+  '/settings/tags/new': typeof AppSettingsTagsNewRoute
+  '/settings/users/$id': typeof AppSettingsUsersIdRoute
+  '/settings/users/new': typeof AppSettingsUsersNewRoute
+  '/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
+  '/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/settings/breeds': typeof AppSettingsBreedsIndexRoute
+  '/settings/cycles': typeof AppSettingsCyclesIndexRoute
+  '/settings/lots': typeof AppSettingsLotsIndexRoute
+  '/settings/tags': typeof AppSettingsTagsIndexRoute
+  '/settings/users': typeof AppSettingsUsersIndexRoute
+  '/settings/vaccines': typeof AppSettingsVaccinesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -136,10 +289,29 @@ export interface FileRoutesById {
   '/_app/more': typeof AppMoreRoute
   '/_app/record': typeof AppRecordRoute
   '/_app/reports': typeof AppReportsRoute
-  '/_app/settings': typeof AppSettingsRoute
   '/_app/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/settings/farm': typeof AppSettingsFarmRoute
+  '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
+  '/_app/settings/breeds/new': typeof AppSettingsBreedsNewRoute
+  '/_app/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
+  '/_app/settings/cycles/new': typeof AppSettingsCyclesNewRoute
+  '/_app/settings/lots/$id': typeof AppSettingsLotsIdRoute
+  '/_app/settings/lots/new': typeof AppSettingsLotsNewRoute
+  '/_app/settings/tags/$id': typeof AppSettingsTagsIdRoute
+  '/_app/settings/tags/new': typeof AppSettingsTagsNewRoute
+  '/_app/settings/users/$id': typeof AppSettingsUsersIdRoute
+  '/_app/settings/users/new': typeof AppSettingsUsersNewRoute
+  '/_app/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
+  '/_app/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/_app/settings/breeds/': typeof AppSettingsBreedsIndexRoute
+  '/_app/settings/cycles/': typeof AppSettingsCyclesIndexRoute
+  '/_app/settings/lots/': typeof AppSettingsLotsIndexRoute
+  '/_app/settings/tags/': typeof AppSettingsTagsIndexRoute
+  '/_app/settings/users/': typeof AppSettingsUsersIndexRoute
+  '/_app/settings/vaccines/': typeof AppSettingsVaccinesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -154,9 +326,28 @@ export interface FileRouteTypes {
     | '/more'
     | '/record'
     | '/reports'
-    | '/settings'
     | '/work-sessions'
     | '/dev/ui'
+    | '/settings/farm'
+    | '/settings/'
+    | '/settings/breeds/$id'
+    | '/settings/breeds/new'
+    | '/settings/cycles/$id'
+    | '/settings/cycles/new'
+    | '/settings/lots/$id'
+    | '/settings/lots/new'
+    | '/settings/tags/$id'
+    | '/settings/tags/new'
+    | '/settings/users/$id'
+    | '/settings/users/new'
+    | '/settings/vaccines/$id'
+    | '/settings/vaccines/new'
+    | '/settings/breeds/'
+    | '/settings/cycles/'
+    | '/settings/lots/'
+    | '/settings/tags/'
+    | '/settings/users/'
+    | '/settings/vaccines/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/change-password'
@@ -168,10 +359,29 @@ export interface FileRouteTypes {
     | '/more'
     | '/record'
     | '/reports'
-    | '/settings'
     | '/work-sessions'
     | '/dev/ui'
     | '/'
+    | '/settings/farm'
+    | '/settings'
+    | '/settings/breeds/$id'
+    | '/settings/breeds/new'
+    | '/settings/cycles/$id'
+    | '/settings/cycles/new'
+    | '/settings/lots/$id'
+    | '/settings/lots/new'
+    | '/settings/tags/$id'
+    | '/settings/tags/new'
+    | '/settings/users/$id'
+    | '/settings/users/new'
+    | '/settings/vaccines/$id'
+    | '/settings/vaccines/new'
+    | '/settings/breeds'
+    | '/settings/cycles'
+    | '/settings/lots'
+    | '/settings/tags'
+    | '/settings/users'
+    | '/settings/vaccines'
   id:
     | '__root__'
     | '/_app'
@@ -184,10 +394,29 @@ export interface FileRouteTypes {
     | '/_app/more'
     | '/_app/record'
     | '/_app/reports'
-    | '/_app/settings'
     | '/_app/work-sessions'
     | '/dev/ui'
     | '/_app/'
+    | '/_app/settings/farm'
+    | '/_app/settings/'
+    | '/_app/settings/breeds/$id'
+    | '/_app/settings/breeds/new'
+    | '/_app/settings/cycles/$id'
+    | '/_app/settings/cycles/new'
+    | '/_app/settings/lots/$id'
+    | '/_app/settings/lots/new'
+    | '/_app/settings/tags/$id'
+    | '/_app/settings/tags/new'
+    | '/_app/settings/users/$id'
+    | '/_app/settings/users/new'
+    | '/_app/settings/vaccines/$id'
+    | '/_app/settings/vaccines/new'
+    | '/_app/settings/breeds/'
+    | '/_app/settings/cycles/'
+    | '/_app/settings/lots/'
+    | '/_app/settings/tags/'
+    | '/_app/settings/users/'
+    | '/_app/settings/vaccines/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -276,13 +505,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/settings': {
-      id: '/_app/settings'
-      path: '/settings'
-      fullPath: '/settings'
-      preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/work-sessions': {
       id: '/_app/work-sessions'
       path: '/work-sessions'
@@ -297,6 +519,146 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/settings/': {
+      id: '/_app/settings/'
+      path: '/settings'
+      fullPath: '/settings/'
+      preLoaderRoute: typeof AppSettingsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/farm': {
+      id: '/_app/settings/farm'
+      path: '/settings/farm'
+      fullPath: '/settings/farm'
+      preLoaderRoute: typeof AppSettingsFarmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/breeds/': {
+      id: '/_app/settings/breeds/'
+      path: '/settings/breeds'
+      fullPath: '/settings/breeds/'
+      preLoaderRoute: typeof AppSettingsBreedsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/breeds/$id': {
+      id: '/_app/settings/breeds/$id'
+      path: '/settings/breeds/$id'
+      fullPath: '/settings/breeds/$id'
+      preLoaderRoute: typeof AppSettingsBreedsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/breeds/new': {
+      id: '/_app/settings/breeds/new'
+      path: '/settings/breeds/new'
+      fullPath: '/settings/breeds/new'
+      preLoaderRoute: typeof AppSettingsBreedsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/cycles/': {
+      id: '/_app/settings/cycles/'
+      path: '/settings/cycles'
+      fullPath: '/settings/cycles/'
+      preLoaderRoute: typeof AppSettingsCyclesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/cycles/$id': {
+      id: '/_app/settings/cycles/$id'
+      path: '/settings/cycles/$id'
+      fullPath: '/settings/cycles/$id'
+      preLoaderRoute: typeof AppSettingsCyclesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/cycles/new': {
+      id: '/_app/settings/cycles/new'
+      path: '/settings/cycles/new'
+      fullPath: '/settings/cycles/new'
+      preLoaderRoute: typeof AppSettingsCyclesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/lots/': {
+      id: '/_app/settings/lots/'
+      path: '/settings/lots'
+      fullPath: '/settings/lots/'
+      preLoaderRoute: typeof AppSettingsLotsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/lots/$id': {
+      id: '/_app/settings/lots/$id'
+      path: '/settings/lots/$id'
+      fullPath: '/settings/lots/$id'
+      preLoaderRoute: typeof AppSettingsLotsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/lots/new': {
+      id: '/_app/settings/lots/new'
+      path: '/settings/lots/new'
+      fullPath: '/settings/lots/new'
+      preLoaderRoute: typeof AppSettingsLotsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/tags/': {
+      id: '/_app/settings/tags/'
+      path: '/settings/tags'
+      fullPath: '/settings/tags/'
+      preLoaderRoute: typeof AppSettingsTagsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/tags/$id': {
+      id: '/_app/settings/tags/$id'
+      path: '/settings/tags/$id'
+      fullPath: '/settings/tags/$id'
+      preLoaderRoute: typeof AppSettingsTagsIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/tags/new': {
+      id: '/_app/settings/tags/new'
+      path: '/settings/tags/new'
+      fullPath: '/settings/tags/new'
+      preLoaderRoute: typeof AppSettingsTagsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/users/': {
+      id: '/_app/settings/users/'
+      path: '/settings/users'
+      fullPath: '/settings/users/'
+      preLoaderRoute: typeof AppSettingsUsersIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/users/$id': {
+      id: '/_app/settings/users/$id'
+      path: '/settings/users/$id'
+      fullPath: '/settings/users/$id'
+      preLoaderRoute: typeof AppSettingsUsersIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/users/new': {
+      id: '/_app/settings/users/new'
+      path: '/settings/users/new'
+      fullPath: '/settings/users/new'
+      preLoaderRoute: typeof AppSettingsUsersNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/vaccines/': {
+      id: '/_app/settings/vaccines/'
+      path: '/settings/vaccines'
+      fullPath: '/settings/vaccines/'
+      preLoaderRoute: typeof AppSettingsVaccinesIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/vaccines/$id': {
+      id: '/_app/settings/vaccines/$id'
+      path: '/settings/vaccines/$id'
+      fullPath: '/settings/vaccines/$id'
+      preLoaderRoute: typeof AppSettingsVaccinesIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/vaccines/new': {
+      id: '/_app/settings/vaccines/new'
+      path: '/settings/vaccines/new'
+      fullPath: '/settings/vaccines/new'
+      preLoaderRoute: typeof AppSettingsVaccinesNewRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -308,9 +670,28 @@ interface AppRouteChildren {
   AppMoreRoute: typeof AppMoreRoute
   AppRecordRoute: typeof AppRecordRoute
   AppReportsRoute: typeof AppReportsRoute
-  AppSettingsRoute: typeof AppSettingsRoute
   AppWorkSessionsRoute: typeof AppWorkSessionsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppSettingsFarmRoute: typeof AppSettingsFarmRoute
+  AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+  AppSettingsBreedsIdRoute: typeof AppSettingsBreedsIdRoute
+  AppSettingsBreedsNewRoute: typeof AppSettingsBreedsNewRoute
+  AppSettingsCyclesIdRoute: typeof AppSettingsCyclesIdRoute
+  AppSettingsCyclesNewRoute: typeof AppSettingsCyclesNewRoute
+  AppSettingsLotsIdRoute: typeof AppSettingsLotsIdRoute
+  AppSettingsLotsNewRoute: typeof AppSettingsLotsNewRoute
+  AppSettingsTagsIdRoute: typeof AppSettingsTagsIdRoute
+  AppSettingsTagsNewRoute: typeof AppSettingsTagsNewRoute
+  AppSettingsUsersIdRoute: typeof AppSettingsUsersIdRoute
+  AppSettingsUsersNewRoute: typeof AppSettingsUsersNewRoute
+  AppSettingsVaccinesIdRoute: typeof AppSettingsVaccinesIdRoute
+  AppSettingsVaccinesNewRoute: typeof AppSettingsVaccinesNewRoute
+  AppSettingsBreedsIndexRoute: typeof AppSettingsBreedsIndexRoute
+  AppSettingsCyclesIndexRoute: typeof AppSettingsCyclesIndexRoute
+  AppSettingsLotsIndexRoute: typeof AppSettingsLotsIndexRoute
+  AppSettingsTagsIndexRoute: typeof AppSettingsTagsIndexRoute
+  AppSettingsUsersIndexRoute: typeof AppSettingsUsersIndexRoute
+  AppSettingsVaccinesIndexRoute: typeof AppSettingsVaccinesIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -321,9 +702,28 @@ const AppRouteChildren: AppRouteChildren = {
   AppMoreRoute: AppMoreRoute,
   AppRecordRoute: AppRecordRoute,
   AppReportsRoute: AppReportsRoute,
-  AppSettingsRoute: AppSettingsRoute,
   AppWorkSessionsRoute: AppWorkSessionsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppSettingsFarmRoute: AppSettingsFarmRoute,
+  AppSettingsIndexRoute: AppSettingsIndexRoute,
+  AppSettingsBreedsIdRoute: AppSettingsBreedsIdRoute,
+  AppSettingsBreedsNewRoute: AppSettingsBreedsNewRoute,
+  AppSettingsCyclesIdRoute: AppSettingsCyclesIdRoute,
+  AppSettingsCyclesNewRoute: AppSettingsCyclesNewRoute,
+  AppSettingsLotsIdRoute: AppSettingsLotsIdRoute,
+  AppSettingsLotsNewRoute: AppSettingsLotsNewRoute,
+  AppSettingsTagsIdRoute: AppSettingsTagsIdRoute,
+  AppSettingsTagsNewRoute: AppSettingsTagsNewRoute,
+  AppSettingsUsersIdRoute: AppSettingsUsersIdRoute,
+  AppSettingsUsersNewRoute: AppSettingsUsersNewRoute,
+  AppSettingsVaccinesIdRoute: AppSettingsVaccinesIdRoute,
+  AppSettingsVaccinesNewRoute: AppSettingsVaccinesNewRoute,
+  AppSettingsBreedsIndexRoute: AppSettingsBreedsIndexRoute,
+  AppSettingsCyclesIndexRoute: AppSettingsCyclesIndexRoute,
+  AppSettingsLotsIndexRoute: AppSettingsLotsIndexRoute,
+  AppSettingsTagsIndexRoute: AppSettingsTagsIndexRoute,
+  AppSettingsUsersIndexRoute: AppSettingsUsersIndexRoute,
+  AppSettingsVaccinesIndexRoute: AppSettingsVaccinesIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

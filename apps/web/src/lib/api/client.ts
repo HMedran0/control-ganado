@@ -73,6 +73,10 @@ export class ApiClient {
     return this.request<T>('POST', path, { ...options, body });
   }
 
+  patch<T>(path: string, body: unknown, options?: Omit<RequestOptions, 'body'>): Promise<T> {
+    return this.request<T>('PATCH', path, { ...options, body });
+  }
+
   /** Petición a la API con el manejo de sesión descrito en la clase. */
   async request<T>(method: HttpMethod, path: string, options: RequestOptions = {}): Promise<T> {
     const auth = options.auth ?? true;

@@ -51,7 +51,8 @@ export const NAV = {
   reports: { to: '/reports', label: 'Reportes', icon: ChartColumn },
   workSessions: { to: '/work-sessions', label: 'Jornadas', icon: ClipboardList },
   finance: { to: '/finance', label: 'Finanzas', icon: Wallet, roles: ['ADMIN'] },
-  settings: { to: '/settings', label: 'Configuración', icon: Settings, roles: ['ADMIN'] },
+  // El VET entra a Configuración solo para el catálogo de vacunas (SRS §2.3).
+  settings: { to: '/settings', label: 'Configuración', icon: Settings, roles: ['ADMIN', 'VET'] },
   account: { to: '/account', label: 'Mi cuenta', icon: UserRound },
 } as const satisfies Record<string, NavItem>;
 
