@@ -1,6 +1,8 @@
 {
   "extends": "@hato/config/tsconfig/base.json",
   "compilerOptions": {
+    // DOM porque las funciones de `page.evaluate` de Playwright se ejecutan en el navegador.
+    "lib": ["es2023", "dom"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "types": ["node"],
