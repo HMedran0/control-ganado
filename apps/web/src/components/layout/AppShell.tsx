@@ -1,5 +1,6 @@
 import { Outlet } from '@tanstack/react-router';
 
+import { ConnectionBanner } from '../ui/ConnectionBanner';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 
@@ -20,14 +21,17 @@ export function AppShell() {
         Saltar al contenido
       </a>
       <Sidebar />
-      <main
-        id="contenido"
-        tabIndex={-1}
-        // Espacio abajo para que la barra inferior no tape el final de la página.
-        className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-32 focus:outline-none lg:px-8 lg:pb-10"
-      >
-        <Outlet />
-      </main>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <ConnectionBanner />
+        <main
+          id="contenido"
+          tabIndex={-1}
+          // Espacio abajo para que la barra inferior no tape el final de la página.
+          className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-32 focus:outline-none lg:px-8 lg:pb-10"
+        >
+          <Outlet />
+        </main>
+      </div>
       <BottomNav />
     </div>
   );

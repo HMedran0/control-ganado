@@ -5,6 +5,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { UndoToastProvider } from './components/ui/UndoToast';
 import { SessionGate } from './features/auth/SessionGate';
 import { ApiClient } from './lib/api/client';
 import { AuthProvider } from './lib/auth/context';
@@ -52,7 +53,9 @@ createRoot(container).render(
     <AuthProvider auth={auth}>
       <QueryClientProvider client={queryClient}>
         <SessionGate restore={restore}>
-          <RouterProvider router={router} />
+          <UndoToastProvider>
+            <RouterProvider router={router} />
+          </UndoToastProvider>
         </SessionGate>
       </QueryClientProvider>
     </AuthProvider>
