@@ -23,6 +23,7 @@ import { offersRfidAssociation } from './outcome';
 export function matchText(match: SearchMatch): string {
   if (match.kind === 'CODE') return `Código ${match.value}`;
   if (match.kind === 'NAME') return `Nombre ${match.value}`;
+  if (match.kind === 'QR') return 'QR del sistema';
   const type = IDENTIFIER_TYPE_LABEL[match.identifierType];
   return match.previous ? `${type} anterior ${match.value}` : `${type} ${match.value}`;
 }

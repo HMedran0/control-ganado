@@ -7,6 +7,7 @@ import {
   bulkTagsSchema,
   createAnimalSchema,
   exitAnimalSchema,
+  animalLabelsQuerySchema,
   listAnimalsQuerySchema,
   nextCodeQuerySchema,
   replaceIdentifierSchema,
@@ -18,6 +19,8 @@ import {
   type AddIdentifierInput,
   type AnimalDetail,
   type AnimalDetailWithWarnings,
+  type AnimalLabels,
+  type AnimalLabelsQuery,
   type AnimalList,
   type ArchiveAnimalInput,
   type BulkLotInput,
@@ -51,6 +54,7 @@ import { Roles } from '../common/roles/roles.decorator.js';
 import { ZodBody, ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { AnimalDetailService } from './animal-detail.service.js';
 import { AnimalExportService, XLSX_CONTENT_TYPE } from './animal-export.service.js';
+import { AnimalLabelsService } from './animal-labels.service.js';
 import { AnimalLifecycleService } from './animal-lifecycle.service.js';
 import { AnimalListService } from './animal-list.service.js';
 import { AnimalSearchService } from './animal-search.service.js';
@@ -78,6 +82,7 @@ export class AnimalsController {
     private readonly lifecycle: AnimalLifecycleService,
     private readonly identifiers: IdentifiersService,
     private readonly exporter: AnimalExportService,
+    private readonly labelService: AnimalLabelsService,
   ) {}
 
   @Get()
@@ -103,6 +108,16 @@ export class AnimalsController {
     reply.header('content-disposition', `attachment; filename="${file.fileName}"`);
     reply.header('cache-control', 'no-store');
     return file.data;
+  }
+
+  /** Hoja de etiquetas con QR para imprimir desde el navegador (IDN-03 CA2, solo ADMIN). */
+  @Roles(ROLE.ADMIN)
+  @Get('labels')
+  labels(
+    @Query(new ZodValidationPipe(animalLabelsQuerySchema)) query: AnimalLabelsQuery,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<AnimalLabels> {
+    return this.labelService.labels(scope, query);
   }
 
   @Get('search')

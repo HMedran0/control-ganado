@@ -344,6 +344,40 @@ export const listAnimalsQuerySchema = z
   );
 export type ListAnimalsQuery = z.infer<typeof listAnimalsQuerySchema>;
 
+/** Etiquetas por hoja como máximo (unas 50 hojas carta de 21). */
+export const LABELS_MAX = 1000;
+
+/**
+ * Hoja de etiquetas (IDN-03 CA2): una selección (`ids`, hasta 200: lo que cabe en una URL) o
+ * todo lo que muestra el listado con sus filtros.
+ */
+export const animalLabelsQuerySchema = listAnimalsQuerySchema.and(
+  z.object({
+    ids: csv(uuidSchema).refine((value) => value === undefined || value.length <= 200, {
+      message: 'Elige hasta 200 animales.',
+    }),
+  }),
+);
+export type AnimalLabelsQuery = z.infer<typeof animalLabelsQuerySchema>;
+
+/** Un animal en la hoja de etiquetas. */
+export type AnimalLabelView = {
+  readonly id: string;
+  readonly code: string;
+  readonly name: string | null;
+  readonly sex: Sex;
+  readonly visualTag: string | null;
+  readonly din: string | null;
+  readonly rfid: string | null;
+  readonly qrUrl: string;
+};
+
+export type AnimalLabels = {
+  readonly items: readonly AnimalLabelView[];
+  /** Había más de `LABELS_MAX`: la hoja trae las primeras. */
+  readonly truncated: boolean;
+};
+
 /** ¿La clave del filtro `tags` es una etiqueta derivada? Si no, es una manual. */
 export function isDerivedTagKey(key: string): key is DerivedTag {
   return (Object.values(DERIVED_TAG) as string[]).includes(key);
@@ -557,6 +591,8 @@ export type AnimalDetail = AnimalListItem & {
   readonly codeHistory: CodeHistory;
   /** Archivo (ANI-03): instante y motivo; `null` si no está archivado. */
   readonly archive: { readonly archivedAt: string; readonly reason: string | null } | null;
+  /** Lo que codifica su QR: `${PUBLIC_WEB_URL}/a/<id>`, sin datos del animal (IDN-03). */
+  readonly qrUrl: string;
   readonly version: number;
   readonly economics?: { readonly purchasePrice: MoneyString | null };
 };
@@ -584,6 +620,8 @@ export type CodeHistory = {
 export type SearchMatch =
   | { readonly kind: 'CODE'; readonly value: string }
   | { readonly kind: 'NAME'; readonly value: string }
+  /** El texto era el contenido de un QR del sistema (IDN-03, ANI-05); `value` es el id. */
+  | { readonly kind: 'QR'; readonly value: string }
   | {
       readonly kind: 'IDENTIFIER';
       readonly identifierType: IdentifierType;

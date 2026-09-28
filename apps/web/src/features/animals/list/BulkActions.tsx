@@ -1,4 +1,6 @@
 import type { IsoDate, LotView, TagView } from '@hato/shared';
+import { Link } from '@tanstack/react-router';
+import { Printer } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '../../../components/ui/Button';
@@ -78,6 +80,16 @@ export function BulkActions({
         {button('lot')}
         {isAdmin ? button('forSale') : null}
         {isAdmin ? button('notForSale') : null}
+        {isAdmin && count <= 200 ? (
+          <Link
+            to="/animals/labels"
+            search={{ ids: selectedIds.join(',') }}
+            className="inline-flex min-h-touch items-center gap-2 rounded-control border-2 border-potrero bg-superficie px-4 font-bold text-potrero hover:bg-potrero-claro"
+          >
+            <Printer aria-hidden="true" className="size-5" />
+            Imprimir etiquetas
+          </Link>
+        ) : null}
       </div>
       {mode === null ? null : (
         <BulkDialog

@@ -29,10 +29,15 @@ export function AppShell() {
         >
           Saltar al contenido
         </a>
-        <Sidebar />
+        {/* Al imprimir (hoja de etiquetas) solo sale el contenido. */}
+        <div className="contents print:hidden">
+          <Sidebar />
+        </div>
         <div className="flex min-w-0 flex-1 flex-col">
-          <ConnectionBanner />
-          <div className="sticky top-0 z-30 hidden border-b border-cerca bg-sabana/95 px-8 py-3 backdrop-blur lg:block">
+          <div className="print:hidden">
+            <ConnectionBanner />
+          </div>
+          <div className="sticky top-0 z-30 hidden border-b border-cerca bg-sabana/95 px-8 py-3 backdrop-blur lg:block print:hidden">
             <div className="mx-auto max-w-5xl">
               <AnimalSearchBar shortcut />
             </div>
@@ -42,12 +47,14 @@ export function AppShell() {
             id="contenido"
             tabIndex={-1}
             // Espacio abajo para que la barra inferior no tape el final de la página.
-            className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-32 focus:outline-none lg:px-8 lg:pb-10"
+            className="mx-auto w-full max-w-5xl flex-1 px-4 pt-6 pb-32 focus:outline-none lg:px-8 lg:pb-10 print:max-w-none print:p-0"
           >
             <Outlet />
           </main>
         </div>
-        <BottomNav />
+        <div className="contents print:hidden">
+          <BottomNav />
+        </div>
       </div>
     </UndoToastProvider>
   );

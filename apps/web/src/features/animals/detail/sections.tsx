@@ -8,12 +8,13 @@ import {
   type IsoDate,
 } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { ClipboardList, History } from 'lucide-react';
+import { ClipboardList, History, Printer } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Button } from '../../../components/ui/Button';
 import { EmptyState } from '../../../components/ui/EmptyState';
 import { FormError } from '../../../components/ui/FormError';
+import { QrCode } from '../../../components/ui/QrCode';
 import { Timeline } from '../../../components/ui/Timeline';
 import { isApiError } from '../../../lib/api/errors';
 import { FARM_TIME_ZONE } from '../../../lib/clock';
@@ -119,6 +120,7 @@ export function SummaryTab({
         )}
       </Section>
       <IdentifiersSection animal={animal} isAdmin={isAdmin} onSaved={onSaved} />
+      <SystemQrSection animal={animal} isAdmin={isAdmin} />
     </div>
   );
 }
@@ -381,4 +383,41 @@ function entryDateText(animal: AnimalDetail): string {
   return animal.entryDateEstimated
     ? `${formatDate(animal.entryDate)} (estimada: es la de nacimiento)`
     : formatDate(animal.entryDate);
+}
+
+/**
+ * QR del sistema (IDN-03 CA1): la URL corta de esta ficha, sin datos del animal. Escanearlo abre la
+ * ficha después de iniciar sesión. El ADMIN puede imprimir su etiqueta (CA2).
+ */
+function SystemQrSection({ animal, isAdmin }: { animal: AnimalDetail; isAdmin: boolean }) {
+  return (
+    <section aria-labelledby="qr-del-sistema" className="flex flex-col gap-3">
+      <h2 id="qr-del-sistema" className="text-md font-bold">
+        QR del sistema
+      </h2>
+      <div className="flex flex-wrap items-center gap-4">
+        <QrCode
+          value={animal.qrUrl}
+          label={`QR de la ficha de ${animal.code}`}
+          className="size-32 rounded-control border border-cerca"
+        />
+        <div className="flex flex-col items-start gap-2">
+          <p className="max-w-prose text-texto-2">
+            Escanéalo con el celular para abrir esta ficha. Pide iniciar sesión y no muestra datos
+            del animal a nadie de fuera de la finca.
+          </p>
+          {isAdmin && animal.archive === null ? (
+            <Link
+              to="/animals/labels"
+              search={{ ids: animal.id }}
+              className="inline-flex min-h-touch items-center gap-2 font-bold text-potrero underline underline-offset-4"
+            >
+              <Printer aria-hidden="true" className="size-5" />
+              Imprimir etiqueta
+            </Link>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
 }

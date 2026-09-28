@@ -1,6 +1,6 @@
 import type { AnimalListItem, AnimalSort } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { Download, Plus, SlidersHorizontal, Tags, X } from 'lucide-react';
+import { Download, Plus, Printer, SlidersHorizontal, Tags, X } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -232,6 +232,16 @@ export function AnimalListPage({
             <Download aria-hidden="true" className="size-5" />
             {exportList.isPending ? 'Preparando…' : 'Excel'}
           </Button>
+          {isAdmin ? (
+            <Link
+              to="/animals/labels"
+              search={{ query }}
+              className="inline-flex min-h-touch items-center gap-2 rounded-control border-2 border-potrero bg-superficie px-4 font-bold text-potrero hover:bg-potrero-claro"
+            >
+              <Printer aria-hidden="true" className="size-5" />
+              Etiquetas
+            </Link>
+          ) : null}
           <Link
             to="/animals/new"
             className="inline-flex min-h-touch-primary items-center gap-2 rounded-control bg-potrero px-5 font-bold text-white hover:bg-monte"

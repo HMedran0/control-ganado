@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  parseSystemQr,
   FUZZY_SEARCH_MIN_LENGTH,
   IDENTIFIER_TYPE,
   animalStatus,
@@ -68,6 +69,18 @@ export class AnimalSearchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async search(scope: FarmScope, q: string): Promise<SearchResult> {
+    // Un lector de QR escribe la URL del QR del sistema (IDN-03): abre ese animal de la finca.
+    const qrId = parseSystemQr(q);
+    if (qrId !== null) {
+      const [animal] = (await this.summaries(scope, [qrId])).values();
+      if (animal !== undefined) {
+        const via: SearchMatch = { kind: 'QR', value: qrId };
+        return {
+          exactMatch: { animalId: animal.id, via, matches: [via] },
+          items: [toItem(animal, true, [via])],
+        };
+      }
+    }
     const allExact = await this.exactMatches(scope, q);
     const exactAnimals = await this.summaries(scope, [...allExact.keys()]);
     const exact = preferActive(allExact, exactAnimals);

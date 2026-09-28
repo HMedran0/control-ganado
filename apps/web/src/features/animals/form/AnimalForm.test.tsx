@@ -76,6 +76,7 @@ function detail(patch: Partial<AnimalDetail> = {}): AnimalDetail {
     withdrawalUntil: null,
     codeHistory: { previousHolder: null, currentHolder: null },
     archive: null,
+    qrUrl: 'http://localhost:5173/a/0199a1b2-0000-7000-8000-000000000001',
     version: 4,
     ...patch,
   };

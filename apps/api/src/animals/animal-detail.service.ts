@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  systemQrUrl,
   CODE_SUGGESTION,
   DomainError,
   ROLE,
@@ -86,7 +87,7 @@ export class AnimalDetailService {
     private readonly prisma: PrismaService,
     private readonly farmContext: FarmContextService,
     private readonly vaccineStatus: VaccineStatusService,
-    @Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE'>,
+    @Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE' | 'PUBLIC_WEB_URL'>,
   ) {}
 
   async detail(scope: FarmScope, id: string, context?: FarmContext): Promise<AnimalDetail> {
@@ -227,6 +228,7 @@ export class AnimalDetailService {
       vaccines: derived.status === 'ACTIVE' ? vaccines : [],
       withdrawalUntil,
       codeHistory: await this.codeHistory(scope, animal),
+      qrUrl: systemQrUrl(this.env.PUBLIC_WEB_URL, animal.id),
       archive:
         animal.deletedAt === null
           ? null

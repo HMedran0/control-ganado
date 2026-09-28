@@ -22,7 +22,9 @@ import { Route as AppReportsRouteImport } from './routes/_app/reports'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppWorkSessionsRouteImport } from './routes/_app/work-sessions'
 import { Route as DevUiRouteImport } from './routes/dev.ui'
+import { Route as AppAIdRouteImport } from './routes/_app/a/$id'
 import { Route as AppAnimalsIndexRouteImport } from './routes/_app/animals/index'
+import { Route as AppAnimalsLabelsRouteImport } from './routes/_app/animals/labels'
 import { Route as AppAnimalsNewRouteImport } from './routes/_app/animals/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsArchivedRouteImport } from './routes/_app/settings/archived'
@@ -113,9 +115,19 @@ const DevUiRoute = DevUiRouteImport.update({
   path: '/dev/ui',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAIdRoute = AppAIdRouteImport.update({
+  id: '/a/$id',
+  path: '/a/$id',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAnimalsIndexRoute = AppAnimalsIndexRouteImport.update({
   id: '/animals/',
   path: '/animals/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsLabelsRoute = AppAnimalsLabelsRouteImport.update({
+  id: '/animals/labels',
+  path: '/animals/labels',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAnimalsNewRoute = AppAnimalsNewRouteImport.update({
@@ -258,6 +270,8 @@ export interface FileRoutesByFullPath {
   '/search': typeof AppSearchRoute
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
+  '/a/$id': typeof AppAIdRoute
+  '/animals/labels': typeof AppAnimalsLabelsRoute
   '/animals/new': typeof AppAnimalsNewRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
@@ -298,6 +312,8 @@ export interface FileRoutesByTo {
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/': typeof AppIndexRoute
+  '/a/$id': typeof AppAIdRoute
+  '/animals/labels': typeof AppAnimalsLabelsRoute
   '/animals/new': typeof AppAnimalsNewRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
@@ -340,6 +356,8 @@ export interface FileRoutesById {
   '/_app/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/a/$id': typeof AppAIdRoute
+  '/_app/animals/labels': typeof AppAnimalsLabelsRoute
   '/_app/animals/new': typeof AppAnimalsNewRoute
   '/_app/settings/archived': typeof AppSettingsArchivedRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
@@ -382,6 +400,8 @@ export interface FileRouteTypes {
     | '/search'
     | '/work-sessions'
     | '/dev/ui'
+    | '/a/$id'
+    | '/animals/labels'
     | '/animals/new'
     | '/settings/archived'
     | '/settings/farm'
@@ -422,6 +442,8 @@ export interface FileRouteTypes {
     | '/work-sessions'
     | '/dev/ui'
     | '/'
+    | '/a/$id'
+    | '/animals/labels'
     | '/animals/new'
     | '/settings/archived'
     | '/settings/farm'
@@ -463,6 +485,8 @@ export interface FileRouteTypes {
     | '/_app/work-sessions'
     | '/dev/ui'
     | '/_app/'
+    | '/_app/a/$id'
+    | '/_app/animals/labels'
     | '/_app/animals/new'
     | '/_app/settings/archived'
     | '/_app/settings/farm'
@@ -591,11 +615,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/a/$id': {
+      id: '/_app/a/$id'
+      path: '/a/$id'
+      fullPath: '/a/$id'
+      preLoaderRoute: typeof AppAIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/animals/': {
       id: '/_app/animals/'
       path: '/animals'
       fullPath: '/animals/'
       preLoaderRoute: typeof AppAnimalsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/labels': {
+      id: '/_app/animals/labels'
+      path: '/animals/labels'
+      fullPath: '/animals/labels'
+      preLoaderRoute: typeof AppAnimalsLabelsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/animals/new': {
@@ -786,6 +824,8 @@ interface AppRouteChildren {
   AppSearchRoute: typeof AppSearchRoute
   AppWorkSessionsRoute: typeof AppWorkSessionsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAIdRoute: typeof AppAIdRoute
+  AppAnimalsLabelsRoute: typeof AppAnimalsLabelsRoute
   AppAnimalsNewRoute: typeof AppAnimalsNewRoute
   AppSettingsArchivedRoute: typeof AppSettingsArchivedRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
@@ -824,6 +864,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSearchRoute: AppSearchRoute,
   AppWorkSessionsRoute: AppWorkSessionsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAIdRoute: AppAIdRoute,
+  AppAnimalsLabelsRoute: AppAnimalsLabelsRoute,
   AppAnimalsNewRoute: AppAnimalsNewRoute,
   AppSettingsArchivedRoute: AppSettingsArchivedRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,

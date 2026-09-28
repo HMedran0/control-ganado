@@ -123,3 +123,16 @@
     }
   }
 }
+
+/* Impresión (hoja de etiquetas, IDN-03): fondo blanco y colores tal cual, sin el sabana de la
+   pantalla. Lo que no debe salir en el papel lleva `print:hidden`. */
+@media print {
+  html,
+  body {
+    background: #ffffff;
+  }
+
+  * {
+    print-color-adjust: exact;
+  }
+}
