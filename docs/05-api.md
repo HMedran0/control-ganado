@@ -11,7 +11,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 - Filtros por query string; múltiples valores separados por coma (`?tags=PREGNANT,CALVED`).
 - Actualizaciones: `PATCH` con `version` obligatoria → 409 `VERSION_CONFLICT` si no coincide.
 - Anulación de eventos: `POST /<recurso>/:id/void` con `{ reason }`.
-- Errores: `application/problem+json` con `code` estable (catálogo en `packages/shared/src/errors.ts`).
+- Errores: `application/problem+json` con `code` estable (catálogo en `packages/shared/src/errors.ts`). Algunos traen además `context` con los datos que la interfaz necesita para ofrecer la salida: `IDENTIFIER_TAKEN` e `IDENTIFIER_PREVIOUSLY_USED` envían `{ animalId, animalCode }` del animal que tiene o tuvo el identificador, para enlazar a su ficha.
 - Roles: columna "Rol" (T = todos, A = ADMIN, V = VET, O = OPERATOR).
 
 ## Autenticación
@@ -64,6 +64,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /animals/qr-sheet | A | `{ animalIds, layout }` → PDF de etiquetas |
 
 **Detalles de M4a.**
+- Cada fila trae `expectedCalvingDate`: el parto estimado de la preñez abierta confirmada, o `null` (columna «Parto estimado» de 06 §5.2).
 - `GET /animals` responde `{ items, nextCursor, total }`: `total` es el conteo con los filtros aplicados, sin paginar. Filtros: `category` (`CALF_MALE, CALF_FEMALE, HEIFER, COW, YOUNG_MALE, ADULT_MALE`); `tags` recibe etiquetas derivadas (`SERVED, PREGNANT, CALVED, DRY, WITHDRAWAL`) y claves de etiquetas manuales (`COTERO`…) en la misma lista; `alerts` acepta además `unconfirmed_service` (servida sin diagnóstico, RN-08). Varios valores de `category`, `breedId` o `lotId` se combinan con «o»; varios de `tags` o `alerts`, con «y». `status` es `active` por defecto; `archived` solo para ADMIN. `sort`: `code`, `age` (de menor a mayor edad), `lastWeight` y sus inversos con `-`; sin peso, al final. Solo los animales activos tienen alertas.
 - `GET /animals/search?q=` → `{ exactMatch: { animalId, via, matches } | null, items }`. `via` y cada elemento de `matches` dicen por qué coincidió: `{ kind: 'CODE' | 'NAME', value }` o `{ kind: 'IDENTIFIER', identifierType, value, previous }` (`previous: true` es un identificador retirado). Hay `exactMatch` cuando todas las coincidencias exactas son del mismo animal; si son de animales distintos, `exactMatch` es `null` y cada uno aparece en `items` con `exact: true` y su porqué. La búsqueda difusa (`pg_trgm`) solo corre si no hubo ninguna coincidencia exacta, y desde 2 caracteres. No incluye archivados; sí los que salieron, con su `status`.
 - `GET /animals/:id`: `economics: { purchasePrice }` solo existe en la respuesta de ADMIN. `POST /animals` y `PATCH /animals/:id` responden la ficha con `warnings`.

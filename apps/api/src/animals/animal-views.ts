@@ -39,6 +39,8 @@ export type DerivedView = {
   readonly derivedTags: DerivedTag[];
   readonly status: AnimalStatus;
   readonly alerts: AnimalAlert[];
+  /** Parto estimado, solo con la preñez abierta confirmada (la columna del listado, 06 §5.2). */
+  readonly expectedCalvingDate: IsoDate | null;
 };
 
 /**
@@ -88,5 +90,7 @@ export function deriveView(
     derivedTags: tags,
     status,
     alerts,
+    expectedCalvingDate:
+      open !== null && open.confirmedAt !== null ? open.expectedCalvingDate : null,
   };
 }

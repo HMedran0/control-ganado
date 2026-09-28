@@ -193,6 +193,10 @@ describe('animales sobre la finca de referencia', () => {
       const pregnant = await all('tags=PREGNANT', 200);
       expect(pregnant).toHaveLength(EXPECTED_REPRODUCTION.pregnant);
       expect(pregnant.every((item) => item.derivedTags.includes('PREGNANT'))).toBe(true);
+      // La columna «Parto estimado» (06 §5.2): solo en las preñadas confirmadas.
+      expect(pregnant.every((item) => item.expectedCalvingDate !== null)).toBe(true);
+      const served = await all('tags=SERVED', 200);
+      expect(served.every((item) => item.expectedCalvingDate === null)).toBe(true);
 
       const cows = await all('category=COW', 200);
       expect(cows.every((item) => item.category === 'COW' && item.calvingCount >= 1)).toBe(true);

@@ -183,6 +183,7 @@ export class AnimalDetailService {
             },
       status: derived.status,
       alerts: derived.alerts,
+      expectedCalvingDate: derived.expectedCalvingDate,
       origin: animal.origin,
       originDetail: animal.originDetail,
       entryDate: fromPrismaDate(animal.entryDate),

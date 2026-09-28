@@ -426,6 +426,8 @@ export type AnimalListItem = AnimalRef & {
   readonly category: ManagementCategory;
   readonly derivedTags: readonly DerivedTag[];
   readonly calvingCount: number;
+  /** Parto estimado de la preñez abierta **confirmada**; `null` si no está preñada. */
+  readonly expectedCalvingDate: IsoDate | null;
   readonly manualTags: readonly ManualTagView[];
   readonly forSale: boolean;
   readonly lot: { readonly id: string; readonly name: string } | null;

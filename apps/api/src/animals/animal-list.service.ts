@@ -343,6 +343,7 @@ export class AnimalListService {
               },
         status: derived.status,
         alerts: derived.alerts,
+        expectedCalvingDate: derived.expectedCalvingDate,
       };
     });
   }
