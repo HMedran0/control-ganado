@@ -6,3 +6,5 @@ export * from './money.js';
 export * from './number.js';
 export * from './user-agent.js';
 export * from './weight.js';
+export * from './parse.js';
+export * from './spreadsheet.js';

@@ -3,6 +3,7 @@
 export * from './age.js';
 export * from './alerts.js';
 export * from './allocation.js';
+export * from './animal-import.js';
 export * from './animal-status.js';
 export * from './classification.js';
 export * from './codes.js';
