@@ -47,14 +47,11 @@ const booleanField = z
 /** Campos del formulario de simulación. */
 export const animalImportPreviewFieldsSchema = z.object({
   createMissingBreeds: booleanField,
-});
-export type AnimalImportPreviewFields = z.infer<typeof animalImportPreviewFieldsSchema>;
-
-/** Campos del formulario de confirmación. */
-export const animalImportConfirmFieldsSchema = animalImportPreviewFieldsSchema.extend({
-  /** Clave de idempotencia que la web genera al elegir el archivo (ADR-011). */
-  importKey: z.uuid({ message: 'Falta la clave de la importación.' }),
-  /** Filas que la persona desmarcó en la simulación, separadas por coma («5,9»). */
+  /**
+   * Filas que la persona desmarcó, separadas por coma («5,9»). La simulación las deja fuera igual
+   * que la confirmación, así el número que muestra es el que se va a importar (si una madre queda
+   * fuera, sus crías del archivo también).
+   */
   skipRows: z
     .string()
     .regex(/^(\d+(,\d+)*)?$/, { message: 'Lista de filas no válida.' })
@@ -62,6 +59,13 @@ export const animalImportConfirmFieldsSchema = animalImportPreviewFieldsSchema.e
     .transform((value) =>
       value === undefined || value === '' ? [] : value.split(',').map(Number),
     ),
+});
+export type AnimalImportPreviewFields = z.infer<typeof animalImportPreviewFieldsSchema>;
+
+/** Campos del formulario de confirmación. */
+export const animalImportConfirmFieldsSchema = animalImportPreviewFieldsSchema.extend({
+  /** Clave de idempotencia que la web genera al elegir el archivo (ADR-011). */
+  importKey: z.uuid({ message: 'Falta la clave de la importación.' }),
   /**
    * Animales que la simulación dijo que entrarían. Si al confirmar el resultado es otro (porque
    * alguien registró un animal con uno de esos códigos entretanto), no se importa nada.

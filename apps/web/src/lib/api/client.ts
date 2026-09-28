@@ -35,7 +35,12 @@ export type RequestOptions = {
   readonly auth?: boolean;
   /** Tiempo máximo de la petición, en milisegundos. */
   readonly timeoutMs?: number;
+  /** `file`: la respuesta es un archivo para descargar (`DownloadedFile`), no JSON. */
+  readonly responseType?: 'json' | 'file';
 };
+
+/** Archivo que devolvió la API (exportación, plantilla), listo para `saveFile`. */
+export type DownloadedFile = { readonly blob: Blob; readonly fileName: string };
 
 type HttpMethod = 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
 
@@ -75,6 +80,17 @@ export class ApiClient {
 
   patch<T>(path: string, body: unknown, options?: Omit<RequestOptions, 'body'>): Promise<T> {
     return this.request<T>('PATCH', path, { ...options, body });
+  }
+
+  /**
+   * Descarga un archivo con la sesión: `GET` o, con cuerpo (un `FormData` con el archivo
+   * subido), `POST`. El token vive en memoria, así que no sirve un enlace directo.
+   */
+  download(path: string, body?: FormData): Promise<DownloadedFile> {
+    return this.request<DownloadedFile>(body === undefined ? 'GET' : 'POST', path, {
+      responseType: 'file',
+      ...(body === undefined ? {} : { body }),
+    });
   }
 
   /** Petición a la API con el manejo de sesión descrito en la clase. */
@@ -228,8 +244,11 @@ export class ApiClient {
     options: RequestOptions,
     token: string | undefined,
   ): Promise<T> {
-    const headers: Record<string, string> = { accept: 'application/json' };
-    if (options.body !== undefined) headers['content-type'] = 'application/json';
+    const isFile = options.responseType === 'file';
+    // Con `FormData` el navegador pone el `content-type` con su separador; no se toca.
+    const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const headers: Record<string, string> = { accept: isFile ? '*/*' : 'application/json' };
+    if (options.body !== undefined && !isForm) headers['content-type'] = 'application/json';
     if (token !== undefined) headers.authorization = `Bearer ${token}`;
 
     let response: Response;
@@ -237,7 +256,8 @@ export class ApiClient {
       response = await this.fetchImpl(`${this.baseUrl}${path}`, {
         method,
         headers,
-        body: options.body === undefined ? null : JSON.stringify(options.body),
+        body:
+          options.body === undefined ? null : isForm ? options.body : JSON.stringify(options.body),
         // La cookie del refresco solo viaja al mismo origen (ADR-008).
         credentials: 'same-origin',
         signal: options.timeoutMs === undefined ? null : AbortSignal.timeout(options.timeoutMs),
@@ -248,9 +268,23 @@ export class ApiClient {
     }
 
     if (!response.ok) throw await toApiError(response);
+    if (isFile) {
+      const file: DownloadedFile = {
+        blob: await response.blob(),
+        fileName: fileNameOf(response.headers.get('content-disposition')) ?? 'archivo',
+      };
+      return file as T;
+    }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
   }
+}
+
+/** Nombre del archivo en `content-disposition: attachment; filename="…"`. */
+export function fileNameOf(header: string | null): string | null {
+  if (header === null) return null;
+  const match = /filename="([^"]+)"/.exec(header) ?? /filename=([^;]+)/.exec(header);
+  return match?.[1]?.trim() ?? null;
 }
 
 /** Candado con Web Locks; sin soporte en el navegador, ejecuta la tarea sin candado. */

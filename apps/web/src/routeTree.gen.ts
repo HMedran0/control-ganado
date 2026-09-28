@@ -27,6 +27,7 @@ import { Route as AppAnimalsNewRouteImport } from './routes/_app/animals/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsArchivedRouteImport } from './routes/_app/settings/archived'
 import { Route as AppSettingsFarmRouteImport } from './routes/_app/settings/farm'
+import { Route as AppSettingsImportRouteImport } from './routes/_app/settings/import'
 import { Route as AppAnimalsIdIndexRouteImport } from './routes/_app/animals/$id/index'
 import { Route as AppAnimalsIdEditRouteImport } from './routes/_app/animals/$id/edit'
 import { Route as AppSettingsBreedsIndexRouteImport } from './routes/_app/settings/breeds/index'
@@ -135,6 +136,11 @@ const AppSettingsArchivedRoute = AppSettingsArchivedRouteImport.update({
 const AppSettingsFarmRoute = AppSettingsFarmRouteImport.update({
   id: '/settings/farm',
   path: '/settings/farm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsImportRoute = AppSettingsImportRouteImport.update({
+  id: '/settings/import',
+  path: '/settings/import',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAnimalsIdIndexRoute = AppAnimalsIdIndexRouteImport.update({
@@ -255,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/animals/new': typeof AppAnimalsNewRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
+  '/settings/import': typeof AppSettingsImportRoute
   '/animals/': typeof AppAnimalsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/animals/$id/edit': typeof AppAnimalsIdEditRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/animals/new': typeof AppAnimalsNewRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
+  '/settings/import': typeof AppSettingsImportRoute
   '/animals': typeof AppAnimalsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/animals/$id/edit': typeof AppAnimalsIdEditRoute
@@ -335,6 +343,7 @@ export interface FileRoutesById {
   '/_app/animals/new': typeof AppAnimalsNewRoute
   '/_app/settings/archived': typeof AppSettingsArchivedRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
+  '/_app/settings/import': typeof AppSettingsImportRoute
   '/_app/animals/': typeof AppAnimalsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/animals/$id/edit': typeof AppAnimalsIdEditRoute
@@ -376,6 +385,7 @@ export interface FileRouteTypes {
     | '/animals/new'
     | '/settings/archived'
     | '/settings/farm'
+    | '/settings/import'
     | '/animals/'
     | '/settings/'
     | '/animals/$id/edit'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/animals/new'
     | '/settings/archived'
     | '/settings/farm'
+    | '/settings/import'
     | '/animals'
     | '/settings'
     | '/animals/$id/edit'
@@ -455,6 +466,7 @@ export interface FileRouteTypes {
     | '/_app/animals/new'
     | '/_app/settings/archived'
     | '/_app/settings/farm'
+    | '/_app/settings/import'
     | '/_app/animals/'
     | '/_app/settings/'
     | '/_app/animals/$id/edit'
@@ -614,6 +626,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsFarmRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/settings/import': {
+      id: '/_app/settings/import'
+      path: '/settings/import'
+      fullPath: '/settings/import'
+      preLoaderRoute: typeof AppSettingsImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/animals/$id/': {
       id: '/_app/animals/$id/'
       path: '/animals/$id'
@@ -770,6 +789,7 @@ interface AppRouteChildren {
   AppAnimalsNewRoute: typeof AppAnimalsNewRoute
   AppSettingsArchivedRoute: typeof AppSettingsArchivedRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
+  AppSettingsImportRoute: typeof AppSettingsImportRoute
   AppAnimalsIndexRoute: typeof AppAnimalsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppAnimalsIdEditRoute: typeof AppAnimalsIdEditRoute
@@ -807,6 +827,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnimalsNewRoute: AppAnimalsNewRoute,
   AppSettingsArchivedRoute: AppSettingsArchivedRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,
+  AppSettingsImportRoute: AppSettingsImportRoute,
   AppAnimalsIndexRoute: AppAnimalsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppAnimalsIdEditRoute: AppAnimalsIdEditRoute,

@@ -2,7 +2,7 @@ import type { SessionResponse } from '@hato/shared';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SessionStore } from '../auth/session-store';
-import { ApiClient, REFRESH_LOCK_NAME, type LockRunner } from './client';
+import { ApiClient, fileNameOf, REFRESH_LOCK_NAME, type LockRunner } from './client';
 import { NETWORK_ERROR_DETAIL, type ApiError } from './errors';
 
 function session(accessToken: string, overrides: Partial<SessionResponse['user']> = {}) {
@@ -280,6 +280,48 @@ describe('ApiClient', () => {
         code: 'INTERNAL_ERROR',
         detail: 'Ocurrió un error inesperado. Ya quedó registrado.',
       });
+    });
+  });
+
+  describe('archivos (M4d)', () => {
+    it('envía FormData sin tocar el content-type y con el token', async () => {
+      const { store, api, fetchMock } = setup(() => json({ ok: true }));
+      store.set(session('token-a'));
+      const form = new FormData();
+      form.append('file', new Blob(['a;b']), 'x.csv');
+
+      await api.post('/imports/animals?dryRun=true', form);
+
+      const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+      expect(init.body).toBe(form);
+      expect((init.headers as Record<string, string>)['content-type']).toBeUndefined();
+      expect(authorization(init)).toBe('Bearer token-a');
+    });
+
+    it('descarga un archivo con su nombre, por GET o por POST con el formulario', async () => {
+      const { store, api, fetchMock } = setup(
+        () =>
+          new Response('xlsx', {
+            status: 200,
+            headers: { 'content-disposition': 'attachment; filename="animales.xlsx"' },
+          }),
+      );
+      store.set(session('token-a'));
+
+      const file = await api.download('/animals/export.xlsx?sex=FEMALE');
+      expect(file.fileName).toBe('animales.xlsx');
+      expect(await file.blob.text()).toBe('xlsx');
+      expect(fetchMock.mock.calls[0]?.[1]?.method).toBe('GET');
+
+      await api.download('/imports/animals/errors', new FormData());
+      expect(fetchMock.mock.calls[1]?.[1]?.method).toBe('POST');
+    });
+
+    it('fileNameOf', () => {
+      expect(fileNameOf('attachment; filename="a b.xlsx"')).toBe('a b.xlsx');
+      expect(fileNameOf('attachment; filename=plano.xlsx')).toBe('plano.xlsx');
+      expect(fileNameOf(null)).toBeNull();
+      expect(fileNameOf('inline')).toBeNull();
     });
   });
 

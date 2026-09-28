@@ -7,6 +7,7 @@ import {
   SlidersHorizontal,
   Syringe,
   Tag,
+  Upload,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -22,7 +23,8 @@ export type SettingsSection = {
     | '/settings/lots'
     | '/settings/tags'
     | '/settings/users'
-    | '/settings/archived';
+    | '/settings/archived'
+    | '/settings/import';
   readonly label: string;
   readonly description: string;
   readonly icon: LucideIcon;
@@ -81,6 +83,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     label: 'Usuarios',
     description: 'Quién entra, con qué rol, y contraseñas temporales.',
     icon: Users,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/settings/import',
+    label: 'Importar inventario',
+    description: 'Cargar animales desde Excel o CSV, con simulación antes de guardar.',
+    icon: Upload,
     roles: ['ADMIN'],
   },
   {

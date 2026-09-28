@@ -76,12 +76,13 @@ export class AnimalImportService {
   async preview(
     scope: FarmScope,
     file: UploadedFile,
-    options: { createMissingBreeds: boolean },
+    options: { createMissingBreeds: boolean; skipRows: readonly number[] },
   ): Promise<AnimalImportPreview> {
     const content = await readSpreadsheet(file);
     const context = await this.farmContext.load(scope);
     const analyzed = await this.prisma.$transaction(
-      (tx) => this.analyze(tx, scope, context, content, options.createMissingBreeds, []),
+      (tx) =>
+        this.analyze(tx, scope, context, content, options.createMissingBreeds, options.skipRows),
       { timeout: CONFIRM_TIMEOUT_MS, maxWait: 10_000 },
     );
     const previous = await this.prisma.importBatch.findFirst({
