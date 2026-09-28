@@ -20,3 +20,17 @@ export const CurrentScope = createParamDecorator(
     return request.scope;
   },
 );
+
+/**
+ * Sesión (familia de refresco) de la petición: `metodo(@CurrentSession() sessionId: string)`.
+ * Sirve para marcar «Este equipo» y para cerrar las demás sesiones (AUT-11).
+ */
+export const CurrentSession = createParamDecorator(
+  (_data: unknown, context: ExecutionContext): string => {
+    const request = context.switchToHttp().getRequest<RequestWithScope>();
+    if (request.sessionId === undefined) {
+      throw new DomainError('AUTH_TOKEN_EXPIRED', { detail: 'Inicia sesión para continuar.' });
+    }
+    return request.sessionId;
+  },
+);

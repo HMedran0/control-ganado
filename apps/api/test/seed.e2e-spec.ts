@@ -628,6 +628,8 @@ describe('seed de la finca de referencia', () => {
           farmId,
           familyId: '0190a000-0000-7000-8000-00000000abce',
           tokenHash: 'hash-de-prueba-del-seed',
+          familyStartedAt: new Date('2026-09-01T00:00:00Z'),
+          lastUsedAt: new Date('2026-09-01T00:00:00Z'),
           expiresAt: new Date('2027-01-01T00:00:00Z'),
         },
       });

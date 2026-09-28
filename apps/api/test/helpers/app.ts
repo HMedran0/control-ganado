@@ -4,7 +4,7 @@ import rateLimit from '@fastify/rate-limit';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
 import type { ModuleMetadata } from '@nestjs/common';
-import { ROLE, type Role } from '@hato/shared';
+import { ROLE, uuidv7, type Role } from '@hato/shared';
 
 import { AppModule } from '../../src/app.module.js';
 import { ProblemJsonFilter } from '../../src/common/errors/problem-json.filter.js';
@@ -12,6 +12,7 @@ import { parseEnv } from '../../src/config/env.schema.js';
 import { configureSecurity, type RateLimits } from '../../src/config/security.js';
 import { Clock } from '../../src/infra/clock.service.js';
 import { getLogger } from '../../src/infra/logger.js';
+import { PrismaService } from '../../src/infra/prisma.service.js';
 import { TokenService } from '../../src/auth/token.service.js';
 
 /**
@@ -102,16 +103,38 @@ export async function createTestAppWithClock(
  * Se usa cuando la prueba necesita un token concreto —de otra finca, de un usuario que luego
  * se desactiva, o uno que vencerá al adelantar el reloj— sin pasar por el formulario de
  * inicio de sesión. Para el camino normal está `login`.
+ *
+ * Desde M4d el token pertenece a una sesión real: se guarda una familia de refresco abierta
+ * (con un hash que no corresponde a ningún valor, así que no sirve para refrescar) y su id va
+ * en el claim `sid`. Sin ella, `AccessGuard` lo rechazaría. Tampoco aquí hay forma de
+ * fabricarse un ámbito: la sesión existe en la base como cualquier otra.
  */
 export async function signTestToken(
   app: NestFastifyApplication,
   claims: { userId: string; farmId: string; role?: Role },
 ): Promise<string> {
   const tokens = app.get(TokenService);
+  const prisma = app.get(PrismaService);
+  const now = app.get(Clock).now();
+  const refresh = tokens.issueRefreshToken();
+  await prisma.refreshToken.create({
+    data: {
+      id: refresh.id,
+      userId: claims.userId,
+      farmId: claims.farmId,
+      tokenHash: `prueba-${uuidv7()}`,
+      familyId: refresh.familyId,
+      familyStartedAt: now,
+      lastUsedAt: now,
+      expiresAt: refresh.expiresAt,
+      createdAt: now,
+    },
+  });
   return tokens.signAccessToken({
     userId: claims.userId,
     farmId: claims.farmId,
     role: claims.role ?? ROLE.ADMIN,
+    sessionId: refresh.familyId,
   });
 }
 

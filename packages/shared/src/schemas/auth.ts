@@ -141,6 +141,20 @@ export type SessionResponse = {
   readonly memberships: readonly MembershipView[];
 };
 
+/**
+ * Sesión abierta del usuario (AUT-11): una familia de tokens de refresco, es decir, un equipo.
+ * `id` es la familia; `device` sale del `userAgent` («Chrome · Android»). Las marcas de
+ * tiempo son instantes ISO 8601.
+ */
+export type SessionView = {
+  readonly id: string;
+  readonly device: string;
+  readonly startedAt: string;
+  readonly lastUsedAt: string;
+  /** `true` para la sesión desde la que se consulta («Este equipo»). */
+  readonly current: boolean;
+};
+
 /** Usuario de la finca tal como lo devuelve `/users` (AUT-03). Nunca incluye el hash. */
 export type UserView = {
   readonly id: string;

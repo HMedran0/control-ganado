@@ -47,6 +47,14 @@ export const envSchema = z
     JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
     REFRESH_TOKEN_PEPPER: secret('REFRESH_TOKEN_PEPPER'),
 
+    /**
+     * Sesión deslizante (AUT-10, ADR-007 decisión 6): cada renovación extiende la sesión
+     * `REFRESH_TTL_DAYS` desde ese momento, hasta `REFRESH_MAX_AGE_DAYS` desde el inicio de
+     * sesión que la originó. Al cumplirse el tope se pide la contraseña una vez.
+     */
+    REFRESH_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+    REFRESH_MAX_AGE_DAYS: z.coerce.number().int().min(1).max(3650).default(180),
+
     CORS_ORIGINS: commaSeparated,
     PUBLIC_WEB_URL: httpUrl,
 
@@ -81,6 +89,14 @@ export const envSchema = z
       .default('info'),
   })
   .superRefine((env, context) => {
+    if (env.REFRESH_MAX_AGE_DAYS < env.REFRESH_TTL_DAYS) {
+      context.addIssue({
+        code: 'custom',
+        path: ['REFRESH_MAX_AGE_DAYS'],
+        message: 'REFRESH_MAX_AGE_DAYS no puede ser menor que REFRESH_TTL_DAYS.',
+      });
+    }
+
     // Un «hoy» fijo en producción congelaría alertas, edades y vencimientos sin que nadie lo note.
     if (env.NODE_ENV === 'production' && env.CLOCK_FIXED_TODAY !== undefined) {
       context.addIssue({

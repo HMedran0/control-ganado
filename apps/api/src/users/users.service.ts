@@ -12,8 +12,9 @@ import {
 } from '@hato/shared';
 
 import { Prisma } from '../generated/prisma/client.js';
-import { AuthService } from '../auth/auth.service.js';
 import { PasswordService } from '../auth/password.service.js';
+import { SessionsService } from '../auth/sessions.service.js';
+import type { Tx } from '../common/persistence.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
 
@@ -32,7 +33,7 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly passwords: PasswordService,
-    private readonly auth: AuthService,
+    private readonly sessions: SessionsService,
     private readonly clock: Clock,
   ) {}
 
@@ -85,7 +86,7 @@ export class UsersService {
       },
     });
 
-    await this.audit(farmId, actorId, userId, AUDIT_ACTION.CREATE, {
+    await this.audit(this.prisma, farmId, actorId, userId, AUDIT_ACTION.CREATE, {
       username: input.username,
       role: input.role,
     });
@@ -129,30 +130,37 @@ export class UsersService {
     }
 
     const now = this.clock.now();
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: {
-        ...(input.name === undefined ? {} : { name: input.name }),
-        ...(input.email === undefined ? {} : { email: input.email }),
-        ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
-        updatedAt: now,
-      },
-    });
-
-    if (input.role !== undefined || input.isActive !== undefined) {
-      await this.prisma.membership.update({
-        where: { userId_farmId: { userId, farmId } },
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
         data: {
-          ...(input.role === undefined ? {} : { role: input.role }),
+          ...(input.name === undefined ? {} : { name: input.name }),
+          ...(input.email === undefined ? {} : { email: input.email }),
           ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
+          updatedAt: now,
         },
       });
-    }
 
-    // Un usuario desactivado pierde sus sesiones abiertas (AUT-03 CA2).
-    if (input.isActive === false) await this.auth.revokeAllSessions(userId);
+      if (input.role !== undefined || input.isActive !== undefined) {
+        await tx.membership.update({
+          where: { userId_farmId: { userId, farmId } },
+          data: {
+            ...(input.role === undefined ? {} : { role: input.role }),
+            ...(input.isActive === undefined ? {} : { isActive: input.isActive }),
+          },
+        });
+      }
 
-    await this.audit(farmId, actorId, userId, AUDIT_ACTION.UPDATE, changedFields(input));
+      // Desactivar al usuario o quitarle la membresía cierra todas sus sesiones, en la misma
+      // transacción (AUT-03 CA2, AUT-10 CA3).
+      const revoked = input.isActive === false ? await this.sessions.revokeAll(userId, tx) : 0;
+
+      await this.audit(tx, farmId, actorId, userId, AUDIT_ACTION.UPDATE, {
+        ...changedFields(input),
+        ...(revoked === 0 ? {} : { revokedSessions: revoked }),
+      });
+      return updated;
+    });
     return toView(user, nextRole, nextActive);
   }
 
@@ -168,20 +176,46 @@ export class UsersService {
     const passwordHash = await this.passwords.hash(temporaryPassword);
     const now = this.clock.now();
 
-    const user = await this.prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash, mustChangePassword: true, updatedAt: now },
-    });
-    await this.auth.revokeAllSessions(userId);
-    await this.audit(farmId, actorId, userId, AUDIT_ACTION.UPDATE, {
-      changed: ['passwordHash'],
-      reason: 'reset',
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { passwordHash, mustChangePassword: true, updatedAt: now },
+      });
+      await this.sessions.revokeAll(userId, tx);
+      await this.audit(tx, farmId, actorId, userId, AUDIT_ACTION.UPDATE, {
+        changed: ['passwordHash'],
+        reason: 'reset',
+      });
+      return updated;
     });
 
     return {
       user: toView(user, membership.role, membership.isActive),
       temporaryPassword,
     };
+  }
+
+  /**
+   * Cierra todas las sesiones de un usuario de la finca, en **todos** sus equipos y fincas
+   * (AUT-11 CA3): equipo perdido o prestado. Queda en la auditoría con cuántas cerró.
+   *
+   * @throws {DomainError} `NOT_FOUND` si el usuario no tiene membresía en esta finca.
+   */
+  async revokeSessions(
+    farmId: string,
+    actorId: string,
+    userId: string,
+  ): Promise<{ revoked: number }> {
+    await this.findMembership(farmId, userId);
+    const revoked = await this.prisma.$transaction(async (tx) => {
+      const count = await this.sessions.revokeAll(userId, tx);
+      await this.audit(tx, farmId, actorId, userId, AUDIT_ACTION.UPDATE, {
+        changed: ['sessions'],
+        revokedSessions: count,
+      });
+      return count;
+    });
+    return { revoked };
   }
 
   /** Membresía del usuario en la finca; 404 si no pertenece a ella (RN-21). */
@@ -211,13 +245,14 @@ export class UsersService {
   }
 
   private async audit(
+    tx: Tx,
     farmId: string,
     actorId: string,
     entityId: string,
     action: (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION],
     diff: Prisma.InputJsonObject,
   ): Promise<void> {
-    await this.prisma.auditLog.create({
+    await tx.auditLog.create({
       data: {
         farmId,
         userId: actorId,

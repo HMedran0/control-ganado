@@ -44,6 +44,15 @@ export class UsersController {
     return this.users.update(scope.farmId, scope.userId ?? '', id, body);
   }
 
+  /** Cierra todas las sesiones del usuario (AUT-11 CA3): equipo perdido o prestado. */
+  @Post(':id/sessions/revoke')
+  async revokeSessions(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<{ revoked: number }> {
+    return this.users.revokeSessions(scope.farmId, scope.userId ?? '', id);
+  }
+
   @Post(':id/reset-password')
   async resetPassword(
     @Param('id', ParseUUIDPipe) id: string,

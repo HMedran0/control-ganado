@@ -4,4 +4,5 @@ export * from './age.js';
 export * from './date.js';
 export * from './money.js';
 export * from './number.js';
+export * from './user-agent.js';
 export * from './weight.js';

@@ -195,17 +195,22 @@ model Membership {
 }
 
 model RefreshToken {
-  id        String    @id @db.Uuid
-  userId    String    @map("user_id") @db.Uuid
+  id              String    @id @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
   // Finca activa de la sesión: la rotación la conserva, así que renovar el token no
   // devuelve al usuario a su finca por defecto (M1; ver docs/adr/007-autenticacion.md).
-  farmId    String    @map("farm_id") @db.Uuid
-  tokenHash String    @unique @map("token_hash")
-  familyId  String    @map("family_id") @db.Uuid
-  expiresAt DateTime  @map("expires_at") @db.Timestamptz
-  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
-  userAgent String?   @map("user_agent")
-  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  farmId          String    @map("farm_id") @db.Uuid
+  tokenHash       String    @unique @map("token_hash")
+  familyId        String    @map("family_id") @db.Uuid
+  /// Inicio de sesión (con contraseña o, desde M10a, con Google) que originó la familia. Se
+  /// copia de token en token y fija el tope absoluto de la sesión (AUT-10 CA2, ADR-007 dec. 6).
+  familyStartedAt DateTime  @map("family_started_at") @db.Timestamptz
+  /// Último uso de la sesión (AUT-11). Se renueva al rotar, como máximo una vez por hora.
+  lastUsedAt      DateTime  @map("last_used_at") @db.Timestamptz
+  expiresAt       DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt       DateTime? @map("revoked_at") @db.Timestamptz
+  userAgent       String?   @map("user_agent")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
 
   user User @relation(fields: [userId], references: [id])
 

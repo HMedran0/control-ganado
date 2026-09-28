@@ -5,6 +5,7 @@ import { DomainError } from '@hato/shared';
 import { IS_PUBLIC_KEY } from '../common/farm-scope/public.decorator.js';
 import type { RequestWithScope } from '../common/farm-scope/farm-scope.types.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { SessionsService } from './sessions.service.js';
 import { TokenService } from './token.service.js';
 
 /**
@@ -18,6 +19,10 @@ import { TokenService } from './token.service.js';
  * petición. Así, desactivar a un usuario o cambiarle el rol surte efecto de inmediato y no
  * dentro de quince minutos, cuando venza su token (ADR-007). Cuesta una consulta por
  * petición, indexada por clave primaria y por el único `(user_id, farm_id)`.
+ *
+ * Desde M4d también comprueba que la **sesión** del token (claim `sid`) siga abierta: cerrar
+ * una sesión desde Mi cuenta, cerrar las demás o que el ADMIN cierre las de un usuario corta su
+ * acceso de inmediato (AUT-11). Es la segunda consulta, por `family_id`, en paralelo.
  */
 @Injectable()
 export class AccessGuard implements CanActivate {
@@ -25,6 +30,7 @@ export class AccessGuard implements CanActivate {
     private readonly reflector: Reflector,
     private readonly tokens: TokenService,
     private readonly prisma: PrismaService,
+    private readonly sessions: SessionsService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -42,10 +48,19 @@ export class AccessGuard implements CanActivate {
 
     const claims = await this.tokens.verifyAccessToken(token);
 
-    const membership = await this.prisma.membership.findUnique({
-      where: { userId_farmId: { userId: claims.userId, farmId: claims.farmId } },
-      include: { user: { select: { isActive: true, mustChangePassword: true } } },
-    });
+    const [membership, sessionOpen] = await Promise.all([
+      this.prisma.membership.findUnique({
+        where: { userId_farmId: { userId: claims.userId, farmId: claims.farmId } },
+        include: { user: { select: { isActive: true, mustChangePassword: true } } },
+      }),
+      this.sessions.isOpen(claims.userId, claims.sessionId),
+    ]);
+
+    if (!sessionOpen) {
+      throw new DomainError('AUTH_TOKEN_EXPIRED', {
+        detail: 'La sesión se cerró en este equipo. Vuelve a iniciar sesión.',
+      });
+    }
 
     // Membresía inexistente, membresía desactivada o cuenta desactivada: el token deja de
     // valer aunque todavía no haya vencido (AUT-03 CA2).
@@ -61,6 +76,7 @@ export class AccessGuard implements CanActivate {
       // El rol vigente es el de la base, no el que venía firmado en el token.
       role: membership.role,
     };
+    request.sessionId = claims.sessionId;
     request.mustChangePassword = membership.user.mustChangePassword;
     return true;
   }

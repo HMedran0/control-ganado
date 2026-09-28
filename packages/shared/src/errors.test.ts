@@ -12,8 +12,8 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 36 códigos de error de 05-api.md implementados hasta M4c', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(36);
+  it('tiene los 37 códigos de error de 05-api.md implementados hasta M4d', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(37);
   });
 
   it('tiene las 10 advertencias de 05-api.md', () => {

@@ -10,6 +10,8 @@ function env(overrides: Partial<Env> = {}): Env {
     DATABASE_URL: 'postgresql://x/y',
     JWT_ACCESS_SECRET: 'x'.repeat(40),
     REFRESH_TOKEN_PEPPER: 'y'.repeat(40),
+    REFRESH_TTL_DAYS: 30,
+    REFRESH_MAX_AGE_DAYS: 180,
     CORS_ORIGINS: ['http://localhost:5173'],
     PUBLIC_WEB_URL: 'http://localhost:5173',
     RATE_LIMIT_PER_IP: 60,

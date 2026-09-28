@@ -1,19 +1,21 @@
-import { Controller, Get, Post, Req, Res } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
 import {
   changePasswordSchema,
   loginSchema,
   type LoginInput,
   type SessionResponse,
+  type SessionView,
 } from '@hato/shared';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 
-import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
+import { CurrentScope, CurrentSession } from '../common/farm-scope/farm-scope.decorator.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { Public } from '../common/farm-scope/public.decorator.js';
 import { ZodBody } from '../common/validation/zod-validation.pipe.js';
 import { AuthService, type RequestContext, type Session } from './auth.service.js';
+import { Clock } from '../infra/clock.service.js';
 import { AllowPendingPassword } from './password-change.guard.js';
-import { REFRESH_TOKEN_TTL_DAYS } from './token.service.js';
+import { SessionsService } from './sessions.service.js';
 
 /**
  * Endpoints de autenticación (05-api.md «Autenticación»).
@@ -32,7 +34,11 @@ export const REFRESH_COOKIE_PATH = '/api/v1/auth';
 
 @Controller()
 export class AuthController {
-  constructor(private readonly auth: AuthService) {}
+  constructor(
+    private readonly auth: AuthService,
+    private readonly sessions: SessionsService,
+    private readonly clock: Clock,
+  ) {}
 
   @Public()
   @Post('auth/login')
@@ -87,6 +93,38 @@ export class AuthController {
     return this.respondWithSession(session, reply);
   }
 
+  /** Sesiones abiertas del usuario (AUT-11 CA1). */
+  @Get('auth/sessions')
+  async listSessions(
+    @CurrentScope() scope: FarmScope,
+    @CurrentSession() sessionId: string,
+  ): Promise<{ items: SessionView[] }> {
+    return { items: await this.sessions.list(scope.userId ?? '', sessionId) };
+  }
+
+  /** Cierra una sesión propia (AUT-11 CA2). Si es la actual, equivale a salir. */
+  @Post('auth/sessions/:id/revoke')
+  async revokeSession(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentScope() scope: FarmScope,
+    @CurrentSession() sessionId: string,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<{ ok: true; current: boolean }> {
+    await this.sessions.revoke(scope.userId ?? '', id);
+    const current = id === sessionId;
+    if (current) reply.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH });
+    return { ok: true, current };
+  }
+
+  /** Cierra todas las sesiones propias menos la actual (AUT-11 CA2). */
+  @Post('auth/sessions/revoke-others')
+  async revokeOtherSessions(
+    @CurrentScope() scope: FarmScope,
+    @CurrentSession() sessionId: string,
+  ): Promise<{ revoked: number }> {
+    return { revoked: await this.sessions.revokeOthers(scope.userId ?? '', sessionId) };
+  }
+
   @Get('me')
   async me(@CurrentScope() scope: FarmScope): Promise<MeResponse> {
     const memberships = await this.auth.membershipsOf(scope.userId ?? '');
@@ -106,7 +144,11 @@ export class AuthController {
       secure: true,
       sameSite: 'strict',
       path: REFRESH_COOKIE_PATH,
-      maxAge: REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60,
+      // La cookie vive lo mismo que el token: 30 días desde ahora o hasta el tope (AUT-10).
+      maxAge: Math.max(
+        0,
+        Math.floor((session.refreshToken.expiresAt.getTime() - this.clock.now().getTime()) / 1000),
+      ),
     });
 
     return {

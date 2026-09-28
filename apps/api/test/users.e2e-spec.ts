@@ -206,6 +206,8 @@ describe('Usuarios', () => {
           farmId: esperanza.farmId,
           tokenHash: `hash-${uuidv7()}`,
           familyId: uuidv7(),
+          familyStartedAt: new Date('2026-09-25T12:00:00Z'),
+          lastUsedAt: new Date('2026-09-25T12:00:00Z'),
           expiresAt: new Date('2027-01-01T00:00:00Z'),
         },
       });
@@ -297,6 +299,8 @@ describe('Usuarios', () => {
           farmId: esperanza.farmId,
           tokenHash: `hash-${uuidv7()}`,
           familyId: uuidv7(),
+          familyStartedAt: new Date('2026-09-25T12:00:00Z'),
+          lastUsedAt: new Date('2026-09-25T12:00:00Z'),
           expiresAt: new Date('2027-01-01T00:00:00Z'),
         },
       });

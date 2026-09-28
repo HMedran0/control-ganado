@@ -27,6 +27,11 @@ export const ERROR_CATALOG = {
     detail: 'Debes cambiar tu contraseña temporal.',
   },
   AUTH_TOKEN_EXPIRED: { status: 401, detail: 'La sesión expiró. Vuelve a iniciar sesión.' },
+  /** Tope absoluto de la sesión deslizante (AUT-10 CA2). Trae `context.login`. */
+  AUTH_SESSION_MAX_AGE: {
+    status: 401,
+    detail: 'Por seguridad, vuelve a escribir tu contraseña.',
+  },
   FORBIDDEN_ROLE: { status: 403, detail: 'Tu rol no permite esta acción.' },
   NOT_FOUND: { status: 404, detail: 'El registro no existe o no pertenece a esta finca.' },
   VERSION_CONFLICT: {

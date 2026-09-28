@@ -19,6 +19,8 @@ export type FarmScope = {
 /** Petición con el ámbito ya resuelto por `AccessGuard`. */
 export type RequestWithScope = {
   scope?: FarmScope;
+  /** Sesión (familia de refresco) del token de acceso; la pone `AccessGuard` (AUT-11). */
+  sessionId?: string;
   /** `true` mientras el usuario no cambie su contraseña temporal (AUT-04 CA2). */
   mustChangePassword?: boolean;
   headers: Record<string, string | string[] | undefined>;

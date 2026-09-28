@@ -12,7 +12,11 @@ import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { LoginAttemptsService } from './login-attempts.service.js';
 import { PasswordService } from './password.service.js';
-import { TokenService, type IssuedRefreshToken } from './token.service.js';
+import { SessionsService } from './sessions.service.js';
+import { TokenService, type IssuedRefreshToken, type RefreshFamily } from './token.service.js';
+
+/** `last_used_at` se escribe como máximo una vez por hora por sesión (AUT-11 CA4). */
+const LAST_USED_GRANULARITY_MS = 60 * 60 * 1000;
 
 /**
  * Casos de uso de autenticación (AUT-01, AUT-02, AUT-04).
@@ -49,6 +53,7 @@ export class AuthService {
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
     private readonly attempts: LoginAttemptsService,
+    private readonly sessions: SessionsService,
     private readonly clock: Clock,
   ) {}
 
@@ -122,13 +127,18 @@ export class AuthService {
   }
 
   /**
-   * Rotación del token de refresco (04-arquitectura.md §5).
+   * Rotación del token de refresco (04-arquitectura.md §5) con vencimiento deslizante (AUT-10).
    *
-   * Cada refresco emite uno nuevo y revoca el anterior. Si llega un token que ya fue rotado
-   * —o uno revocado—, se revoca **toda la familia**: o alguien lo robó, o el cliente está
-   * reintentando con una copia vieja; en los dos casos lo seguro es cerrar la sesión.
+   * Cada refresco emite uno nuevo y revoca el anterior, en la misma transacción: nunca hay un
+   * instante en que la sesión quede sin token abierto, y `AccessGuard` no corta una petición
+   * que llegue justo mientras se rota. Si llega un token que ya fue rotado —o uno revocado—, se
+   * revoca **toda la familia**: o alguien lo robó, o el cliente está reintentando con una copia
+   * vieja; en los dos casos lo seguro es cerrar la sesión.
    *
-   * @throws {DomainError} `AUTH_TOKEN_EXPIRED` si el token no sirve.
+   * @throws {DomainError} `AUTH_SESSION_MAX_AGE` (con `context.login`) solo si el token era
+   *   legítimo y venció por el tope absoluto de la familia (AUT-10 CA2).
+   * @throws {DomainError} `AUTH_TOKEN_EXPIRED` en cualquier otro caso, sin datos del usuario:
+   *   token desconocido, revocado, reutilizado o vencido por falta de uso.
    */
   async refresh(value: string, context: RequestContext): Promise<Session> {
     const tokenHash = this.tokens.hashRefreshToken(value);
@@ -160,6 +170,15 @@ export class AuthService {
         where: { id: stored.id },
         data: { revokedAt: now },
       });
+      // Solo un token que no fue revocado ni reutilizado y cuyo vencimiento es el tope de la
+      // familia lleva el usuario: la web lo muestra ya escrito (06 §5.7). Un token que venció
+      // por falta de uso responde lo mismo que uno desconocido.
+      const cappedAt = this.tokens.familyCapAt(stored.familyStartedAt);
+      if (stored.user.isActive && stored.expiresAt.getTime() >= cappedAt.getTime()) {
+        throw new DomainError('AUTH_SESSION_MAX_AGE', {
+          context: { login: stored.user.username },
+        });
+      }
       throw new DomainError('AUTH_TOKEN_EXPIRED');
     }
 
@@ -175,17 +194,21 @@ export class AuthService {
       throw new DomainError('AUTH_TOKEN_EXPIRED');
     }
 
-    await this.prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revokedAt: now },
-    });
+    const lastUsedAt =
+      now.getTime() - stored.lastUsedAt.getTime() >= LAST_USED_GRANULARITY_MS
+        ? now
+        : stored.lastUsedAt;
 
     return this.openSession({
       user: stored.user,
       membership,
       memberships,
       context,
-      familyId: stored.familyId,
+      rotate: {
+        previousId: stored.id,
+        family: { id: stored.familyId, startedAt: stored.familyStartedAt },
+        lastUsedAt,
+      },
     });
   }
 
@@ -234,16 +257,13 @@ export class AuthService {
 
     const now = this.clock.now();
     const passwordHash = await this.passwords.hash(newPassword);
-    await this.prisma.$transaction([
-      this.prisma.user.update({
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
         where: { id: userId },
         data: { passwordHash, mustChangePassword: false, updatedAt: now },
-      }),
-      this.prisma.refreshToken.updateMany({
-        where: { userId, revokedAt: null },
-        data: { revokedAt: now },
-      }),
-    ]);
+      });
+      await this.sessions.revokeAll(userId, tx);
+    });
 
     const memberships = user.memberships.map((membership): MembershipView => ({
       farmId: membership.farmId,
@@ -270,14 +290,6 @@ export class AuthService {
       membership,
       memberships,
       context,
-    });
-  }
-
-  /** Revoca todas las sesiones de un usuario (desactivación, AUT-03 CA2). */
-  async revokeAllSessions(userId: string): Promise<void> {
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: this.clock.now() },
     });
   }
 
@@ -314,29 +326,45 @@ export class AuthService {
     membership: MembershipView;
     memberships: readonly MembershipView[];
     context: RequestContext;
-    familyId?: string;
+    /** Rotación: token que se reemplaza, su familia y el último uso que hereda el nuevo. */
+    rotate?: { previousId: string; family: RefreshFamily; lastUsedAt: Date };
   }): Promise<Session> {
-    const { user, membership, memberships, context } = input;
+    const { user, membership, memberships, context, rotate } = input;
+    const now = this.clock.now();
 
+    const refreshToken = this.tokens.issueRefreshToken(rotate?.family);
     const accessToken = await this.tokens.signAccessToken({
       userId: user.id,
       farmId: membership.farmId,
       role: membership.role,
+      sessionId: refreshToken.familyId,
     });
-    const refreshToken = this.tokens.issueRefreshToken(input.familyId);
 
-    await this.prisma.refreshToken.create({
+    const create = this.prisma.refreshToken.create({
       data: {
         id: refreshToken.id,
         userId: user.id,
         farmId: membership.farmId,
         tokenHash: refreshToken.tokenHash,
         familyId: refreshToken.familyId,
+        familyStartedAt: refreshToken.familyStartedAt,
+        lastUsedAt: rotate?.lastUsedAt ?? now,
         expiresAt: refreshToken.expiresAt,
         userAgent: context.userAgent,
-        createdAt: this.clock.now(),
+        createdAt: now,
       },
     });
+    if (rotate === undefined) {
+      await create;
+    } else {
+      await this.prisma.$transaction([
+        this.prisma.refreshToken.update({
+          where: { id: rotate.previousId },
+          data: { revokedAt: now },
+        }),
+        create,
+      ]);
+    }
 
     return {
       accessToken,
