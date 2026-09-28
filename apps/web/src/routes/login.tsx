@@ -3,6 +3,7 @@ import { Info } from 'lucide-react';
 
 import { PageHeader } from '../components/layout/PageHeader';
 import { LoginForm } from '../features/auth/LoginForm';
+import { useAuth } from '../lib/auth/context';
 import { redirectIfAuthenticated, safeRedirect } from '../lib/auth/guards';
 
 type LoginSearch = {
@@ -34,6 +35,8 @@ export const Route = createFileRoute('/login')({
 function LoginPage() {
   const router = useRouter();
   const { redirect, expired } = Route.useSearch();
+  // Tope de la sesión deslizante (AUT-10 CA2): se pide solo la contraseña.
+  const reauthLogin = useAuth().store.reauthLogin();
 
   return (
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
@@ -43,7 +46,15 @@ function LoginPage() {
       <PageHeader title="Inicia sesión" documentTitle="Iniciar sesión">
         Control del ganado de la finca.
       </PageHeader>
-      {expired === true ? (
+      {reauthLogin !== null ? (
+        <p
+          role="status"
+          className="mb-5 flex items-start gap-2 rounded-control border-2 border-info bg-superficie p-3 text-info"
+        >
+          <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          Por seguridad, vuelve a escribir tu contraseña.
+        </p>
+      ) : expired === true ? (
         <p
           role="status"
           className="mb-5 flex items-start gap-2 rounded-control border-2 border-info bg-superficie p-3 text-info"
@@ -54,6 +65,7 @@ function LoginPage() {
       ) : null}
       <div className="rounded-panel border border-cerca bg-superficie p-5">
         <LoginForm
+          defaultLogin={reauthLogin ?? ''}
           onSuccess={(session) => {
             if (session.user.mustChangePassword) {
               void router.navigate({ to: '/change-password', replace: true });

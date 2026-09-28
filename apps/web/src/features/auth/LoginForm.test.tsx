@@ -122,4 +122,10 @@ describe('LoginForm', () => {
     expect(input).toHaveAttribute('type', 'text');
     expect(toggle).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('con la sesión en su tope, llega con el usuario ya escrito (AUT-10 CA2)', () => {
+    renderWithAuth(<LoginForm onSuccess={vi.fn()} defaultLogin="alvaro" />, () => json({}));
+    expect(screen.getByLabelText('Usuario')).toHaveValue('alvaro');
+    expect(screen.getByLabelText('Contraseña', { exact: true })).toHaveValue('');
+  });
 });

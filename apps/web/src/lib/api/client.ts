@@ -202,7 +202,15 @@ export class ApiClient {
     } catch (error) {
       // Solo un 401 significa «no hay sesión». Cualquier otra cosa se propaga. La sesión
       // local la borra quien llamó (`endSession`), para avisar una sola vez.
-      if (isApiError(error) && error.status === 401) return null;
+      if (isApiError(error) && error.status === 401) {
+        // Tope de la sesión deslizante (AUT-10 CA2): se recuerda quién era para pedirle solo
+        // la contraseña. La API manda el usuario únicamente en este caso.
+        const login = error.context?.login;
+        if (error.code === 'AUTH_SESSION_MAX_AGE' && login !== undefined) {
+          this.session.requireReauth(login);
+        }
+        return null;
+      }
       throw error;
     }
   }

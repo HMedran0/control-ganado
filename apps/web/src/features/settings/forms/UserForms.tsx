@@ -5,17 +5,19 @@ import {
   type UserView,
   type UserWithTemporaryPassword,
 } from '@hato/shared';
-import { Copy, KeyRound } from 'lucide-react';
+import { Copy, KeyRound, LogOut } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 
 import { AlertBanner } from '../../../components/ui/AlertBanner';
 import { Button } from '../../../components/ui/Button';
+import { Dialog } from '../../../components/ui/Dialog';
 import { FormError } from '../../../components/ui/FormError';
 import { SegmentedChoice } from '../../../components/ui/SegmentedChoice';
 import { TextField } from '../../../components/ui/TextField';
 import { isApiError } from '../../../lib/api/errors';
 import { ROLE_LABELS } from '../../../lib/auth/roles';
+import { useRevokeUserSessions } from '../../auth/sessions';
 import { useUserMutations } from '../api';
 import { FormActions } from '../FormActions';
 import { saveErrorMessage } from '../form-errors';
@@ -167,6 +169,8 @@ export function UserCreateForm({ done }: { done: ReactNode }) {
 /** Editar nombre, correo y rol; desactivar o activar; generar una contraseña temporal. */
 export function UserEditForm({ user, done }: { user: UserView; done: ReactNode }) {
   const { update, resetPassword } = useUserMutations();
+  const revokeSessions = useRevokeUserSessions();
+  const [confirmRevoke, setConfirmRevoke] = useState(false);
   const [role, setRole] = useState<Role>(user.role);
   const [name, setName] = useState(user.name);
   const [email, setEmail] = useState(user.email ?? '');
@@ -258,8 +262,59 @@ export function UserEditForm({ user, done }: { user: UserView; done: ReactNode }
           >
             {user.isActive ? 'Desactivar usuario' : 'Activar usuario'}
           </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              revokeSessions.reset();
+              setConfirmRevoke(true);
+            }}
+          >
+            <LogOut aria-hidden="true" className="size-5" />
+            Cerrar todas sus sesiones
+          </Button>
         </div>
       </section>
+
+      <Dialog
+        open={confirmRevoke}
+        onOpenChange={setConfirmRevoke}
+        title={`¿Cerrar las sesiones de ${user.name}?`}
+        description="Se cerrará su sesión en todos sus equipos. Úsalo si perdió o prestó un celular o un computador: tendrá que volver a entrar con su contraseña."
+      >
+        <div className="flex flex-col gap-4">
+          <FormError
+            message={
+              revokeSessions.error === null
+                ? null
+                : isApiError(revokeSessions.error)
+                  ? revokeSessions.error.detail
+                  : 'Ocurrió un error inesperado.'
+            }
+          />
+          <Button
+            block
+            disabled={revokeSessions.isPending}
+            onClick={() => {
+              setMessage(null);
+              void revokeSessions.mutateAsync(user.id).then(
+                ({ revoked }) => {
+                  setConfirmRevoke(false);
+                  setMessage(
+                    revoked === 0
+                      ? `${user.name} no tenía sesiones abiertas.`
+                      : revoked === 1
+                        ? 'Se cerró 1 sesión.'
+                        : `Se cerraron ${revoked} sesiones.`,
+                  );
+                },
+                () => undefined,
+              );
+            }}
+          >
+            {revokeSessions.isPending ? 'Cerrando…' : 'Cerrar todas sus sesiones'}
+          </Button>
+        </div>
+      </Dialog>
 
       <FormError message={formError} />
       <p role="status" className="font-bold text-potrero">

@@ -14,6 +14,7 @@ type Listener = () => void;
  */
 export class SessionStore {
   private current: SessionResponse | null = null;
+  private reauth: string | null = null;
   private readonly listeners = new Set<Listener>();
 
   /** Sesión actual, o `null` si nadie ha iniciado sesión. */
@@ -30,7 +31,23 @@ export class SessionStore {
   /** Guarda una sesión nueva (login, refresh o cambio de contraseña). */
   set(session: SessionResponse): void {
     this.current = session;
+    this.reauth = null;
     this.emit();
+  }
+
+  /**
+   * Usuario al que hay que pedirle la contraseña porque su sesión cumplió el tope absoluto
+   * (`AUTH_SESSION_MAX_AGE`, AUT-10 CA2), o `null`. Vive solo en memoria, como la sesión: el
+   * inicio de sesión lo muestra ya escrito (06 §5.7).
+   */
+  readonly reauthLogin = (): string | null => this.reauth;
+
+  /**
+   * La sesión cumplió el tope: se recuerda quién era. La sesión local la borra quien llamó,
+   * como en cualquier refresco fallido, para avisar una sola vez.
+   */
+  requireReauth(login: string): void {
+    this.reauth = login;
   }
 
   /** Olvida la sesión. */

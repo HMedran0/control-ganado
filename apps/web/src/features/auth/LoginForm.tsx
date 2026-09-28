@@ -11,7 +11,14 @@ import { useAuth } from '../../lib/auth/context';
 import { applyFieldErrors, loginErrorMessage } from './messages';
 
 /** Inicio de sesión (AUT-01, 06 §5.7). */
-export function LoginForm({ onSuccess }: { onSuccess: (session: SessionResponse) => void }) {
+export function LoginForm({
+  onSuccess,
+  defaultLogin = '',
+}: {
+  onSuccess: (session: SessionResponse) => void;
+  /** Usuario ya escrito, cuando la sesión cumplió el tope (AUT-10 CA2). */
+  defaultLogin?: string;
+}) {
   const { api } = useAuth();
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -21,7 +28,7 @@ export function LoginForm({ onSuccess }: { onSuccess: (session: SessionResponse)
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(loginSchema),
-    defaultValues: { login: '', password: '' },
+    defaultValues: { login: defaultLogin, password: '' },
   });
 
   const onSubmit = handleSubmit(async (values) => {

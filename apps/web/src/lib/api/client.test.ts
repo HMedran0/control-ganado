@@ -283,6 +283,39 @@ describe('ApiClient', () => {
     });
   });
 
+  describe('tope de la sesión (AUT-10 CA2)', () => {
+    it('AUTH_SESSION_MAX_AGE al abrir: no hay sesión y se recuerda el usuario', async () => {
+      const { store, api } = setup(() =>
+        problem(401, 'AUTH_SESSION_MAX_AGE', 'Por seguridad…', { context: { login: 'alvaro' } }),
+      );
+      await expect(api.restore()).resolves.toBeNull();
+      expect(store.reauthLogin()).toBe('alvaro');
+
+      store.set(session('nuevo'));
+      expect(store.reauthLogin()).toBeNull();
+    });
+
+    it('en medio del trabajo: cierra la sesión, avisa una vez y recuerda el usuario', async () => {
+      const { store, api, onSessionEnd } = setup((url) =>
+        url.endsWith('/auth/refresh')
+          ? problem(401, 'AUTH_SESSION_MAX_AGE', 'Por seguridad…', { context: { login: 'alvaro' } })
+          : problem(401, 'AUTH_TOKEN_EXPIRED'),
+      );
+      store.set(session('viejo'));
+
+      await expect(api.get('/a')).rejects.toMatchObject({ code: 'AUTH_TOKEN_EXPIRED' });
+      expect(store.get()).toBeNull();
+      expect(store.reauthLogin()).toBe('alvaro');
+      expect(onSessionEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('otro 401 del refresco no recuerda a nadie', async () => {
+      const { store, api } = setup(() => problem(401, 'AUTH_TOKEN_EXPIRED'));
+      await expect(api.restore()).resolves.toBeNull();
+      expect(store.reauthLogin()).toBeNull();
+    });
+  });
+
   describe('restore() al abrir la aplicación', () => {
     it('con cookie válida → guarda la sesión', async () => {
       const { store, api } = setup(() => json(session('restaurado')));

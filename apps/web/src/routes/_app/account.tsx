@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { ChangePasswordForm } from '../../features/auth/ChangePasswordForm';
+import { SessionsSection } from '../../features/auth/SessionsSection';
 import { useRequiredSession } from '../../lib/auth/context';
 import { ROLE_LABELS } from '../../lib/auth/roles';
 import { useLogout } from '../../lib/auth/use-logout';
@@ -13,7 +14,7 @@ export const Route = createFileRoute('/_app/account')({
   component: AccountPage,
 });
 
-/** Mi cuenta: datos de la sesión, cambio de contraseña (AUT-04 CA1) y salida. */
+/** Mi cuenta: datos de la sesión, cambio de contraseña (AUT-04 CA1), sesiones (AUT-11) y salida. */
 function AccountPage() {
   const session = useRequiredSession();
   const logout = useLogout();
@@ -54,6 +55,8 @@ function AccountPage() {
           }}
         />
       </section>
+
+      <SessionsSection />
 
       <Button variant="secondary" onClick={() => void logout()}>
         Salir
