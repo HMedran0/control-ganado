@@ -73,8 +73,8 @@ Inicio (preguntas del día + alertas)
 Animales
   ├─ Listado con filtros
   ├─ Ficha del animal
-  │    ├─ Resumen · Reproducción · Leche(M9b) · Sanidad · Pesos · Genealogía · Costos(A) · Historial
-  │    └─ Acciones: vacuna, peso, servicio/parto, tratamiento, secado(M9b), salida(A)
+  │    ├─ Resumen · Reproducción · Leche(M9b) · Sanidad · Pesos · Genealogía · Costos(A) · Historial · Cambios(A)
+  │    └─ Acciones: vacuna, peso, servicio/parto, tratamiento, secado(M9b), salida y su reversión(A), archivar y restaurar(A)
   └─ Nuevo animal
 Registrar (+)
   ├─ Parto · Servicio · Palpación
@@ -86,6 +86,7 @@ Registrar (+)
 Alertas (vacunas, partos, servidas sin diagnóstico, retiros, ganancia baja, secar pronto)
 Reportes
 Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta (datos, correo, Sesiones, Google) · Salir
+Configuración(A) → Finca (incluye Numeración de los animales, M4c) · Archivados (M4c)
 Configuración(A) → Usuarios: crear usuario sin correo · Invitar por correo · invitaciones pendientes · cerrar las sesiones de un usuario
 ```
 
@@ -295,6 +296,45 @@ Mismo patrón de simulación que §5.6. Paso 1: elegir el perfil de báscula o, 
 
 ### 5.13 Jornada de ordeño (LEC-01, M9b)
 Lista de las vacas en ordeño del lote, una fila por vaca con la chapeta, el nombre, días en leche y un `NumberField` de litros con teclado numérico; Enter pasa a la siguiente. Una vaca con retiro de leche muestra "Leche no apta para la venta" junto al campo. Botón fijo abajo: **Guardar ordeño de 23 vacas**. El ordeño (AM, PM o total del día) y la fecha se eligen una vez arriba con `SegmentedChoice` y `DateQuickPick`.
+
+### 5.14 Salida, reversión, archivo y numeración (M4c)
+Todas estas acciones son del ADMIN: los demás roles no ven los botones y la API las rechaza igual. Los diálogos siguen el principio 4 (§2): son acciones graves, así que piden confirmación; al terminar, la ficha muestra un aviso verde con el resultado ("Salida de 5 registrada.") y, debajo, las advertencias de la API en tono de aviso.
+
+**Configuración → Finca → Numeración de los animales (ANI-10).** Bloque propio al final de los parámetros de la finca:
+- "¿Reutilizar números de animales que salen de la finca?" (`SegmentedChoice` Sí / No), con la ayuda "Si vende el 5, el próximo animal puede ser el 5. El historial de cada uno no se mezcla."
+- "Número sugerido para un animal nuevo": **Código de las crías** o **Menor número libre**. Con el primero aparece el campo "Código de las crías" con la explicación de `{YY}`, `{YYYY}`, `{NNN}` y `{N}` y un ejemplo ("{YY}-{NNN} da 26-045").
+- Pasar de Sí a No con números repetidos no se guarda: el error `CODE_REUSE_CONFLICT` dice qué números chocan.
+
+**Registrar salida (ANI-04).** Botón **Registrar salida** en la ficha de un animal activo. Diálogo "Registrar salida de Canela" con la descripción "El animal sale del inventario activo. Si fue un error, se puede revertir." Campos: **Tipo de salida** (venta, muerte, sacrificio, robo, traslado, otro), **Fecha de salida**, y si es venta **Precio de venta** (obligatorio) y **Comprador** (opcional); al final **Motivo u observaciones** (opcional). Si el animal está en retiro y la salida es venta o sacrificio, aparece un recuadro de aviso "Está en retiro de medicamento hasta el 12/10/2026." con la casilla "Confirmo la salida aunque esté en retiro" ("Queda registrado en los cambios del animal."); sin marcarla, la API responde `WITHDRAWAL_ACTIVE` (RN-22). Botón **Registrar salida**.
+
+**Revertir salida (ANI-04 CA5, IDN-06 CA3).** En la ficha de un animal que salió, botón **Revertir salida**. Diálogo "Revertir la salida de Canela": "Vuelve al inventario activo. Se anula la venta del 12/03/2026." Si su número ya lo tiene otro animal activo, el mismo diálogo muestra el error de la API con el enlace **Abrir la ficha de 5** y agrega el campo **Código nuevo** ("Otro animal activo ya tiene su número. Sugerido: 41.") con el atajo **Usar el 41**. Si el número está libre pero su chapeta la tiene otro animal, la reversión se hace sin preguntar y el aviso dice "El identificador 5 ya lo tiene el animal 30: quedó retirado en este animal."
+
+```
+┌──────────────────────────────────┐
+│ Revertir la salida de 5        ✕ │
+│ Vuelve al inventario activo. Se  │
+│ anula la venta del 12/03/2026.   │
+│ ┌──────────────────────────────┐ │
+│ │ El código 5 ya lo tiene el   │ │
+│ │ animal activo 5. Asígnale un │ │
+│ │ código nuevo…                │ │
+│ │ Abrir la ficha de 5          │ │
+│ └──────────────────────────────┘ │
+│ Código nuevo                     │
+│ [ 41                          ]  │
+│ Otro animal activo ya tiene su   │
+│ número. Sugerido: 41.            │
+│ [      Revertir salida       ]   │
+└──────────────────────────────────┘
+```
+
+**Archivar (ANI-03).** Botón **Archivar** (secundario, en la ficha de cualquier animal no archivado). Diálogo "Archivar Canela": "Deja de aparecer en listados y conteos, y se retiran todos sus identificadores, también el DIN y el chip. Se puede restaurar desde Configuración → Archivados." Campo **Motivo** obligatorio (por ejemplo, "Registro duplicado por error"). Botón **Archivar animal**. La ficha de un archivado muestra arriba el aviso "Archivado el 28/09/2026" con el motivo, y en lugar de las acciones, **Restaurar animal**.
+
+**Restaurar.** Diálogo "Restaurar Canela": "Vuelve a aparecer en listados y conteos, con los identificadores que sigan libres." Si su código ya lo tiene otro animal, pide **Código nuevo** igual que la reversión. Los identificadores que ya tiene otro animal llegan como aviso.
+
+**Configuración → Archivados.** Lista de los animales archivados ("Animales que se sacaron del hato por error o por estar duplicados. Abre la ficha para ver el motivo y restaurarlo."), una fila por animal con código y nombre, sexo, categoría y raza, y **Cargar más** al final. Vacía: `EmptyState` "No hay animales archivados · Cuando archives un registro duplicado o hecho por error, aparece aquí."
+
+**Pestaña Cambios (AUD-01 CA2, solo ADMIN).** Última pestaña de la ficha. Cada cambio del animal o de sus identificadores, del más reciente al más antiguo, en lenguaje de finca: la acción ("Registro", "Cambio", "Salida", "Salida revertida", "Archivado", "Restaurado", "Anulación"), sobre qué ("animal 5", "chapeta 5"), quién y cuándo, y la lista de campos con antes → después ("Tipo de salida: Venta → —"). Los ids de raza, lote, madre y padre se muestran como nombre o código, y los montos nunca aparecen, ni siquiera para el ADMIN (se consultan en Costos). Vacía: "Sin cambios registrados".
 
 ## 6. Componentes del sistema de diseño
 

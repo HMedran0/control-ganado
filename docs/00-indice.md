@@ -7,17 +7,17 @@
 | `03-modelo-datos.md` | Entidades, convenciones, índices, consultas derivadas, seed | Desarrollo |
 | `referencia/schema.prisma` | Esquema Prisma **inicial**: punto de partida de M0.3, no se actualiza. El esquema vigente es `apps/api/prisma/schema.prisma` y sus migraciones | Desarrollo |
 | `referencia/prisma.config.ts` | Configuración de Prisma 7 (conexión, migraciones, seed) | Desarrollo |
-| `referencia/migracion-manual.sql` | Índices parciales, pg_trgm y restricciones CHECK | Desarrollo |
+| `referencia/migracion-manual.sql` | Índices parciales, pg_trgm y restricciones CHECK **iniciales**. Las vigentes están en las migraciones de `apps/api/prisma/migrations/` | Desarrollo |
 | `04-arquitectura.md` | Contexto, ADRs, monorepo, capas, seguridad, sincronización, respaldos, pruebas | Desarrollo, evaluación académica |
 | `05-api.md` | Contrato REST | Desarrollo |
 | `06-ux-ui.md` | Personas, principios, identidad visual, navegación, wireframes, componentes, redacción | Diseño, desarrollo |
 | `07-plan-desarrollo.md` | Hitos, definición de terminado, riesgos, alcance núcleo | Desarrollo con Claude Code |
 | `08-dominio-y-finca-referencia.md` | Decisiones de dominio sustentadas en fuentes reales y finca de referencia ficticia | Todos |
 | `09-ampliacion-validacion-ganaderos.md` | Hallazgos de la validación con ganaderos (H1 a H4) y en qué hito entra cada uno. Integrado en 01 a 08; se conserva como registro del porqué de cada cambio | Todos, evaluación académica |
-| `referencia/plantilla-importacion.xlsx` | Plantilla de importación del inventario con datos de ejemplo | Desarrollo, finca |
+| `referencia/plantilla-importacion.xlsx` | Plantilla de importación **original**, con datos de ejemplo (la fila 13 tiene un error a propósito). Las pruebas la usan tal cual; la que descarga cada finca la genera la API con su catálogo (ANI-09, M4d) | Desarrollo, finca |
 | `../.claude/` | Permisos y hooks de Claude Code | Claude Code |
 
-**Esquema vigente.** `docs/referencia/` guarda la especificación de partida tal como se escribió y el hook `protect.sh` impide editarla. El modelo de datos vigente está en `apps/api/prisma/schema.prisma` (y `apps/api/prisma/migrations/`); `03-modelo-datos.md` se mantiene al día con él.
+**Referencia original y esquema vigente.** Todo `docs/referencia/` (esquema, configuración de Prisma, migración manual, plantilla y prototipo) es la especificación de partida tal como se escribió: no se actualiza y el hook `protect.sh` impide editarla. El modelo de datos vigente está en `apps/api/prisma/schema.prisma` (y `apps/api/prisma/migrations/`); `03-modelo-datos.md` se mantiene al día con él.
 
 Numeración: el `02` queda reservado para `02-investigacion.md` (resumen del proyecto de investigación y su relación con el software).
 
