@@ -33,6 +33,7 @@ const ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   EXIT: 'Salida',
   REVERT_EXIT: 'Salida revertida',
   LOGIN: 'Inicio de sesión',
+  IMPORT: 'Importación',
 };
 
 /** Campos que no son del formulario del animal: salida, archivo e identificadores. */
@@ -49,6 +50,8 @@ const EXTRA_FIELD_LABEL: Readonly<Record<string, string>> = {
   notRestored: 'identificadores que siguen retirados',
   identifiers: 'identificadores',
   initialWeightKg: 'peso inicial (kg)',
+  importFile: 'importado desde',
+  importRow: 'fila del archivo',
   type: 'tipo',
   value: 'número',
   assignedAt: 'fecha de asignación',

@@ -1,4 +1,5 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { IMPORT_MAX_BYTES } from '@hato/shared';
 import type { FastifyRequest } from 'fastify';
 
 import type { RequestWithScope } from '../common/farm-scope/farm-scope.types.js';
@@ -35,6 +36,8 @@ export type SecurityPlugins = {
   readonly cookie: Parameters<NestFastifyApplication['register']>[0];
   readonly helmet: Parameters<NestFastifyApplication['register']>[0];
   readonly rateLimit: Parameters<NestFastifyApplication['register']>[0];
+  /** `@fastify/multipart`, para subir el archivo de la importación (ANI-09). */
+  readonly multipart: Parameters<NestFastifyApplication['register']>[0];
 };
 
 /**
@@ -52,6 +55,19 @@ export async function configureSecurity(
   limits: RateLimits = { perUser: RATE_LIMIT_PER_USER, perIp: RATE_LIMIT_PER_IP },
 ): Promise<void> {
   await app.register(plugins.cookie, { secret: env.REFRESH_TOKEN_PEPPER });
+
+  // Subidas (ANI-09, ADR-011): un solo archivo de hasta 5 MB y pocos campos cortos. Nada va a
+  // disco: el archivo se lee en memoria y lo valida `imports/spreadsheet-reader.ts`.
+  await app.register(plugins.multipart, {
+    limits: {
+      fileSize: IMPORT_MAX_BYTES,
+      files: 1,
+      fields: 10,
+      fieldSize: 1024,
+      parts: 11,
+      headerPairs: 50,
+    },
+  });
 
   await app.register(plugins.helmet, {
     // La API solo devuelve JSON; una política de contenido restrictiva no estorba y protege

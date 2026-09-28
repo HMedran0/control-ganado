@@ -87,6 +87,7 @@ export const ERROR_CATALOG = {
   WORK_SESSION_CLOSED: { status: 409, detail: 'La jornada ya fue cerrada.' },
   IMPORT_FILE_INVALID: { status: 422, detail: 'El archivo no tiene el formato de la plantilla.' },
   IMPORT_TOO_MANY_ROWS: { status: 413, detail: 'El archivo supera las 5.000 filas.' },
+  IMPORT_FILE_TOO_LARGE: { status: 413, detail: 'El archivo supera los 5 MB.' },
   CODE_REASSIGNED: {
     status: 409,
     detail:

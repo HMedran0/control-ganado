@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test, type TestingModuleBuilder } from '@nestjs/testing';
@@ -90,7 +91,7 @@ export async function createTestAppWithClock(
 
   app.setGlobalPrefix('api/v1');
   app.useGlobalFilters(new ProblemJsonFilter(logger));
-  await configureSecurity(app, env, { cookie, helmet, rateLimit }, limits);
+  await configureSecurity(app, env, { cookie, helmet, rateLimit, multipart }, limits);
 
   await app.init();
   await app.getHttpAdapter().getInstance().ready();

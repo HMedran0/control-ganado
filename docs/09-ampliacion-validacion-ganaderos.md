@@ -1,6 +1,6 @@
-# Ampliación de requisitos: validación con ganaderos (v1.3)
+# Ampliación de requisitos: validación con ganaderos (v1.4)
 
-Estado: v1.2 aprobada por el product owner el 27/09/2026; v1.3 (hallazgo H4, §5) agregada el 28/09/2026. Integrar en `01-srs.md`, `03-modelo-datos.md`, `04-arquitectura.md` (ADR-007 y variables de entorno), `05-api.md`, `06-ux-ui.md`, `07-plan-desarrollo.md` y `08-dominio-y-finca-referencia.md`.
+Estado: v1.2 aprobada por el product owner el 27/09/2026; v1.3 (hallazgo H4, §5) agregada el 28/09/2026; v1.4 (báscula Tru-Test, §3) el 28/09/2026. Integrar en `01-srs.md`, `03-modelo-datos.md`, `04-arquitectura.md` (ADR-007 y variables de entorno), `05-api.md`, `06-ux-ui.md`, `07-plan-desarrollo.md` y `08-dominio-y-finca-referencia.md`.
 
 Origen: conversaciones con ganaderos de la región durante la fase de diseño. Son hallazgos de validación con usuarios (fase 5 de la metodología de ciencia del diseño) y se documentan como tales en el componente académico.
 
@@ -13,7 +13,7 @@ Convenciones: igual que en `08`, **[Real]** indica una práctica o dato verifica
 | # | Problema observado | Situación en la especificación v1.1 |
 |---|---|---|
 | H1 | Muchas fincas numeran sus animales 1, 2, 3… y reasignan el número de un animal vendido a uno nuevo. En el software que usan, el historial del vendido queda asociado al número y se mezcla con el del animal nuevo. | El historial ya pertenece a un identificador interno inmutable, no al número (correcto). Pero RN-01 y RN-28 **impiden** reutilizar códigos, lo que choca con esa costumbre. |
-| H2 | El pesaje periódico se hace en báscula electrónica; digitar cada peso es lento y propenso a errores. Quieren que el peso se asocie solo al chip leído. | PES-03 (báscula Bluetooth) estaba en prioridad C y fase 3. La evolución del peso (PES-02) sí existe. |
+| H2 | El pesaje periódico se hace en báscula electrónica; digitar cada peso es lento y propenso a errores. Quieren que el peso se asocie solo al chip leído. | PES-03 (báscula Bluetooth) estaba en prioridad C y fase 3. La evolución del peso (PES-02) sí existe. En v1.4 se fija Tru-Test como primera marca. |
 | H3 | Cada finca vende cosas distintas: unas solo machos (ceba), otras hembras o terneros destetados (cría), otras producen leche. Necesitan cifras y parámetros distintos, incluida la producción de leche. | Todas las fincas se tratan igual. El control de leche estaba **fuera de alcance**. |
 | H4 | Entrar con usuario y contraseña cada vez que se quiere consultar algo desanima el uso en campo. Se pide además entrar con la cuenta de Google y verificar por correo los datos de quien se registra. | La sesión ya dura 30 días en el mismo equipo, pero caduca aunque se use a diario. No hay correo saliente, ni recuperación de contraseña por correo, ni inicio con Google. Los usuarios los crea el ADMIN; no hay registro abierto. |
 
@@ -61,12 +61,12 @@ La finca elige en Configuración:
 
 ## 3. Báscula y peso (H2)
 
-**Hallazgo técnico [Real]:** los indicadores de pesaje ganadero del mercado (por ejemplo, las líneas de Tru-Test/Datamars, Gallagher o Iconix; confirmar modelos concretos) usan protocolos propios y, en muchos casos, Bluetooth clásico (perfil de puerto serie). Un navegador no puede conectarse a Bluetooth clásico: Web Bluetooth solo admite Bluetooth de bajo consumo y no está disponible en iPhone. La conexión directa requiere la app móvil (fase 2) o la de escritorio (fase 3). Casi todos los indicadores permiten exportar cada sesión de pesaje (chip, peso, fecha y hora) como archivo CSV, lo que permite resolver el problema desde la web.
+**Hallazgo técnico [Real]:** los indicadores de pesaje ganadero del mercado (por ejemplo, las líneas de Tru-Test/Datamars, Gallagher o Iconix; confirmar modelos concretos) usan protocolos propios y, en muchos casos, Bluetooth clásico (perfil de puerto serie). Un navegador no puede conectarse a Bluetooth clásico: Web Bluetooth solo admite Bluetooth de bajo consumo y no está disponible en iPhone. La conexión directa requiere la app móvil (fase 2) o la de escritorio (fase 3). En Colombia, Tru-Test (Datamars) tiene distribuidor oficial y ofrece los indicadores S3, EziWeigh7i y XR5000 con Bluetooth; XR5000 e ID5000 ya se integran con apps de terceros en Android e iPhone enviando el par chip + peso. Casi todos los indicadores permiten exportar cada sesión de pesaje (chip, peso, fecha y hora) como archivo CSV, lo que permite resolver el problema desde la web.
 
 ### Requisitos
 
 **PES-04 — Importar sesión de pesaje desde el archivo de la báscula** · M · F1 (M6)
-- CA1: El usuario sube el archivo CSV o Excel exportado por el indicador. El sistema propone el mapeo de columnas (RFID o EID, número visual, peso, fecha y hora) y lo guarda como **perfil de báscula** de la finca para reutilizarlo.
+- CA1: El usuario sube el archivo CSV o Excel exportado por el indicador. El sistema propone el mapeo de columnas (RFID o EID, número visual, peso, fecha y hora) y lo guarda como **perfil de báscula** de la finca para reutilizarlo. Se incluye un perfil predefinido "Tru-Test" para los archivos que exportan XR5000, ID5000 y S3 (por USB o por la app del fabricante); sus columnas exactas se definen con un archivo real exportado por la finca piloto.
 - CA2: Simulación primero, como ANI-09: filas asociadas (por RFID y, si no hay, por chapeta visual), filas con chip desconocido, duplicados (mismo animal el mismo día: se conserva el último y se avisa) y pesos atípicos (PES-01, diferencia mayor a 30 %).
 - CA3: Los chips desconocidos se pueden asociar a un animal existente o dejar sin importar.
 - CA4: Al confirmar, se crea una jornada de pesaje (`WorkSession` con actividad `WEIGHT`) con un `WeightRecord` por animal, método `SCALE`, en una transacción.
@@ -82,15 +82,49 @@ La finca elige en Configuración:
 - CA2: Para cada animal con al menos dos pesajes: fecha estimada en que alcanzará el peso objetivo, según su ganancia de los últimos 90 días.
 - CA3: Pregunta del tablero en fincas de ceba: "¿Cuáles alcanzan el peso de venta este mes?".
 
-**PES-03 — Báscula conectada por Bluetooth (reclasificado)** · S · F2 (M15)
-- CA1: La app móvil se conecta al indicador de pesaje de la finca. El flujo es: se lee el chip del animal en la báscula; cuando el indicador reporta **peso estable**, el peso se guarda solo en la jornada; se pasa al siguiente animal.
-- CA2: Protección contra duplicados (el mismo animal dos veces seguidas) y aviso de peso atípico (PES-01).
-- CA3: Arquitectura con un adaptador por marca (`ScaleAdapter`): el sistema se lanza con uno o dos modelos concretos, los que use la finca piloto, y los demás se agregan después.
-- CA4: Si el indicador lee el chip por sí mismo (lector conectado a la báscula), el sistema acepta el par chip + peso que envía el indicador.
-- **Prerrequisito:** identificar marca y modelo del indicador de la finca piloto antes de M15.
+**PES-03 — Pesaje en vivo con indicador Tru-Test (Datamars)** · S · F2 (M15)
 
-**PES-07 — Báscula por puerto serie en escritorio** · C · F3 (M18)
-- CA1: La app de escritorio (Tauri) se conecta por cable o Bluetooth serie al indicador con el mismo `ScaleAdapter`.
+**Decisión del product owner (28/09/2026):** la integración en vivo se hace primero con **Tru-Test (Datamars)**, la marca con distribuidor oficial y mayor presencia en Colombia. Se empieza por los indicadores XR5000 e ID5000 (y JR5000, de la misma familia), que ya se conectan por Bluetooth a apps de terceros en Android y en iPhone y envían el par chip + peso. S3 y EziWeigh7i se agregan al mismo adaptador si la documentación del fabricante los cubre. Otras marcas quedan en PES-08.
+
+*Flujo en la manga:*
+1. El animal entra al cajón de la báscula.
+2. Se lee su chip: con el lector conectado al indicador (bastón XRS2 o lector de panel) o con un lector Bluetooth conectado al celular (IDN-04).
+3. La app muestra la ficha resumida: código en Chapeta, categoría, último peso y fecha.
+4. Cuando el peso es estable, se guarda solo y se asigna a ese animal. La pantalla muestra el peso, la ganancia desde el último pesaje y las alertas de PES-05.
+5. El animal sale; el siguiente registro no ocurre hasta que la báscula vuelve cerca de cero.
+
+*Modos de conexión:*
+- **Modo A, el indicador asocia (preferido):** el lector está conectado al indicador y este se configura para enviar "EID y peso cuando se registra el peso", con grabación automática al estabilizarse. La app recibe el par, busca el animal por RFID y guarda. La asociación la hace la báscula, que es lo más confiable.
+- **Modo B, la app asocia:** el lector va conectado al celular y el indicador solo envía el peso. La app aplica las condiciones de guardado.
+
+*Condiciones de guardado (modo B; en el modo A se verifican como protección adicional):*
+- CA1: Hay un animal identificado en la jornada y ningún peso registrado todavía para esa lectura.
+- CA2: El peso es estable: lo indica el propio indicador o, si no lo informa, la variación es menor o igual a `scaleStableToleranceKg` (por defecto 1 kg [Validar]) durante `scaleStableSeconds` (2 s [Validar]); y es mayor que `scaleMinWeightKg` (20 kg [Validar]).
+- CA3: Desde el último registro, la báscula volvió por debajo de `scaleZeroThresholdKg` (10 kg [Validar]). Así el peso de un animal nunca queda en el siguiente.
+
+*Criterios adicionales:*
+- CA4: Chip desconocido: la app pregunta si se asocia a un animal existente, se registra como animal nuevo o se omite; el peso queda retenido mientras tanto.
+- CA5: El mismo animal dos veces seguidas en la jornada: aviso y opción de reemplazar el peso anterior o conservar ambos. Peso atípico: aviso de PES-01 (diferencia mayor a 30 %).
+- CA6: Cada pesaje guarda método `SCALE` y el número de serie del indicador, para trazabilidad.
+- CA7: Si se pierde la conexión, la app avisa, intenta reconectar y no pierde lo ya pesado: cada registro se guarda en el celular antes de enviarse (misma sincronización de SYN-01).
+- CA8: Corrección manual: el operario puede anular el último registro (con motivo) o digitar el peso si la báscula falla.
+
+*Arquitectura:* interfaz `ScaleAdapter` (conectar, estado, flujo de lecturas `{ weightKg, stable, eid?, at }`, desconectar) con una implementación `TruTestAdapter` y un adaptador simulado para pruebas, que reproduce sesiones grabadas de una báscula real. La lógica de CA1 a CA5 vive en `packages/shared` y es independiente de la marca.
+
+*Prerrequisitos (antes de M15):*
+1. Confirmar marca y modelo del indicador de la finca piloto y su versión de firmware (en iPhone se requiere 4.7.8 o superior para XR5000, ID5000 y JR5000 [Real, según la documentación de integraciones de terceros]).
+2. Solicitar a Datamars (Datamars Colombia o su distribuidor) la documentación de integración Bluetooth para desarrolladores. Pedirla con al menos dos meses de anticipación; si no se obtiene, M15 incluye solo el lector RFID Bluetooth y el peso digitado en la jornada, y la báscula sigue integrada por archivo (PES-04) hasta tener la documentación.
+3. Tener acceso a un indicador real para desarrollo y pruebas (el de la finca piloto o uno prestado por el distribuidor), y grabar sesiones reales para el adaptador simulado.
+
+*Modelo de datos:* `Farm.settings`: `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg`, `scaleZeroThresholdKg`. `WeightRecord`: `scale_serial` opcional. `ScaleProfile` (PES-04) incluye el perfil predefinido Tru-Test.
+
+*Estimación:* flujo común (jornada, condiciones, reconexión) 1 a 2 semanas; adaptador Tru-Test 1 a 2 semanas con el equipo disponible.
+
+**PES-07 — Báscula por cable en escritorio** · C · F3 (M18)
+- CA1: La app de escritorio (Tauri) se conecta al indicador Tru-Test por USB o Bluetooth con el mismo `TruTestAdapter` y la lógica compartida de PES-03.
+
+**PES-08 — Otras marcas de báscula** · C · futuro
+- Gallagher (TW-3, TWR-5) e indicadores genéricos que transmiten el peso continuamente por puerto serie o adaptador Bluetooth, con perfil configurable. Se implementan sobre el mismo `ScaleAdapter` cuando haya fincas que los usen.
 
 ---
 
@@ -230,7 +264,7 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 - `refresh_tokens`: `family_started_at`, `last_used_at`; `expires_at` se recalcula en cada rotación con el tope de CA2.
 - Nuevas: `email_tokens (id, user_id, purpose enum VERIFY_EMAIL | RESET_PASSWORD, email, token_hash, expires_at, used_at)`, `invitations (id, farm_id, email, role, token_hash, invited_by, expires_at, accepted_at, revoked_at)`, `user_identities`.
 - Auditoría: invitación creada, aceptada y anulada; correo verificado; contraseña restablecida; Google vinculado y desvinculado; sesiones cerradas por el ADMIN.
-- Variables: `REFRESH_TTL_DAYS`, `REFRESH_MAX_AGE_DAYS`, `SMTP_*`, `MAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Los enlaces de los correos usan `PUBLIC_WEB_URL`, que ya existe (la misma URL pública de los QR). Sin `GOOGLE_*`, el botón de Google no aparece.
+- Variables: `REFRESH_TTL_DAYS`, `REFRESH_MAX_AGE_DAYS`, `SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Sin `GOOGLE_*`, el botón de Google no aparece.
 
 ---
 
@@ -245,21 +279,23 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 | **M9** | Jornada de pesaje con lector en modo teclado y peso digitado (ya previsto en JOR), reutilizando las alertas de PES-05. | Completo |
 | **M9b (nuevo)** | Control de leche: LEC-01 a LEC-05, RN-34 a RN-37, seed de leche. | Completo (se ejecuta si el cronograma lo permite antes del piloto; si no, pasa a la fase 2) |
 | **M10a (nuevo)** | AUT-12 correo saliente, AUT-13 invitación, AUT-14 verificación y recuperación por correo, AUT-15 Google en la web, política de privacidad y términos. M10 pasa a llamarse M10b (endurecimiento y despliegue). | Núcleo (unas 2 semanas) |
-| **M15** | PES-03 báscula Bluetooth directa en la app móvil, junto con el lector RFID Bluetooth (IDN-04). Requiere conocer el modelo del indicador. | Fase 2 |
+| **M15** | PES-03 pesaje en vivo con indicador Tru-Test (XR5000, ID5000, JR5000) en la app móvil, junto con el lector RFID Bluetooth (IDN-04). Requiere los prerrequisitos de PES-03. | Fase 2 |
 | **M16** | LEC-06 ordeño sin conexión en la app móvil. OCR de chapetas (IDN-05) pasa a M17. | Fase 2 |
-| **M18** | PES-07 báscula por puerto serie en la app de escritorio. | Fase 3 |
+| **M18** | Empaquetado de escritorio (Tauri) y PES-07 indicador Tru-Test por cable. | Fase 3 |
 
 **Impacto en el cronograma:** M9b suma unas 3 semanas y M10a unas 2. Si hay que recortar antes del piloto, el orden es: primero M9b pasa a la fase 2; luego AUT-15 (Google) pasa a la fase 2. AUT-12 a AUT-14 no se recortan: sin correo no hay recuperación de contraseña en el piloto. La decisión sobre M9b se toma al terminar M9; la de AUT-15, al empezar M10a.
 
 **Preguntas pendientes para la finca piloto:**
-1. Marca y modelo del indicador de la báscula, y si exporta archivos (CSV o Excel) y por qué medio (USB, app del fabricante).
-2. Si el indicador tiene lector de chip propio o se usa un lector aparte.
+1. Marca y modelo del indicador de la báscula (se busca Tru-Test XR5000, ID5000, JR5000, S3 o EziWeigh7i), versión de firmware, y si exporta archivos (CSV o Excel) y por qué medio (USB, app del fabricante). Pedir un archivo exportado real para el perfil de PES-04.
+2. Si el indicador tiene lector de chip conectado (bastón XRS2 o panel) o se usa un lector aparte, y si el celular de la manga es Android o iPhone.
 3. Sistema productivo real y qué vende principalmente.
 4. Si numeran del 1 en adelante y reasignan números de animales vendidos.
 5. Cómo registran hoy la leche: por ordeño, total diario o pesajes periódicos (control lechero mensual).
 6. Quiénes usarán la app, cuáles tienen correo y si usan cuentas de Google (Gmail) en el celular.
 
 ## Fuentes
+- Datamars Colombia (s. f.). Básculas Tru-Test. https://www.datamarscolombia.com/Basculas.aspx
+- AgriWebb (s. f.). Connecting the Tru-Test XR5000 or ID5000. https://help.agriwebb.com/en/articles/4217670-connecting-the-tru-test-xr5000-or-id5000-iam
 - Google (s. f.). OpenID Connect. Google Identity. https://developers.google.com/identity/openid-connect/openid-connect
 - Congreso de Colombia (2012). Ley 1581 de 2012, protección de datos personales. https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=49981
 - UPRA (2024). Sistema productivo en ganadería bovina doble propósito. https://upra.gov.co/sites/default/files/2025-03/01_CosProdBov2_20241223.pdf

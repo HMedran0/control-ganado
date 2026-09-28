@@ -11,6 +11,7 @@ import { AuditInterceptor } from './common/audit/audit.interceptor.js';
 import { RolesGuard } from './common/roles/roles.guard.js';
 import { EnvModule } from './config/env.module.js';
 import { HealthModule } from './health/health.module.js';
+import { ImportsModule } from './imports/imports.module.js';
 import { InfraModule } from './infra/infra.module.js';
 import { UsersModule } from './users/users.module.js';
 
@@ -34,6 +35,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     CatalogsModule,
     AnimalsModule,
+    ImportsModule,
     AuditModule,
     HealthModule,
   ],

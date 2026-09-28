@@ -135,6 +135,7 @@ enum AuditAction {
   EXIT
   REVERT_EXIT
   LOGIN
+  IMPORT
 }
 
 model Farm {
@@ -689,18 +690,25 @@ model VaccinationCycleVaccine {
 }
 
 model ImportBatch {
-  id          String   @id @db.Uuid
-  farmId      String   @map("farm_id") @db.Uuid
-  fileName    String   @map("file_name")
-  totalRows   Int      @map("total_rows")
-  createdRows Int      @map("created_rows")
-  errorRows   Int      @map("error_rows")
-  summary     Json
-  createdById String   @map("created_by_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id             String   @id @db.Uuid
+  farmId         String   @map("farm_id") @db.Uuid
+  /// Clave que la web genera al elegir el archivo: un doble clic o un reintento con la misma
+  /// clave devuelve el lote ya creado en lugar de importar otra vez (ADR-011).
+  idempotencyKey String   @map("idempotency_key") @db.Uuid
+  /// SHA-256 del archivo: la simulación avisa si ese mismo archivo ya se importó.
+  fileSha256     String   @map("file_sha256")
+  fileName       String   @map("file_name")
+  totalRows      Int      @map("total_rows")
+  createdRows    Int      @map("created_rows")
+  errorRows      Int      @map("error_rows")
+  summary        Json
+  createdById    String   @map("created_by_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
 
   farm Farm @relation(fields: [farmId], references: [id])
 
+  @@unique([farmId, idempotencyKey])
+  @@index([farmId, fileSha256])
   @@index([farmId, createdAt])
   @@map("import_batches")
 }

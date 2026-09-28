@@ -2,6 +2,7 @@ import 'reflect-metadata';
 
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
+import multipart from '@fastify/multipart';
 import rateLimit from '@fastify/rate-limit';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -34,7 +35,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
   await configureSecurity(
     app,
     env,
-    { cookie, helmet, rateLimit },
+    { cookie, helmet, rateLimit, multipart },
     { perUser: RATE_LIMIT_PER_USER, perIp: env.RATE_LIMIT_PER_IP },
   );
   app.enableShutdownHooks();

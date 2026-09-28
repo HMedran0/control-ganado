@@ -7,3 +7,8 @@ allowBuilds:
   "@swc/core": true
   prisma: true
   unrs-resolver: true
+
+# exceljs 4.4.0 depende de uuid 8, con un aviso moderado (GHSA-w5hq-g745-h8pq) en v3/v5/v6 con
+# `buf`. exceljs solo usa v4, pero se fuerza la versión corregida para dejar el audit limpio.
+overrides:
+  "exceljs>uuid": "^11.1.1"
