@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 # Bloquea escrituras en archivos protegidos. Exit 2 = bloquear y explicar a Claude.
+# Falla cerrado: sin jq no se puede leer qué archivo se va a escribir, así que se bloquea todo
+# en lugar de dejar pasar todo en silencio.
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Instala jq para activar la protección: winget install jqlang.jq" >&2
+  exit 2
+fi
 INPUT=$(cat)
 FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE" ] && exit 0

@@ -1,5 +1,7 @@
 # Hato — Sistema de Gestión y Control de Ganado
 
+Responde siempre al usuario en español de Colombia, tuteando.
+
 Plataforma para registrar y controlar el ganado bovino de una finca en Colombia: animales, identificación (chapeta, DIN, RFID ISO 11784, QR), reproducción, nacimientos, sanidad, pesos, contabilidad básica, jornadas de manejo y reportes. Proyecto real y académico a la vez: la calidad de la documentación importa tanto como el código.
 
 ## Documentación (leer antes de implementar)
@@ -115,7 +117,7 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 4. Resumir lo hecho, lo pendiente y cualquier desviación de la especificación.
 
 ## Herramientas del repositorio
-- `.claude/settings.json`: permisos y hooks. El hook `protect.sh` bloquea editar `.env*`, `docs/referencia/` y las migraciones ya versionadas en git (una recién generada, sin commit, sí se puede ajustar); `format.sh` aplica Prettier y ESLint al archivo editado y te devuelve los errores. Requieren `jq` instalado.
+- `.claude/settings.json`: permisos y hooks. El hook `protect.sh` bloquea editar `.env*`, `docs/referencia/` y las migraciones ya versionadas en git (una recién generada, sin commit, sí se puede ajustar); `format.sh` aplica Prettier y ESLint al archivo editado y te devuelve los errores. Requieren `jq` instalado: sin él, `protect.sh` **falla cerrado** (bloquea toda edición con «Instala jq para activar la protección: winget install jqlang.jq») y `format.sh` solo avisa.
 - Si un hook te bloquea, no intentes rodearlo: explica al usuario qué necesitas cambiar y por qué.
 
 ## No hacer

@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Formatea y revisa con lint el archivo editado. Silencioso si el proyecto aún no está instalado.
+# Sin jq no sabe qué archivo formatear: avisa y deja seguir (formatear no protege nada).
+if ! command -v jq >/dev/null 2>&1; then
+  echo "Aviso: jq no está instalado; no se formateó ni se revisó con lint el archivo editado (winget install jqlang.jq)." >&2
+  exit 0
+fi
 INPUT=$(cat)
 FILE=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
 [ -z "$FILE" ] && exit 0
