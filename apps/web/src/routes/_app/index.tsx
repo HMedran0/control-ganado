@@ -3,6 +3,7 @@ import { House } from 'lucide-react';
 
 import { PageHeader } from '../../components/layout/PageHeader';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { AnimalSearchBar } from '../../features/animals/search/AnimalSearchBar';
 import { useRequiredSession } from '../../lib/auth/context';
 
 export const Route = createFileRoute('/_app/')({
@@ -19,6 +20,10 @@ function HomePage() {
       <PageHeader title={session.farm.name} documentTitle="Inicio">
         Hola, {firstName}.
       </PageHeader>
+      {/* En móvil la búsqueda va arriba de Inicio (06 §4); en escritorio está en la barra superior. */}
+      <div className="mb-6 lg:hidden">
+        <AnimalSearchBar />
+      </div>
       <EmptyState
         icon={House}
         title="Las preguntas del día"

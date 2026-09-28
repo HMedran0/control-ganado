@@ -1,5 +1,6 @@
 import { Outlet } from '@tanstack/react-router';
 
+import { AnimalSearchBar, GlobalRfidReader } from '../../features/animals/search/AnimalSearchBar';
 import { ConnectionBanner } from '../ui/ConnectionBanner';
 import { UndoToastProvider } from '../ui/UndoToast';
 import { BottomNav } from './BottomNav';
@@ -10,7 +11,10 @@ import { Sidebar } from './Sidebar';
  *
  * - Menos de 1024 px: una columna y barra inferior fija, con los controles al alcance del
  *   pulgar (06 §8).
- * - Desde 1024 px: barra lateral izquierda.
+ * - Desde 1024 px: barra lateral izquierda y barra superior con la búsqueda y su atajo «/».
+ *
+ * El lector RFID funciona en cualquier pantalla con sesión (`GlobalRfidReader`): una lectura
+ * con el foco fuera de un campo busca el animal (ANI-05 CA3).
  *
  * El proveedor de avisos «Deshacer» vive aquí y no en la raíz: así Radix Toast se descarga con
  * las pantallas con sesión y no pesa en el inicio de sesión (RNF-02).
@@ -28,6 +32,12 @@ export function AppShell() {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <ConnectionBanner />
+          <div className="sticky top-0 z-30 hidden border-b border-cerca bg-sabana/95 px-8 py-3 backdrop-blur lg:block">
+            <div className="mx-auto max-w-5xl">
+              <AnimalSearchBar shortcut />
+            </div>
+          </div>
+          <GlobalRfidReader />
           <main
             id="contenido"
             tabIndex={-1}
