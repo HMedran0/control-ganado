@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateFarmSchema, type FarmView } from '@hato/shared';
+import { updateFarmSchema, type CodeSuggestion, type FarmView } from '@hato/shared';
 import { CircleCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form';
@@ -25,6 +25,10 @@ type NumericSetting =
 /**
  * Datos y parámetros de la finca (CFG-01). Cambiar el destete o la gestación de la finca cambia
  * de inmediato las categorías calculadas: se advierte antes de guardar (CFG-01 CA1).
+ *
+ * Numeración (ANI-10): reutilizar números y cómo se sugiere el número de un animal nuevo. Dejar
+ * de reutilizar con números repetidos lo rechaza la API (`CODE_REUSE_CONFLICT`) con los códigos
+ * en el mensaje, que se muestra tal cual.
  *
  * El precio por kilo por categoría no se edita aquí: es un dato económico y llega con Finanzas
  * (M7). Como el `PATCH` es parcial, guardar este formulario no lo toca.
@@ -59,12 +63,15 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
         unconfirmedServiceAlertDays: settings.unconfirmedServiceAlertDays,
         calfCodePattern: settings.calfCodePattern,
         rabiesRiskZone: settings.rabiesRiskZone,
+        codeReuse: settings.codeReuse,
+        codeSuggestion: settings.codeSuggestion,
       },
     },
   });
 
   const weaning = useWatch({ control, name: 'settings.weaningAgeMonths' });
   const gestation = useWatch({ control, name: 'settings.gestationDays' });
+  const codeSuggestion = useWatch({ control, name: 'settings.codeSuggestion' });
   const recalculates =
     weaning !== settings.weaningAgeMonths || gestation !== settings.gestationDays;
 
@@ -164,12 +171,6 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
             error={errors.settings?.vaccineAlertDays?.message}
           />
         </div>
-        <TextField
-          label="Código de las crías"
-          hint="{YY} año con dos cifras, {YYYY} año completo, {NNN} consecutivo con ceros, {N} sin ceros. Por ejemplo, {YY}-{NNN} da 26-045."
-          error={errors.settings?.calfCodePattern?.message}
-          {...register('settings.calfCodePattern')}
-        />
         <Controller
           control={control}
           name="settings.rabiesRiskZone"
@@ -187,6 +188,51 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
             />
           )}
         />
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-5">
+        <legend className="mb-3 text-lg font-bold">Numeración de los animales</legend>
+        <Controller
+          control={control}
+          name="settings.codeReuse"
+          render={({ field }) => (
+            <SegmentedChoice<'SI' | 'NO'>
+              label="¿Reutilizar números de animales que salen de la finca?"
+              hint="Si vende el 5, el próximo animal puede ser el 5. El historial de cada uno no se mezcla."
+              options={[
+                { value: 'SI', label: 'Sí' },
+                { value: 'NO', label: 'No' },
+              ]}
+              value={field.value === undefined ? null : field.value ? 'SI' : 'NO'}
+              onChange={(next) => {
+                field.onChange(next === 'SI');
+              }}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name="settings.codeSuggestion"
+          render={({ field }) => (
+            <SegmentedChoice<CodeSuggestion>
+              label="Número sugerido para un animal nuevo"
+              options={[
+                { value: 'PATTERN', label: 'Código de las crías' },
+                { value: 'LOWEST_FREE', label: 'Menor número libre' },
+              ]}
+              value={field.value ?? null}
+              onChange={field.onChange}
+            />
+          )}
+        />
+        {codeSuggestion === 'PATTERN' ? (
+          <TextField
+            label="Código de las crías"
+            hint="{YY} año con dos cifras, {YYYY} año completo, {NNN} consecutivo con ceros, {N} sin ceros. Por ejemplo, {YY}-{NNN} da 26-045."
+            error={errors.settings?.calfCodePattern?.message}
+            {...register('settings.calfCodePattern')}
+          />
+        ) : null}
       </fieldset>
 
       {recalculates ? (

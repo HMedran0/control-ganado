@@ -217,7 +217,7 @@ export function AnimalForm({
               hint={
                 suggestion === undefined
                   ? 'El número de manejo de la finca. No se puede repetir.'
-                  : `Sugerido para las crías de la finca: ${suggestion}. Puedes cambiarlo.`
+                  : `Número sugerido: ${suggestion}. Puedes cambiarlo.`
               }
               error={errors.code?.message}
               {...register('code')}

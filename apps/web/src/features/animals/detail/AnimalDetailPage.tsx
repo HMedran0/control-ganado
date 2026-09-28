@@ -1,4 +1,10 @@
-import { formatAge, type AnimalDetail } from '@hato/shared';
+import {
+  formatAge,
+  formatDate,
+  isoDateFromInstant,
+  type AnimalDetail,
+  type Warning,
+} from '@hato/shared';
 import { Link, useRouterState } from '@tanstack/react-router';
 import { Pencil, SearchX } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -11,7 +17,7 @@ import { Tabs, type TabItem } from '../../../components/ui/Tabs';
 import { Tag } from '../../../components/ui/Tag';
 import { isApiError } from '../../../lib/api/errors';
 import { useRequiredSession } from '../../../lib/auth/context';
-import { useToday } from '../../../lib/clock';
+import { FARM_TIME_ZONE, useToday } from '../../../lib/clock';
 import { useAnimal } from '../api';
 import {
   CATEGORY_LABEL,
@@ -23,7 +29,16 @@ import {
 } from '../labels';
 import '../nav-state';
 import { animalBanners } from './banners';
-import { CostsTab, GenealogyTab, HistoryTab, ReproductionTab, SummaryTab } from './sections';
+import { CodeHistoryBanner } from './CodeHistoryBanner';
+import { LifecycleActions } from './Lifecycle';
+import {
+  ChangesTab,
+  CostsTab,
+  GenealogyTab,
+  HistoryTab,
+  ReproductionTab,
+  SummaryTab,
+} from './sections';
 
 export const DETAIL_TABS = [
   'resumen',
@@ -31,12 +46,14 @@ export const DETAIL_TABS = [
   'genealogia',
   'costos',
   'historial',
+  'cambios',
 ] as const;
 export type DetailTab = (typeof DETAIL_TABS)[number];
 
 /**
  * Ficha del animal (ANI-07, 06 §5.3): encabezado con la chapeta, identificadores, clasificación,
- * edad y avisos; pestañas Resumen, Reproducción (hembras), Genealogía, Costos (ADMIN) e Historial.
+ * edad y avisos; pestañas Resumen, Reproducción (hembras), Genealogía, Costos (ADMIN), Historial
+ * y Cambios (ADMIN, AUD-01 CA2). El ADMIN registra la salida, la revierte, archiva y restaura.
  * En escritorio el encabezado queda fijo a la izquierda y las pestañas a la derecha (06 §9).
  */
 export function AnimalDetailPage({
@@ -97,7 +114,8 @@ function Detail({
   const today = useToday();
   const navigationState = useRouterState({ select: (state) => state.location.state });
   const [saved, setSaved] = useState<string | null>(navigationState.animalSaved ?? null);
-  const warnings = navigationState.animalWarnings ?? [];
+  const [actionWarnings, setActionWarnings] = useState<readonly Warning[]>([]);
+  const warnings = [...(navigationState.animalWarnings ?? []), ...actionWarnings];
   const title = animal.name ?? animal.code;
 
   useEffect(() => {
@@ -124,8 +142,12 @@ function Detail({
       ? [{ value: 'costos' as const, label: 'Costos', content: <CostsTab animal={animal} /> }]
       : []),
     { value: 'historial', label: 'Historial', content: <HistoryTab animal={animal} /> },
+    ...(isAdmin
+      ? [{ value: 'cambios' as const, label: 'Cambios', content: <ChangesTab animal={animal} /> }]
+      : []),
   ];
-  // Una pestaña que este animal o este rol no tiene (Costos para un operario) abre Resumen.
+  // Una pestaña que este animal o este rol no tiene (Costos o Cambios para un operario, también
+  // si llega por la URL) abre Resumen.
   const current = items.some((item) => item.value === tab) ? (tab ?? 'resumen') : 'resumen';
   const active = animal.identifiers.filter((identifier) => identifier.retiredAt === null);
   const exitLabel = exitLabelFor(animal.status);
@@ -174,14 +196,25 @@ function Detail({
           {animal.forSale ? <Tag tone="potrero">Disponible para venta</Tag> : null}
           {animal.lot === null ? null : <Tag tone="neutro">Lote {animal.lot.name}</Tag>}
         </div>
-        <Link
-          to="/animals/$id/edit"
-          params={{ id: animal.id }}
-          className="inline-flex min-h-touch items-center gap-2 self-start rounded-control border-2 border-potrero px-4 font-bold text-potrero hover:bg-potrero-claro"
-        >
-          <Pencil aria-hidden="true" className="size-5" />
-          {animal.status === 'ACTIVE' ? 'Editar datos' : 'Editar observaciones'}
-        </Link>
+        {animal.archive !== null ? null : (
+          <Link
+            to="/animals/$id/edit"
+            params={{ id: animal.id }}
+            className="inline-flex min-h-touch items-center gap-2 self-start rounded-control border-2 border-potrero px-4 font-bold text-potrero hover:bg-potrero-claro"
+          >
+            <Pencil aria-hidden="true" className="size-5" />
+            {animal.status === 'ACTIVE' ? 'Editar datos' : 'Editar observaciones'}
+          </Link>
+        )}
+        {isAdmin ? (
+          <LifecycleActions
+            animal={animal}
+            onDone={(result) => {
+              setSaved(result.message);
+              setActionWarnings(result.warnings);
+            }}
+          />
+        ) : null}
       </header>
 
       <div className="flex min-w-0 flex-col gap-4">
@@ -203,8 +236,16 @@ function Detail({
           />
         )}
         {warnings.map((warning) => (
-          <AlertBanner key={warning.code} tone="aviso" title={warning.message} />
+          <AlertBanner key={warning.message} tone="aviso" title={warning.message} />
         ))}
+        {animal.archive === null ? null : (
+          <AlertBanner
+            tone="info"
+            title={`Archivado el ${formatDate(isoDateFromInstant(new Date(animal.archive.archivedAt), FARM_TIME_ZONE))}`}
+            {...(animal.archive.reason === null ? {} : { description: animal.archive.reason })}
+          />
+        )}
+        <CodeHistoryBanner animal={animal} />
         {banners.map((banner) => (
           <AlertBanner
             key={banner.key}

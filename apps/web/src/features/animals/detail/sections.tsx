@@ -8,7 +8,7 @@ import {
   type IsoDate,
 } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { History } from 'lucide-react';
+import { ClipboardList, History } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { Button } from '../../../components/ui/Button';
@@ -16,9 +16,11 @@ import { EmptyState } from '../../../components/ui/EmptyState';
 import { FormError } from '../../../components/ui/FormError';
 import { Timeline } from '../../../components/ui/Timeline';
 import { isApiError } from '../../../lib/api/errors';
-import { useGenealogy, useTimeline } from '../api';
+import { FARM_TIME_ZONE } from '../../../lib/clock';
+import { useAnimalAudit, useGenealogy, useTimeline } from '../api';
 import { calvingText } from '../list/AnimalCells';
 import { ORIGIN_LABEL, SEX_LABEL, STATUS_LABEL, WEIGHT_METHOD_LABEL } from '../labels';
+import { changeText, entryMeta, entryTitle } from './audit';
 import { EXIT_TYPE_LABEL, toTimelineItem } from './history';
 import { IdentifiersSection } from './Identifiers';
 
@@ -301,6 +303,65 @@ export function HistoryTab({ animal }: { animal: AnimalDetail }) {
           }}
         >
           {timeline.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * Cambios del animal y de sus identificadores (AUD-01 CA2): quién hizo qué y cuándo. Solo ADMIN;
+ * la ficha no ofrece la pestaña a los demás y la API la niega igual.
+ */
+export function ChangesTab({ animal }: { animal: AnimalDetail }) {
+  const audit = useAnimalAudit(animal.id);
+  if (audit.isPending) return <p className="text-texto-2">Cargando cambios…</p>;
+  if (audit.isError) {
+    return (
+      <FormError
+        message={isApiError(audit.error) ? audit.error.detail : 'No pudimos cargar los cambios.'}
+      />
+    );
+  }
+  const entries = audit.data.pages.flatMap((page) => page.items);
+  if (entries.length === 0) {
+    return (
+      <EmptyState
+        icon={ClipboardList}
+        title="Sin cambios registrados"
+        description="Aquí aparece cada registro, edición, salida y archivo del animal."
+      />
+    );
+  }
+  return (
+    <div className="flex flex-col gap-3">
+      <ol aria-label={`Cambios de ${animal.name ?? animal.code}`} className="flex flex-col gap-3">
+        {entries.map((entry) => (
+          <li key={entry.id} className="rounded-panel border border-cerca bg-superficie p-4">
+            <p className="font-bold">{entryTitle(entry)}</p>
+            <p className="text-aux text-texto-2">{entryMeta(entry, FARM_TIME_ZONE)}</p>
+            {entry.changes.length === 0 ? null : (
+              <ul className="mt-2 flex flex-col gap-1">
+                {entry.changes.map((change) => (
+                  <li key={change.field} className="break-words">
+                    {changeText(change)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ol>
+      {audit.hasNextPage ? (
+        <Button
+          variant="secondary"
+          className="self-start"
+          disabled={audit.isFetchingNextPage}
+          onClick={() => {
+            void audit.fetchNextPage();
+          }}
+        >
+          {audit.isFetchingNextPage ? 'Cargando…' : 'Cargar más'}
         </Button>
       ) : null}
     </div>

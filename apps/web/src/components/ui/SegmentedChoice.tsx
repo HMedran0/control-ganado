@@ -15,6 +15,8 @@ export type SegmentedChoiceProps<T extends string> = {
   readonly value: T | null;
   readonly onChange: (value: T) => void;
   readonly error?: string | undefined;
+  /** Ayuda bajo la etiqueta, como en los campos de texto. */
+  readonly hint?: string | undefined;
   readonly name?: string;
   readonly disabled?: boolean;
 };
@@ -34,18 +36,29 @@ export function SegmentedChoice<T extends string>({
   value,
   onChange,
   error,
+  hint,
   name,
   disabled = false,
 }: SegmentedChoiceProps<T>) {
   const id = useId();
   const labelId = `${id}-etiqueta`;
   const errorId = `${id}-error`;
+  const hintId = `${id}-ayuda`;
+  const describedBy =
+    [hint === undefined ? null : hintId, error === undefined ? null : errorId]
+      .filter((part) => part !== null)
+      .join(' ') || undefined;
 
   return (
     <div className="flex flex-col gap-1">
       <span id={labelId} className="font-bold">
         {label}
       </span>
+      {hint === undefined ? null : (
+        <p id={hintId} className="text-aux text-texto-2">
+          {hint}
+        </p>
+      )}
       <RadioGroup.Root
         value={value ?? ''}
         onValueChange={(next) => {
@@ -57,7 +70,7 @@ export function SegmentedChoice<T extends string>({
         orientation="horizontal"
         loop
         aria-labelledby={labelId}
-        aria-describedby={error === undefined ? undefined : errorId}
+        aria-describedby={describedBy}
         className={`grid overflow-hidden rounded-control border-2 ${error === undefined ? 'border-texto-2' : 'border-alerta'}`}
         style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
       >

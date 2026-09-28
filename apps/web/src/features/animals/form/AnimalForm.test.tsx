@@ -86,7 +86,7 @@ describe('AnimalForm: alta (ANI-01)', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Código')).toHaveValue('26-091');
     });
-    expect(screen.getByText(/Sugerido para las crías de la finca: 26-091/)).toBeInTheDocument();
+    expect(screen.getByText(/Número sugerido: 26-091/)).toBeInTheDocument();
   });
 
   it('ADMIN ve el valor de compra al elegir «Comprado»; el operario no (RN-20)', async () => {

@@ -3,17 +3,22 @@ import type {
   AnimalDetail,
   AnimalDetailWithWarnings,
   AnimalList,
+  ArchiveAnimalInput,
+  AuditPage,
   BulkLotInput,
   BulkLotResult,
   BulkTagsInput,
   BulkTagsResult,
   CreateAnimalInput,
+  ExitAnimalInput,
   Genealogy,
   IdentifierView,
   NextCodeResult,
   ReplaceIdentifierInput,
   ReplaceIdentifierResult,
+  RestoreAnimalInput,
   RetireIdentifierInput,
+  RevertExitInput,
   SearchResult,
   Timeline,
   UpdateAnimalInput,
@@ -38,7 +43,10 @@ import { useAuth } from '../../lib/auth/context';
  * - **editar**: la ficha se reemplaza con la respuesta; se invalidan listados, búsqueda, su
  *   historial y genealogías (pudo cambiar de madre o de padre);
  * - **operaciones en lote**: listados, y ficha e historial de cada animal tocado;
- * - **identificadores**: ficha e historial del animal, y búsqueda.
+ * - **identificadores**: ficha e historial del animal, y búsqueda;
+ * - **salida, reversión, archivo y restauración** (M4c): la ficha se reemplaza con la respuesta;
+ *   se invalidan listados, búsqueda, historial, código sugerido, cambios y las demás fichas,
+ *   porque la de otro animal con el mismo número muestra a este en su `codeHistory`.
  */
 
 const PAGE_SIZE = 50;
@@ -55,6 +63,8 @@ export const animalKeys = {
   search: (q: string) => ['animals', 'search', q] as const,
   nextCodes: ['animals', 'next-code'] as const,
   nextCode: (birthDate: string) => ['animals', 'next-code', birthDate] as const,
+  audits: ['animals', 'audit'] as const,
+  audit: (id: string) => ['animals', 'audit', id] as const,
 };
 
 /** Listado con «Cargar más» (paginación por cursor, ANI-06 CA3). */
@@ -238,4 +248,58 @@ export function useIdentifierMutations(animalId: string) {
     onSuccess: refresh,
   });
   return { add, replace, retire };
+}
+
+/** Cambios del animal y sus identificadores (AUD-01 CA2), solo ADMIN. */
+export function useAnimalAudit(id: string) {
+  const { api } = useAuth();
+  return useInfiniteQuery({
+    queryKey: animalKeys.audit(id),
+    initialPageParam: null as string | null,
+    queryFn: ({ pageParam }) =>
+      api.get<AuditPage>(
+        `/audit?animalId=${id}&limit=20${pageParam === null ? '' : `&cursor=${encodeURIComponent(pageParam)}`}`,
+      ),
+    getNextPageParam: (last) => last.nextCursor,
+  });
+}
+
+/** Salida, reversión, archivo y restauración (ANI-03, ANI-04), solo ADMIN. */
+export function useAnimalLifecycle(id: string) {
+  const { api } = useAuth();
+  const queryClient = useQueryClient();
+  const onSuccess = async (saved: AnimalDetailWithWarnings) => {
+    queryClient.setQueryData(animalKeys.detail(id), withoutWarnings(saved).detail);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: animalKeys.lists }),
+      queryClient.invalidateQueries({ queryKey: animalKeys.searches }),
+      queryClient.invalidateQueries({ queryKey: animalKeys.timeline(id) }),
+      queryClient.invalidateQueries({ queryKey: animalKeys.nextCodes }),
+      queryClient.invalidateQueries({ queryKey: animalKeys.audits }),
+      queryClient.invalidateQueries({
+        queryKey: ['animals', 'detail'],
+        predicate: (query) => query.queryKey[2] !== id,
+      }),
+    ]);
+  };
+  const post = (action: string) => (body: object) =>
+    api.post<AnimalDetailWithWarnings>(`/animals/${id}/${action}`, body);
+  return {
+    exit: useMutation({
+      mutationFn: (body: ExitAnimalInput) => post('exit')(body),
+      onSuccess,
+    }),
+    revertExit: useMutation({
+      mutationFn: (body: RevertExitInput) => post('revert-exit')(body),
+      onSuccess,
+    }),
+    archive: useMutation({
+      mutationFn: (body: ArchiveAnimalInput) => post('archive')(body),
+      onSuccess,
+    }),
+    restore: useMutation({
+      mutationFn: (body: RestoreAnimalInput) => post('restore')(body),
+      onSuccess,
+    }),
+  };
 }

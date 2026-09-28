@@ -1,5 +1,5 @@
 import { DEFAULT_FARM_SETTINGS, type FarmView, type LotView } from '@hato/shared';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Fence } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,6 +40,7 @@ describe('secciones de Configuración por rol (SRS §2.3)', () => {
       'Lotes',
       'Etiquetas',
       'Usuarios',
+      'Archivados',
     ]);
     expect(sectionsFor('VET').map((s) => s.label)).toEqual(['Vacunas']);
     expect(sectionsFor('OPERATOR')).toEqual([]);
@@ -190,6 +191,48 @@ describe('FarmForm', () => {
     });
     // El precio por kilo no viaja: el PATCH es parcial y no lo toca.
     expect(JSON.stringify(sentBody(fetchMock, 0))).not.toContain('pricePerKgByCategory');
+  });
+
+  it('numeración: reutilizar números y menor número libre; el patrón solo con «Código de las crías» (ANI-10)', async () => {
+    const { fetchMock } = await renderApp(<FarmForm farm={FARM} onReload={vi.fn()} />, () =>
+      json({ ...FARM, version: 5 }),
+    );
+    const user = userEvent.setup();
+
+    expect(screen.getByLabelText('Código de las crías')).toBeInTheDocument();
+    const reuse = screen.getByRole('radiogroup', {
+      name: '¿Reutilizar números de animales que salen de la finca?',
+    });
+    await user.click(within(reuse).getByRole('radio', { name: 'Sí' }));
+    await user.click(screen.getByRole('radio', { name: 'Menor número libre' }));
+    expect(screen.queryByLabelText('Código de las crías')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+    expect(sentBody(fetchMock, 0)).toMatchObject({
+      settings: { codeReuse: true, codeSuggestion: 'LOWEST_FREE' },
+    });
+  });
+
+  it('CODE_REUSE_CONFLICT: muestra qué números están repetidos', async () => {
+    const detail =
+      'Hay números repetidos entre animales activos y animales que salieron (5 y 5). Cámbialos antes de desactivar la reutilización.';
+    await renderApp(
+      <FarmForm
+        farm={{ ...FARM, settings: { ...FARM.settings, codeReuse: true } }}
+        onReload={vi.fn()}
+      />,
+      () => problem(409, 'CODE_REUSE_CONFLICT', detail),
+    );
+    const user = userEvent.setup();
+    const reuse = screen.getByRole('radiogroup', {
+      name: '¿Reutilizar números de animales que salen de la finca?',
+    });
+    await user.click(within(reuse).getByRole('radio', { name: 'No' }));
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+    expect(await screen.findByText(detail)).toBeInTheDocument();
   });
 });
 

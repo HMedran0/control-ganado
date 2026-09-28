@@ -1,5 +1,6 @@
 import type { Role } from '@hato/shared';
 import {
+  Archive,
   CalendarRange,
   Dna,
   Fence,
@@ -20,7 +21,8 @@ export type SettingsSection = {
     | '/settings/cycles'
     | '/settings/lots'
     | '/settings/tags'
-    | '/settings/users';
+    | '/settings/users'
+    | '/settings/archived';
   readonly label: string;
   readonly description: string;
   readonly icon: LucideIcon;
@@ -79,6 +81,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     label: 'Usuarios',
     description: 'Quién entra, con qué rol, y contraseñas temporales.',
     icon: Users,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/settings/archived',
+    label: 'Archivados',
+    description: 'Animales archivados por error o duplicados, para revisarlos o restaurarlos.',
+    icon: Archive,
     roles: ['ADMIN'],
   },
 ];
