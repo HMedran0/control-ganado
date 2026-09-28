@@ -127,7 +127,14 @@ export function LabelSheetPage({
         />
       ) : null}
 
-      <div className="overflow-x-auto print:overflow-visible">
+      {/* En el celular la hoja es más ancha que la pantalla: la vista previa se desplaza de lado y,
+          para poder hacerlo con teclado, es una región enfocable (axe: scrollable-region-focusable). */}
+      <div
+        role="region"
+        aria-label="Vista previa de las hojas"
+        tabIndex={0}
+        className="overflow-x-auto print:overflow-visible"
+      >
         <div className="flex flex-col gap-6 print:gap-0" aria-label="Hojas de etiquetas">
           {pages.map((page, index) => (
             <Sheet key={index} labels={page} layout={layout} format={format} />
