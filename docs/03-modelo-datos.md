@@ -52,6 +52,7 @@ Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PA
 
 **User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), email_verified_at timestamptz?, password_hash?, must_change_password bool, is_active, created_at, updated_at, last_login_at`
 - `password_hash` pasa a opcional en M10a: quien acepta una invitación con Google (AUT-13 CA2) puede no tener contraseña. Nunca queda un usuario sin ningún método de acceso: sin contraseña, no se puede desvincular Google (`LAST_LOGIN_METHOD`).
+- Si `password_hash` es nulo, el inicio de sesión con contraseña ejecuta igual una verificación Argon2 contra un hash simulado y responde el mismo error genérico (`AUTH_INVALID_CREDENTIALS`): el tiempo de respuesta no debe revelar qué cuentas entran solo con Google (M10a, ADR-007 decisión 8). Una prueba de M10a compara los tiempos de respuesta de los dos casos.
 - `email` se guarda **normalizado** (sin espacios, en minúsculas) y se compara así en invitaciones, verificación, recuperación y Google (AUT-12 a AUT-15). Es obligatorio para quien tenga una membresía ADMIN: la regla se verifica en la aplicación (`EMAIL_REQUIRED_FOR_ADMIN`), porque un CHECK no puede mirar las membresías.
 - `email_verified_at` (M10a, AUT-14): se llena al abrir el enlace de verificación o al aceptar una invitación (el enlace llegó a ese buzón). Cambiar el correo lo vuelve a `null`. Solo un correo verificado sirve para recuperar la contraseña o entrar con Google.
 

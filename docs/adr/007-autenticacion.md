@@ -182,6 +182,12 @@ vigente. Estado: aceptadas; se implementan en M4d (decisión 6) y M10a (decision
   `subject`). Aceptar una invitación con Google usa el mismo mecanismo, así que el token de la
   invitación nunca viaja en la URL del flujo. No se puede desvincular el único método de
   acceso (`LAST_LOGIN_METHOD`).
+- Quien entró solo con Google por invitación puede no tener contraseña (`password_hash` nulo).
+  Para que el tiempo de respuesta no revele qué cuentas son así, el inicio de sesión con
+  contraseña ejecuta igual una verificación Argon2 contra un hash simulado (con los mismos
+  parámetros que los hashes reales) y responde el mismo error genérico,
+  `AUTH_INVALID_CREDENTIALS`, que con una contraseña equivocada. Se implementa en M10a, con
+  una prueba que compara los tiempos de respuesta de los dos casos.
 - El retorno deja la cookie del refresco y redirige a la web; la web obtiene el token de
   acceso con el `POST /auth/refresh` de siempre.
 - Sin `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`, los endpoints de Google responden 404 y el

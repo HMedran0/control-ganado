@@ -95,7 +95,7 @@ Verificación: jornada de ordeño de un lote; `NOT_LACTATING` en una novilla; le
 - `Mailer` con SMTP; en desarrollo y pruebas, en memoria o Mailpit. Nunca se envía correo real desde las pruebas.
 - Invitación, verificación de correo y recuperación de contraseña con enlaces de un solo uso cuyo token viaja en el fragmento de la URL, nunca en la query string.
 - Google con OpenID Connect, código de autorización y PKCE del lado del servidor.
-Verificación: una invitación se acepta una sola vez y vence a los 7 días; la recuperación responde igual exista o no la cuenta y revoca las sesiones; ningún token aparece en la query string ni en los logs; Google no crea cuentas ni fincas (`GOOGLE_NO_ACCESS`); sin `GOOGLE_*` el botón no aparece.
+Verificación: una invitación se acepta una sola vez y vence a los 7 días; la recuperación responde igual exista o no la cuenta y revoca las sesiones; ningún token aparece en la query string ni en los logs; Google no crea cuentas ni fincas (`GOOGLE_NO_ACCESS`); sin `GOOGLE_*` el botón no aparece; el login con contraseña de una cuenta sin `password_hash` (solo Google) responde el mismo error y en un tiempo comparable al de una contraseña equivocada (prueba que compara los tiempos de los dos casos, ADR-007 decisión 8).
 
 **M10b Endurecimiento y despliegue** — BAK-01, RNF-06 a RNF-10.
 - Docker Compose de producción con Caddy, respaldos cifrados, script de restauración, `docs/operacion.md`.
