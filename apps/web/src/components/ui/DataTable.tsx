@@ -15,6 +15,8 @@ export type DataColumn<T> = {
    * primera línea, `secondary` en la segunda, `hidden` no se muestra.
    */
   readonly mobile?: 'leading' | 'primary' | 'secondary' | 'hidden';
+  /** `false`: solo en la lista de móvil (por ejemplo, una línea que en la tabla tiene columnas). */
+  readonly desktop?: boolean;
 };
 
 /**
@@ -68,6 +70,7 @@ export function DataTable<T>({
 }: DataTableProps<T>) {
   if (rows.length === 0 && empty !== undefined) return <>{empty}</>;
 
+  const tableColumns = columns.filter((column) => column.desktop !== false);
   const leading = columns.filter((column) => column.mobile === 'leading');
   const primary = columns.filter((column) => (column.mobile ?? 'primary') === 'primary');
   const secondary = columns.filter((column) => column.mobile === 'secondary');
@@ -88,14 +91,14 @@ export function DataTable<T>({
                   />
                 </th>
               )}
-              {columns.map((column) => {
+              {tableColumns.map((column) => {
                 const sorted = sort?.key === column.key ? sort.direction : undefined;
                 return (
                   <th
                     key={column.key}
                     scope="col"
                     aria-sort={sorted === undefined ? undefined : ARIA_SORT[sorted]}
-                    className={`px-4 py-3 text-aux font-bold text-texto-2 ${column.align === 'end' ? 'text-right' : ''}`}
+                    className={`px-3 py-3 text-aux font-bold text-texto-2 ${column.align === 'end' ? 'text-right' : ''}`}
                   >
                     {column.sortable === true && onSortChange !== undefined ? (
                       <button
@@ -133,10 +136,10 @@ export function DataTable<T>({
                     />
                   </td>
                 )}
-                {columns.map((column) => (
+                {tableColumns.map((column) => (
                   <td
                     key={column.key}
-                    className={`px-4 py-3 align-middle ${column.align === 'end' ? 'text-right tabular-nums' : ''}`}
+                    className={`px-3 py-3 align-middle ${column.align === 'end' ? 'text-right tabular-nums' : ''}`}
                   >
                     {column.cell(row)}
                   </td>

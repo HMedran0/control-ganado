@@ -18,15 +18,16 @@ import { fakeSession } from './auth-harness';
 type Respond = (url: string, init: RequestInit) => Promise<Response> | Response;
 
 /**
- * Monta una pantalla con todo lo que usa la aplicación: sesión de ADMIN, cliente de la API
+ * Monta una pantalla con todo lo que usa la aplicación: sesión (de ADMIN salvo que se pida otra), cliente de la API
  * sobre un `fetch` falso, React Query, avisos «Deshacer» y un router en memoria.
  */
 export async function renderApp(
   ui: ReactElement,
   respond: Respond,
+  options: { session?: Parameters<typeof fakeSession>[0] } = {},
 ): Promise<RenderResult & { fetchMock: ReturnType<typeof vi.fn> }> {
   const store = new SessionStore();
-  store.set(fakeSession());
+  store.set(fakeSession(options.session));
   const fetchMock = vi.fn((url: string, init?: RequestInit) =>
     Promise.resolve(respond(url, init ?? {})),
   );

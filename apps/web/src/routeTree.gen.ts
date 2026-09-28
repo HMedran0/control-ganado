@@ -15,15 +15,19 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAccountRouteImport } from './routes/_app/account'
 import { Route as AppAlertsRouteImport } from './routes/_app/alerts'
-import { Route as AppAnimalsRouteImport } from './routes/_app/animals'
 import { Route as AppFinanceRouteImport } from './routes/_app/finance'
 import { Route as AppMoreRouteImport } from './routes/_app/more'
 import { Route as AppRecordRouteImport } from './routes/_app/record'
 import { Route as AppReportsRouteImport } from './routes/_app/reports'
+import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppWorkSessionsRouteImport } from './routes/_app/work-sessions'
 import { Route as DevUiRouteImport } from './routes/dev.ui'
+import { Route as AppAnimalsIndexRouteImport } from './routes/_app/animals/index'
+import { Route as AppAnimalsNewRouteImport } from './routes/_app/animals/new'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsFarmRouteImport } from './routes/_app/settings/farm'
+import { Route as AppAnimalsIdIndexRouteImport } from './routes/_app/animals/$id/index'
+import { Route as AppAnimalsIdEditRouteImport } from './routes/_app/animals/$id/edit'
 import { Route as AppSettingsBreedsIndexRouteImport } from './routes/_app/settings/breeds/index'
 import { Route as AppSettingsBreedsIdRouteImport } from './routes/_app/settings/breeds/$id'
 import { Route as AppSettingsBreedsNewRouteImport } from './routes/_app/settings/breeds/new'
@@ -72,11 +76,6 @@ const AppAlertsRoute = AppAlertsRouteImport.update({
   path: '/alerts',
   getParentRoute: () => AppRoute,
 } as any)
-const AppAnimalsRoute = AppAnimalsRouteImport.update({
-  id: '/animals',
-  path: '/animals',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppFinanceRoute = AppFinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
@@ -97,6 +96,11 @@ const AppReportsRoute = AppReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppWorkSessionsRoute = AppWorkSessionsRouteImport.update({
   id: '/work-sessions',
   path: '/work-sessions',
@@ -107,6 +111,16 @@ const DevUiRoute = DevUiRouteImport.update({
   path: '/dev/ui',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppAnimalsIndexRoute = AppAnimalsIndexRouteImport.update({
+  id: '/animals/',
+  path: '/animals/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsNewRoute = AppAnimalsNewRouteImport.update({
+  id: '/animals/new',
+  path: '/animals/new',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
@@ -115,6 +129,16 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
 const AppSettingsFarmRoute = AppSettingsFarmRouteImport.update({
   id: '/settings/farm',
   path: '/settings/farm',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsIdIndexRoute = AppAnimalsIdIndexRouteImport.update({
+  id: '/animals/$id/',
+  path: '/animals/$id/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsIdEditRoute = AppAnimalsIdEditRouteImport.update({
+  id: '/animals/$id/edit',
+  path: '/animals/$id/edit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsBreedsIndexRoute = AppSettingsBreedsIndexRouteImport.update({
@@ -215,15 +239,18 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/account': typeof AppAccountRoute
   '/alerts': typeof AppAlertsRoute
-  '/animals': typeof AppAnimalsRoute
   '/finance': typeof AppFinanceRoute
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/reports': typeof AppReportsRoute
+  '/search': typeof AppSearchRoute
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
+  '/animals/new': typeof AppAnimalsNewRoute
   '/settings/farm': typeof AppSettingsFarmRoute
+  '/animals/': typeof AppAnimalsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
+  '/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -236,6 +263,7 @@ export interface FileRoutesByFullPath {
   '/settings/users/new': typeof AppSettingsUsersNewRoute
   '/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
   '/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/animals/$id/': typeof AppAnimalsIdIndexRoute
   '/settings/breeds/': typeof AppSettingsBreedsIndexRoute
   '/settings/cycles/': typeof AppSettingsCyclesIndexRoute
   '/settings/lots/': typeof AppSettingsLotsIndexRoute
@@ -248,16 +276,19 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/account': typeof AppAccountRoute
   '/alerts': typeof AppAlertsRoute
-  '/animals': typeof AppAnimalsRoute
   '/finance': typeof AppFinanceRoute
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/reports': typeof AppReportsRoute
+  '/search': typeof AppSearchRoute
   '/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/': typeof AppIndexRoute
+  '/animals/new': typeof AppAnimalsNewRoute
   '/settings/farm': typeof AppSettingsFarmRoute
+  '/animals': typeof AppAnimalsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
+  '/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -270,6 +301,7 @@ export interface FileRoutesByTo {
   '/settings/users/new': typeof AppSettingsUsersNewRoute
   '/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
   '/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/animals/$id': typeof AppAnimalsIdIndexRoute
   '/settings/breeds': typeof AppSettingsBreedsIndexRoute
   '/settings/cycles': typeof AppSettingsCyclesIndexRoute
   '/settings/lots': typeof AppSettingsLotsIndexRoute
@@ -284,16 +316,19 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/account': typeof AppAccountRoute
   '/_app/alerts': typeof AppAlertsRoute
-  '/_app/animals': typeof AppAnimalsRoute
   '/_app/finance': typeof AppFinanceRoute
   '/_app/more': typeof AppMoreRoute
   '/_app/record': typeof AppRecordRoute
   '/_app/reports': typeof AppReportsRoute
+  '/_app/search': typeof AppSearchRoute
   '/_app/work-sessions': typeof AppWorkSessionsRoute
   '/dev/ui': typeof DevUiRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/animals/new': typeof AppAnimalsNewRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
+  '/_app/animals/': typeof AppAnimalsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
+  '/_app/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/_app/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/_app/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/_app/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -306,6 +341,7 @@ export interface FileRoutesById {
   '/_app/settings/users/new': typeof AppSettingsUsersNewRoute
   '/_app/settings/vaccines/$id': typeof AppSettingsVaccinesIdRoute
   '/_app/settings/vaccines/new': typeof AppSettingsVaccinesNewRoute
+  '/_app/animals/$id/': typeof AppAnimalsIdIndexRoute
   '/_app/settings/breeds/': typeof AppSettingsBreedsIndexRoute
   '/_app/settings/cycles/': typeof AppSettingsCyclesIndexRoute
   '/_app/settings/lots/': typeof AppSettingsLotsIndexRoute
@@ -321,15 +357,18 @@ export interface FileRouteTypes {
     | '/login'
     | '/account'
     | '/alerts'
-    | '/animals'
     | '/finance'
     | '/more'
     | '/record'
     | '/reports'
+    | '/search'
     | '/work-sessions'
     | '/dev/ui'
+    | '/animals/new'
     | '/settings/farm'
+    | '/animals/'
     | '/settings/'
+    | '/animals/$id/edit'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -342,6 +381,7 @@ export interface FileRouteTypes {
     | '/settings/users/new'
     | '/settings/vaccines/$id'
     | '/settings/vaccines/new'
+    | '/animals/$id/'
     | '/settings/breeds/'
     | '/settings/cycles/'
     | '/settings/lots/'
@@ -354,16 +394,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/account'
     | '/alerts'
-    | '/animals'
     | '/finance'
     | '/more'
     | '/record'
     | '/reports'
+    | '/search'
     | '/work-sessions'
     | '/dev/ui'
     | '/'
+    | '/animals/new'
     | '/settings/farm'
+    | '/animals'
     | '/settings'
+    | '/animals/$id/edit'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -376,6 +419,7 @@ export interface FileRouteTypes {
     | '/settings/users/new'
     | '/settings/vaccines/$id'
     | '/settings/vaccines/new'
+    | '/animals/$id'
     | '/settings/breeds'
     | '/settings/cycles'
     | '/settings/lots'
@@ -389,16 +433,19 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/account'
     | '/_app/alerts'
-    | '/_app/animals'
     | '/_app/finance'
     | '/_app/more'
     | '/_app/record'
     | '/_app/reports'
+    | '/_app/search'
     | '/_app/work-sessions'
     | '/dev/ui'
     | '/_app/'
+    | '/_app/animals/new'
     | '/_app/settings/farm'
+    | '/_app/animals/'
     | '/_app/settings/'
+    | '/_app/animals/$id/edit'
     | '/_app/settings/breeds/$id'
     | '/_app/settings/breeds/new'
     | '/_app/settings/cycles/$id'
@@ -411,6 +458,7 @@ export interface FileRouteTypes {
     | '/_app/settings/users/new'
     | '/_app/settings/vaccines/$id'
     | '/_app/settings/vaccines/new'
+    | '/_app/animals/$id/'
     | '/_app/settings/breeds/'
     | '/_app/settings/cycles/'
     | '/_app/settings/lots/'
@@ -470,13 +518,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAlertsRouteImport
       parentRoute: typeof AppRoute
     }
-    '/_app/animals': {
-      id: '/_app/animals'
-      path: '/animals'
-      fullPath: '/animals'
-      preLoaderRoute: typeof AppAnimalsRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/_app/finance': {
       id: '/_app/finance'
       path: '/finance'
@@ -505,6 +546,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReportsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/work-sessions': {
       id: '/_app/work-sessions'
       path: '/work-sessions'
@@ -519,6 +567,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DevUiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/animals/': {
+      id: '/_app/animals/'
+      path: '/animals'
+      fullPath: '/animals/'
+      preLoaderRoute: typeof AppAnimalsIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/new': {
+      id: '/_app/animals/new'
+      path: '/animals/new'
+      fullPath: '/animals/new'
+      preLoaderRoute: typeof AppAnimalsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/settings/': {
       id: '/_app/settings/'
       path: '/settings'
@@ -531,6 +593,20 @@ declare module '@tanstack/react-router' {
       path: '/settings/farm'
       fullPath: '/settings/farm'
       preLoaderRoute: typeof AppSettingsFarmRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/$id/': {
+      id: '/_app/animals/$id/'
+      path: '/animals/$id'
+      fullPath: '/animals/$id/'
+      preLoaderRoute: typeof AppAnimalsIdIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/$id/edit': {
+      id: '/_app/animals/$id/edit'
+      path: '/animals/$id/edit'
+      fullPath: '/animals/$id/edit'
+      preLoaderRoute: typeof AppAnimalsIdEditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/breeds/': {
@@ -665,15 +741,18 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
   AppAlertsRoute: typeof AppAlertsRoute
-  AppAnimalsRoute: typeof AppAnimalsRoute
   AppFinanceRoute: typeof AppFinanceRoute
   AppMoreRoute: typeof AppMoreRoute
   AppRecordRoute: typeof AppRecordRoute
   AppReportsRoute: typeof AppReportsRoute
+  AppSearchRoute: typeof AppSearchRoute
   AppWorkSessionsRoute: typeof AppWorkSessionsRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppAnimalsNewRoute: typeof AppAnimalsNewRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
+  AppAnimalsIndexRoute: typeof AppAnimalsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
+  AppAnimalsIdEditRoute: typeof AppAnimalsIdEditRoute
   AppSettingsBreedsIdRoute: typeof AppSettingsBreedsIdRoute
   AppSettingsBreedsNewRoute: typeof AppSettingsBreedsNewRoute
   AppSettingsCyclesIdRoute: typeof AppSettingsCyclesIdRoute
@@ -686,6 +765,7 @@ interface AppRouteChildren {
   AppSettingsUsersNewRoute: typeof AppSettingsUsersNewRoute
   AppSettingsVaccinesIdRoute: typeof AppSettingsVaccinesIdRoute
   AppSettingsVaccinesNewRoute: typeof AppSettingsVaccinesNewRoute
+  AppAnimalsIdIndexRoute: typeof AppAnimalsIdIndexRoute
   AppSettingsBreedsIndexRoute: typeof AppSettingsBreedsIndexRoute
   AppSettingsCyclesIndexRoute: typeof AppSettingsCyclesIndexRoute
   AppSettingsLotsIndexRoute: typeof AppSettingsLotsIndexRoute
@@ -697,15 +777,18 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
   AppAlertsRoute: AppAlertsRoute,
-  AppAnimalsRoute: AppAnimalsRoute,
   AppFinanceRoute: AppFinanceRoute,
   AppMoreRoute: AppMoreRoute,
   AppRecordRoute: AppRecordRoute,
   AppReportsRoute: AppReportsRoute,
+  AppSearchRoute: AppSearchRoute,
   AppWorkSessionsRoute: AppWorkSessionsRoute,
   AppIndexRoute: AppIndexRoute,
+  AppAnimalsNewRoute: AppAnimalsNewRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,
+  AppAnimalsIndexRoute: AppAnimalsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
+  AppAnimalsIdEditRoute: AppAnimalsIdEditRoute,
   AppSettingsBreedsIdRoute: AppSettingsBreedsIdRoute,
   AppSettingsBreedsNewRoute: AppSettingsBreedsNewRoute,
   AppSettingsCyclesIdRoute: AppSettingsCyclesIdRoute,
@@ -718,6 +801,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsUsersNewRoute: AppSettingsUsersNewRoute,
   AppSettingsVaccinesIdRoute: AppSettingsVaccinesIdRoute,
   AppSettingsVaccinesNewRoute: AppSettingsVaccinesNewRoute,
+  AppAnimalsIdIndexRoute: AppAnimalsIdIndexRoute,
   AppSettingsBreedsIndexRoute: AppSettingsBreedsIndexRoute,
   AppSettingsCyclesIndexRoute: AppSettingsCyclesIndexRoute,
   AppSettingsLotsIndexRoute: AppSettingsLotsIndexRoute,
