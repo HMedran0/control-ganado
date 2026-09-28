@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import {
   IDENTIFIER_RETIRE_REASON,
   IDENTIFIER_TYPE,
+  MANUAL_RETIRE_REASONS,
   addIdentifierSchema,
   formatDate,
   replaceIdentifierSchema,
@@ -300,7 +301,8 @@ function AddIdentifierDialog({
   );
 }
 
-const REASONS = Object.values(IDENTIFIER_RETIRE_REASON);
+/** Solo los motivos que elige una persona: `EXITED` y `ARCHIVED` los pone el sistema. */
+const REASONS = MANUAL_RETIRE_REASONS;
 
 function ReplaceIdentifierDialog({
   animal,

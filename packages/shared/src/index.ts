@@ -14,6 +14,7 @@ export * from './format/index.js';
 export * from './id.js';
 export * from './money.js';
 export * from './schemas/animals.js';
+export * from './schemas/audit.js';
 export * from './schemas/auth.js';
 export * from './schemas/catalogs.js';
 export * from './schemas/farm-settings.js';

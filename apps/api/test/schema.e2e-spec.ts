@@ -32,7 +32,7 @@ describe('Esquema de la base de datos', () => {
   });
 
   it.each([
-    ['animals_farm_code_active_uq', 'deleted_at IS NULL'],
+    ['animals_farm_code_norm_active_uq', 'exit_type IS NULL'],
     ['identifiers_farm_type_value_active_uq', 'retired_at IS NULL'],
     ['pregnancies_dam_pending_uq', "outcome = 'PENDING'"],
     ['sales_animal_active_uq', 'voided_at IS NULL'],
@@ -43,6 +43,20 @@ describe('Esquema de la base de datos', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]?.indexdef).toContain('UNIQUE');
     expect(rows[0]?.indexdef).toContain(condition);
+  });
+
+  it('el código es único normalizado entre los activos, no textual entre los no archivados (RN-30, RN-31)', async () => {
+    const rows = await prisma.$queryRaw<{ indexname: string; indexdef: string }[]>`
+      SELECT indexname, indexdef FROM pg_indexes
+      WHERE schemaname = 'public' AND tablename = 'animals' AND indexname LIKE 'animals_farm_code%'
+      ORDER BY indexname
+    `;
+    expect(rows.map((row) => row.indexname)).toEqual([
+      'animals_farm_code_norm_active_uq',
+      'animals_farm_code_norm_idx',
+    ]);
+    for (const row of rows) expect(row.indexdef).toContain('hato_normalize_code(code)');
+    expect(rows[0]?.indexdef).toContain('deleted_at IS NULL');
   });
 
   it('tiene el índice parcial de animales activos', async () => {

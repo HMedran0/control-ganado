@@ -82,6 +82,16 @@ export const ERROR_CATALOG = {
   WORK_SESSION_CLOSED: { status: 409, detail: 'La jornada ya fue cerrada.' },
   IMPORT_FILE_INVALID: { status: 422, detail: 'El archivo no tiene el formato de la plantilla.' },
   IMPORT_TOO_MANY_ROWS: { status: 413, detail: 'El archivo supera las 5.000 filas.' },
+  CODE_REASSIGNED: {
+    status: 409,
+    detail:
+      'El código {code} ya lo tiene el animal activo {holder}. Asígnale un código nuevo para revertir la salida.',
+  },
+  CODE_REUSE_CONFLICT: {
+    status: 409,
+    detail:
+      'Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización.',
+  },
   RATE_LIMITED: { status: 429, detail: 'Demasiadas solicitudes. Espera un momento.' },
   INTERNAL_ERROR: { status: 500, detail: 'Ocurrió un error inesperado. Ya quedó registrado.' },
 } as const satisfies Record<string, ErrorDefinition>;
@@ -107,6 +117,8 @@ export const WARNING_CATALOG = {
   LOT_HAS_ACTIVE_ANIMALS: '{count} animales siguen en este lote.',
   VACCINE_IN_ACTIVE_CYCLE:
     'La vacuna está en el ciclo {name} ({from} a {to}), en curso o por empezar.',
+  IDENTIFIER_NOT_RESTORED:
+    'El identificador {value} ya lo tiene el animal {code}: quedó retirado en este animal.',
 } as const satisfies Record<string, string>;
 
 /** Código de advertencia estable. */

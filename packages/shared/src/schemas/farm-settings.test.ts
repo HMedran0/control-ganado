@@ -14,7 +14,21 @@ describe('DEFAULT_FARM_SETTINGS (03-modelo-datos.md §2.1)', () => {
       calfCodePattern: '{YY}-{NNN}',
       rabiesRiskZone: true,
       pricePerKgByCategory: {},
+      codeReuse: false,
+      codeSuggestion: 'PATTERN',
     });
+  });
+});
+
+describe('numeración de la finca (ANI-10)', () => {
+  it('acepta la numeración reutilizable con el menor número libre', () => {
+    const settings = parseFarmSettings({ codeReuse: true, codeSuggestion: 'LOWEST_FREE' });
+    expect(settings.codeReuse).toBe(true);
+    expect(settings.codeSuggestion).toBe('LOWEST_FREE');
+  });
+
+  it('rechaza un modo de sugerencia desconocido', () => {
+    expect(() => parseFarmSettings({ codeSuggestion: 'RANDOM' })).toThrowError();
   });
 });
 

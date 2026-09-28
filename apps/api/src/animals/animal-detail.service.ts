@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  CODE_SUGGESTION,
   DomainError,
   ROLE,
   SEX,
@@ -7,11 +8,15 @@ import {
   ageInDays,
   animalStatus,
   isoDateParts,
+  lowestFreeCode,
   nextCalfCode,
   summarizePregnancies,
   withdrawalUntilOf,
   type AnimalDetail,
   type AnimalRef,
+  type CodeHistory,
+  type CodeHolderView,
+  type ExitType,
   type FieldChange,
   type Genealogy,
   type GenealogyNode,
@@ -219,11 +224,58 @@ export class AnimalDetailService {
           : null,
       vaccines: derived.status === 'ACTIVE' ? vaccines : [],
       withdrawalUntil,
+      codeHistory: await this.codeHistory(scope, animal),
+      archive:
+        animal.deletedAt === null
+          ? null
+          : { archivedAt: animal.deletedAt.toISOString(), reason: animal.deletedReason },
       version: animal.version,
     };
 
     if (scope.role !== ROLE.ADMIN) return detail;
     return { ...detail, economics: { purchasePrice: await this.purchasePrice(scope, animal.id) } };
+  }
+
+  /**
+   * Número anterior (ANI-11). Se busca por el código **normalizado** (RN-30) entre los animales
+   * no archivados de la finca:
+   *
+   * - un animal activo ve al último que tuvo su número y salió (`previousHolder`);
+   * - uno que salió o está archivado ve al activo que lo tiene hoy (`currentHolder`).
+   */
+  private async codeHistory(
+    scope: FarmScope,
+    animal: { id: string; code: string; exitType: ExitType | null; deletedAt: Date | null },
+  ): Promise<CodeHistory> {
+    const isActive = animal.exitType === null && animal.deletedAt === null;
+    const holderState = isActive
+      ? Prisma.sql`a.exit_type IS NOT NULL`
+      : Prisma.sql`a.exit_type IS NULL`;
+    const rows = await this.prisma.$queryRaw<
+      { id: string; code: string; exit_type: ExitType | null; exit_date: Date | null }[]
+    >(Prisma.sql`
+      SELECT a.id, a.code, a.exit_type::text AS exit_type, a.exit_date
+        FROM animals a
+       WHERE a.farm_id = ${scope.farmId}::uuid
+         AND hato_normalize_code(a.code) = hato_normalize_code(${animal.code}::text)
+         AND a.id <> ${animal.id}::uuid
+         AND a.deleted_at IS NULL
+         AND ${holderState}
+       ORDER BY a.exit_date DESC NULLS LAST, a.created_at DESC
+       LIMIT 1`);
+    const row = rows[0];
+    const holder: CodeHolderView | null =
+      row === undefined
+        ? null
+        : {
+            animalId: row.id,
+            code: row.code,
+            status: animalStatus({ archived: false, exitType: row.exit_type }),
+            exitDate: fromPrismaDateOrNull(row.exit_date),
+          };
+    return isActive
+      ? { previousHolder: holder, currentHolder: null }
+      : { previousHolder: null, currentHolder: holder };
   }
 
   /** Valor de compra: la asignación del gasto `PURCHASE` vigente del animal (ANI-01 CA2). */
@@ -447,11 +499,26 @@ export class AnimalDetailService {
   }
 
   /**
-   * Siguiente código libre con el patrón de la finca (RN-28, 08 §2.3). Cuenta todos los códigos
-   * de la finca, también los de animales archivados, para no reutilizarlos nunca.
+   * Código sugerido (ANI-10, RN-28):
+   *
+   * - `LOWEST_FREE`: el menor entero libre en el mismo conjunto donde se exige la unicidad
+   *   (ANI-10 CA2): los activos si la finca reutiliza números, todos los no archivados si no;
+   * - `PATTERN`: el siguiente con el patrón de las crías (08 §2.3). Cuenta todos los códigos de la
+   *   finca, también los de animales archivados, para no reutilizarlos nunca.
    */
   async nextCode(scope: FarmScope, birthDate: IsoDate | undefined): Promise<NextCodeResult> {
     const context = await this.farmContext.load(scope);
+    if (context.settings.codeSuggestion === CODE_SUGGESTION.LOWEST_FREE) {
+      const inUse = await this.prisma.animal.findMany({
+        where: {
+          farmId: scope.farmId,
+          deletedAt: null,
+          ...(context.settings.codeReuse ? { exitType: null } : {}),
+        },
+        select: { code: true },
+      });
+      return { code: lowestFreeCode(inUse.map((row) => row.code)) };
+    }
     const codes = await this.prisma.animal.findMany({
       where: { farmId: scope.farmId },
       select: { code: true },

@@ -100,6 +100,8 @@ export const RETIRE_REASON_LABEL: Readonly<Record<IdentifierRetireReason, string
   LOST: 'Pérdida',
   DAMAGED: 'Daño',
   REASSIGNED: 'Reasignación oficial',
+  EXITED: 'Liberada al salir de la finca',
+  ARCHIVED: 'Retirado al archivar el animal',
   OTHER: 'Otro motivo',
 };
 

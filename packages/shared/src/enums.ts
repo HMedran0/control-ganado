@@ -69,15 +69,30 @@ export const IDENTIFIER_TYPE = {
 } as const;
 export type IdentifierType = (typeof IDENTIFIER_TYPE)[keyof typeof IDENTIFIER_TYPE];
 
-/** Motivo de retiro de un identificador. */
+/**
+ * Motivo de retiro de un identificador. `EXITED` y `ARCHIVED` (M4c) los pone el sistema al
+ * registrar una salida (IDN-06) o al archivar el animal (ANI-03, excepción de RN-32); una persona
+ * solo elige entre `MANUAL_RETIRE_REASONS`.
+ */
 export const IDENTIFIER_RETIRE_REASON = {
   LOST: 'LOST',
   DAMAGED: 'DAMAGED',
   REASSIGNED: 'REASSIGNED',
+  EXITED: 'EXITED',
+  ARCHIVED: 'ARCHIVED',
   OTHER: 'OTHER',
 } as const;
 export type IdentifierRetireReason =
   (typeof IDENTIFIER_RETIRE_REASON)[keyof typeof IDENTIFIER_RETIRE_REASON];
+
+/** Motivos que una persona puede elegir al retirar o reemplazar un identificador. */
+export const MANUAL_RETIRE_REASONS = [
+  IDENTIFIER_RETIRE_REASON.LOST,
+  IDENTIFIER_RETIRE_REASON.DAMAGED,
+  IDENTIFIER_RETIRE_REASON.REASSIGNED,
+  IDENTIFIER_RETIRE_REASON.OTHER,
+] as const;
+export type ManualRetireReason = (typeof MANUAL_RETIRE_REASONS)[number];
 
 /** Método del servicio reproductivo. */
 export const SERVICE_METHOD = {

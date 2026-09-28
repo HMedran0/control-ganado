@@ -10,6 +10,7 @@ import {
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import type { Tx } from '../common/persistence.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { assertVersion, audit, catalogWrite, changesBetween } from './catalog-support.js';
@@ -56,6 +57,7 @@ export class FarmService {
       );
       const before = parseFarmSettings(current.settings);
       const settings: FarmSettings = parseFarmSettings({ ...before, ...input.settings });
+      if (before.codeReuse && !settings.codeReuse) await assertNoRepeatedCodes(tx, scope);
 
       const updated = await tx.farm.update({
         where: { id: scope.farmId, version: input.version },
@@ -91,6 +93,31 @@ export class FarmService {
       return toView(updated, scope);
     });
   }
+}
+
+/** Números repetidos que se muestran como máximo en el mensaje. */
+const MAX_CONFLICTS_SHOWN = 10;
+
+/**
+ * ANI-10 CA3: dejar de reutilizar números exige que ningún código normalizado (RN-30) se repita
+ * entre los animales no archivados, que es la unicidad de las fincas sin reutilización. Si se
+ * repite, `CODE_REUSE_CONFLICT` con los códigos en el mensaje y los animales en `context`.
+ */
+async function assertNoRepeatedCodes(tx: Tx, scope: FarmScope): Promise<void> {
+  const repeated = await tx.$queryRaw<{ codes: string; ids: string }[]>`
+    SELECT string_agg(a.code, ' y ' ORDER BY a.exit_type IS NULL DESC, a.code) AS codes,
+           string_agg(a.id::text, ',' ORDER BY a.exit_type IS NULL DESC, a.code) AS ids
+      FROM animals a
+     WHERE a.farm_id = ${scope.farmId}::uuid AND a.deleted_at IS NULL
+     GROUP BY hato_normalize_code(a.code)
+    HAVING count(*) > 1
+     ORDER BY hato_normalize_code(a.code)
+     LIMIT ${MAX_CONFLICTS_SHOWN}::int`;
+  if (repeated.length === 0) return;
+  throw new DomainError('CODE_REUSE_CONFLICT', {
+    params: { codes: repeated.map((row) => row.codes).join('; ') },
+    context: { animalIds: repeated.map((row) => row.ids).join(',') },
+  });
 }
 
 function flatten(farm: FarmRow): Record<string, unknown> {

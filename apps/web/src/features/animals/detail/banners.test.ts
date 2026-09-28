@@ -39,6 +39,8 @@ function animal(patch: Partial<AnimalDetail>): AnimalDetail {
     reproduction: null,
     vaccines: [],
     withdrawalUntil: null,
+    codeHistory: { previousHolder: null, currentHolder: null },
+    archive: null,
     version: 1,
     ...patch,
   };

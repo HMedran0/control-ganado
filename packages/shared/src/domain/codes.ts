@@ -1,5 +1,6 @@
 /**
- * Códigos sugeridos para las crías (RN-28 y 08 §2.3).
+ * Códigos internos de los animales: normalización (RN-30), sugerencia por patrón para las crías
+ * (RN-28, 08 §2.3) y número libre más bajo (ANI-10 CA2).
  *
  * Patrón configurable en `Farm.settings.calfCodePattern`, por defecto `{YY}-{NNN}`.
  * Tokens: `{YYYY}` año completo · `{YY}` año en dos dígitos · `{NNN}` consecutivo del año
@@ -7,6 +8,69 @@
  */
 
 import { DomainError } from '../errors.js';
+
+// ---------------------------------------------------------------------------------------------
+// Normalización (RN-30)
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Espacios que se quitan al inicio y al final de un código: espacio, tabulador, salto de línea
+ * y espacio duro (U+00A0). Lista cerrada, idéntica a la de `hato_normalize_code` en SQL: los
+ * «espacios» por defecto de `trim` en JavaScript y en PostgreSQL no coinciden entre sí.
+ */
+export const CODE_EDGE_WHITESPACE = [' ', '\t', '\n', ' '] as const;
+
+/**
+ * Minúsculas que se pasan a mayúsculas, en el mismo orden que `CODE_UPPERCASE`. Lista cerrada,
+ * idéntica a la del `translate` de `hato_normalize_code`: `toUpperCase` y `upper()` dependen de
+ * Unicode y de la configuración regional, y podrían diferir en letras raras.
+ */
+export const CODE_LOWERCASE = 'abcdefghijklmnopqrstuvwxyzñáéíóúü';
+export const CODE_UPPERCASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÑÁÉÍÓÚÜ';
+
+const EDGE_CLASS = `[${CODE_EDGE_WHITESPACE.map((char) => `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`).join('')}]`;
+const EDGE_PATTERN = new RegExp(`^${EDGE_CLASS}+|${EDGE_CLASS}+$`, 'g');
+const ASCII_DIGITS = /^[0-9]+$/;
+
+/**
+ * Código tal como se guarda: en forma NFC y sin los espacios de `CODE_EDGE_WHITESPACE` al inicio
+ * ni al final. Conserva las mayúsculas y los ceros que escribió la persona.
+ */
+export function cleanAnimalCode(code: string): string {
+  return code.normalize('NFC').replace(EDGE_PATTERN, '');
+}
+
+/**
+ * Código normalizado para comparar (RN-30): `cleanAnimalCode`, las letras de `CODE_LOWERCASE`
+ * en mayúsculas y, si es solo numérico, sin ceros a la izquierda («5», «05» y «005» son el mismo;
+ * «000» es «0»). Es la misma función que `hato_normalize_code` en la base; una prueba de
+ * integración lo comprueba caso por caso.
+ */
+export function normalizeAnimalCode(code: string): string {
+  let upper = '';
+  for (const char of cleanAnimalCode(code)) {
+    const index = CODE_LOWERCASE.indexOf(char);
+    upper += index === -1 ? char : CODE_UPPERCASE.charAt(index);
+  }
+  return ASCII_DIGITS.test(upper) ? upper.replace(/^0+(?=[0-9])/, '') : upper;
+}
+
+/**
+ * Menor entero positivo que no está entre los códigos dados (ANI-10 CA2). Los códigos que no son
+ * numéricos no cuentan. Quien llama decide el conjunto: los animales activos si la finca
+ * reutiliza números, todos los no archivados si no (ahí es donde se exige la unicidad).
+ */
+export function lowestFreeCode(codes: Iterable<string>): string {
+  const used = new Set<string>();
+  for (const code of codes) used.add(normalizeAnimalCode(code));
+  let candidate = 1;
+  while (used.has(String(candidate))) candidate += 1;
+  return String(candidate);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Patrón de las crías (RN-28)
+// ---------------------------------------------------------------------------------------------
 
 /** Patrón por defecto (08 §2.3). */
 export const DEFAULT_CALF_CODE_PATTERN = '{YY}-{NNN}';
@@ -84,7 +148,9 @@ export type NextCalfCodeInput = {
  * archivado, y por eso no rellena los huecos.
  */
 export function nextCalfCode(input: NextCalfCodeInput): string {
-  const codes = new Set(input.existingCodes);
+  const codes = [...input.existingCodes];
+  // Se compara normalizado (RN-30): «26-001» y «26-001 » son el mismo código.
+  const taken = new Set(codes.map(normalizeAnimalCode));
   const matcher = sequencePattern(input.pattern, input.year);
 
   let highest = 0;
@@ -98,7 +164,7 @@ export function nextCalfCode(input: NextCalfCodeInput): string {
 
   let candidate = formatCalfCode(input.pattern, input.year, highest + 1);
   let sequence = highest + 1;
-  while (codes.has(candidate)) {
+  while (taken.has(normalizeAnimalCode(candidate))) {
     sequence += 1;
     candidate = formatCalfCode(input.pattern, input.year, sequence);
   }

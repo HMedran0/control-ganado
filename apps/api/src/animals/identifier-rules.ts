@@ -1,5 +1,6 @@
 import {
   DomainError,
+  IDENTIFIER_RETIRE_REASON,
   ROLE,
   validateIdentifier,
   type IdentifierType,
@@ -25,7 +26,8 @@ export type CheckedIdentifier = {
  *   animal que lo tiene;
  * - un valor que ya se **retiró** de otro animal no se reasigna sin que un ADMIN lo confirme
  *   con `confirmReuse` → `IDENTIFIER_PREVIOUSLY_USED`. Si quien confirma no es ADMIN,
- *   `FORBIDDEN_ROLE`.
+ *   `FORBIDDEN_ROLE`. Excepción (IDN-06 CA1): una chapeta que se liberó al registrar la salida de
+ *   un animal (`EXITED`) se reutiliza sin confirmación.
  *
  * El índice único parcial de la base respalda la primera regla ante escrituras simultáneas.
  */
@@ -51,7 +53,12 @@ export async function checkIdentifier(
 
   const existing = await tx.identifier.findMany({
     where: { farmId: scope.farmId, type: input.type, value },
-    select: { animalId: true, retiredAt: true, animal: { select: { code: true } } },
+    select: {
+      animalId: true,
+      retiredAt: true,
+      retireReason: true,
+      animal: { select: { code: true } },
+    },
   });
 
   const active = existing.find((identifier) => identifier.retiredAt === null);
@@ -62,7 +69,11 @@ export async function checkIdentifier(
     });
   }
 
-  const previousOwner = existing.find((identifier) => identifier.animalId !== input.animalId);
+  const previousOwner = existing.find(
+    (identifier) =>
+      identifier.animalId !== input.animalId &&
+      identifier.retireReason !== IDENTIFIER_RETIRE_REASON.EXITED,
+  );
   if (previousOwner !== undefined) {
     if (input.confirmReuse !== true) {
       throw new DomainError('IDENTIFIER_PREVIOUSLY_USED', {

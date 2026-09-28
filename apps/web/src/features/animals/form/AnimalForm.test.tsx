@@ -73,6 +73,8 @@ function detail(patch: Partial<AnimalDetail> = {}): AnimalDetail {
     reproduction: null,
     vaccines: [],
     withdrawalUntil: null,
+    codeHistory: { previousHolder: null, currentHolder: null },
+    archive: null,
     version: 4,
     ...patch,
   };

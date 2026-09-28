@@ -4,7 +4,6 @@ import {
   DomainError,
   FIELDS_EDITABLE_AFTER_EXIT,
   ORIGIN,
-  ROLE,
   SEX,
   WEIGHT_METHOD,
   formatAge,
@@ -35,6 +34,14 @@ import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { AnimalDetailService } from './animal-detail.service.js';
+import {
+  assertNotBeforeBirth,
+  assertNotFuture,
+  fieldError,
+  requireAdmin,
+  userOf,
+} from './animal-rules.js';
+import { assertCodeAvailable } from './code-availability.js';
 import { FarmContextService, type FarmContext } from './farm-context.service.js';
 import { checkIdentifier, type CheckedIdentifier } from './identifier-rules.js';
 
@@ -81,37 +88,6 @@ function snapshot(animal: AnimalRow): AnimalSnapshot {
     photoUrl: animal.photoUrl,
     forSale: animal.forSale,
   };
-}
-
-function fieldError(code: 'VALIDATION_FAILED', field: string, message: string): DomainError {
-  return new DomainError(code, { fieldErrors: { [field]: [message] } });
-}
-
-/** RN-14: ninguna fecha de evento puede ser futura. */
-function assertNotFuture(date: IsoDate, today: IsoDate, field: string): void {
-  if (date > today) {
-    throw new DomainError('DATE_IN_FUTURE', {
-      fieldErrors: { [field]: ['La fecha no puede ser posterior a hoy.'] },
-    });
-  }
-}
-
-/** RN-14: ningún evento puede ser anterior al nacimiento. */
-function assertNotBeforeBirth(date: IsoDate, birthDate: IsoDate, field: string): void {
-  if (date < birthDate) {
-    throw new DomainError('DATE_BEFORE_BIRTH', {
-      fieldErrors: { [field]: ['La fecha es anterior al nacimiento del animal.'] },
-    });
-  }
-}
-
-function userOf(scope: FarmScope): string {
-  if (scope.userId === null) throw new DomainError('FORBIDDEN_ROLE');
-  return scope.userId;
-}
-
-function requireAdmin(scope: FarmScope, detail: string): void {
-  if (scope.role !== ROLE.ADMIN) throw new DomainError('FORBIDDEN_ROLE', { detail });
 }
 
 /** Traduce los choques de índice único de un animal o sus identificadores. */
@@ -204,7 +180,16 @@ export class AnimalsService {
           damId: input.damId ?? null,
           sireId: input.sireId ?? null,
         });
-        await this.assertCodeFree(tx, scope, input.code, null);
+        await assertCodeAvailable(
+          tx,
+          scope,
+          {
+            code: input.code,
+            excludeAnimalId: null,
+            codeReuse: context.settings.codeReuse,
+            willBeActive: true,
+          },
+        );
 
         const identifiers: CheckedIdentifier[] = [];
         for (const [index, identifier] of (input.identifiers ?? []).entries()) {
@@ -404,7 +389,16 @@ export class AnimalsService {
           tagIds: [],
         });
         if (input.code !== undefined && input.code !== current.code) {
-          await this.assertCodeFree(tx, scope, input.code, id);
+          await assertCodeAvailable(
+            tx,
+            scope,
+            {
+              code: input.code,
+              excludeAnimalId: id,
+              codeReuse: context.settings.codeReuse,
+              willBeActive: current.exitType === null,
+            },
+            );
         }
         const found =
           input.damId !== undefined || input.sireId !== undefined || input.birthDate !== undefined
@@ -707,25 +701,6 @@ export class AnimalsService {
         );
       }
     }
-  }
-
-  /** RN-01: el código es único entre los animales no archivados de la finca. */
-  private async assertCodeFree(
-    tx: Tx,
-    scope: FarmScope,
-    code: string,
-    exceptId: string | null,
-  ): Promise<void> {
-    const taken = await tx.animal.findFirst({
-      where: {
-        farmId: scope.farmId,
-        deletedAt: null,
-        code,
-        ...(exceptId === null ? {} : { id: { not: exceptId } }),
-      },
-      select: { id: true },
-    });
-    if (taken !== null) throw new DomainError('ANIMAL_CODE_TAKEN', { params: { code } });
   }
 
   /**

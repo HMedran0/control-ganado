@@ -9,12 +9,14 @@
 import { z } from 'zod';
 
 import type { IsoDate } from '../date.js';
+import { cleanAnimalCode } from '../domain/codes.js';
 import type { VaccineStatusKind, VaccineStatusReason } from '../domain/vaccination.js';
 import {
   ANIMAL_ALERT,
   DERIVED_TAG,
-  IDENTIFIER_RETIRE_REASON,
+  EXIT_TYPE,
   IDENTIFIER_TYPE,
+  MANUAL_RETIRE_REASONS,
   MANAGEMENT_CATEGORY,
   ORIGIN,
   SEX,
@@ -26,6 +28,7 @@ import {
   type IdentifierRetireReason,
   type IdentifierType,
   type ManagementCategory,
+  type ManualRetireReason,
   type Origin,
   type PregnancyOutcome,
   type Sex,
@@ -47,8 +50,12 @@ export const identifierTypeSchema = z.enum(
   Object.values(IDENTIFIER_TYPE) as [IdentifierType, ...IdentifierType[]],
   { message: 'Elige el tipo de identificador.' },
 );
+/**
+ * Motivo que una persona elige al retirar o reemplazar un identificador. `EXITED` y `ARCHIVED`
+ * los pone solo el sistema (IDN-06, ANI-03).
+ */
 export const identifierRetireReasonSchema = z.enum(
-  Object.values(IDENTIFIER_RETIRE_REASON) as [IdentifierRetireReason, ...IdentifierRetireReason[]],
+  MANUAL_RETIRE_REASONS as unknown as [ManualRetireReason, ...ManualRetireReason[]],
   { message: 'Elige el motivo.' },
 );
 
@@ -67,10 +74,13 @@ function optionalText(max: number) {
     });
 }
 
-/** Código interno: obligatorio, sin espacios al inicio ni al final (RN-01). */
+/**
+ * Código interno: obligatorio, en forma NFC y sin espacios al inicio ni al final (RN-01, RN-30).
+ * Se guarda como lo escribió la persona; la unicidad compara el código normalizado.
+ */
 export const animalCodeSchema = z
   .string({ message: 'Escribe el código del animal.' })
-  .transform((value) => value.trim())
+  .transform(cleanAnimalCode)
   .pipe(
     z
       .string()
@@ -399,6 +409,59 @@ export type BulkTagsResult = { readonly updated: number };
 export type BulkLotResult = { readonly moved: number; readonly unchanged: number };
 
 // ---------------------------------------------------------------------------------------------
+// Salida, archivo y restauración (ANI-03, ANI-04, IDN-06)
+// ---------------------------------------------------------------------------------------------
+
+export const exitTypeSchema = z.enum(Object.values(EXIT_TYPE) as [ExitType, ...ExitType[]], {
+  message: 'Elige el tipo de salida.',
+});
+
+/**
+ * Registrar la salida (ANI-04). Si es venta, `sale.amount` es obligatorio; la API responde
+ * `SALE_AMOUNT_REQUIRED` si falta, con el campo marcado.
+ */
+export const exitAnimalSchema = z
+  .object({
+    type: exitTypeSchema,
+    date: isoDateSchema,
+    reason: optionalText(500),
+    sale: z
+      .object({
+        amount: positiveMoneySchema.optional(),
+        buyer: optionalText(120),
+      })
+      .optional(),
+    /** Confirmación explícita de vender o sacrificar un animal en retiro (RN-22). */
+    confirmWithdrawal: z.boolean().optional(),
+  })
+  .refine((value) => value.type === EXIT_TYPE.SALE || value.sale === undefined, {
+    path: ['sale'],
+    message: 'El precio y el comprador solo aplican a una venta.',
+  });
+export type ExitAnimalInput = z.infer<typeof exitAnimalSchema>;
+
+/**
+ * Revertir una salida (ANI-04 CA5). `newCode` solo hace falta si el código o la chapeta ya los
+ * tiene otro animal activo (`CODE_REASSIGNED`, IDN-06 CA3).
+ */
+export const revertExitSchema = z.object({ newCode: animalCodeSchema.optional() });
+export type RevertExitInput = z.infer<typeof revertExitSchema>;
+
+/** Archivar (ANI-03): el motivo es obligatorio y queda en la auditoría. */
+export const archiveAnimalSchema = z.object({
+  reason: z
+    .string({ message: 'Escribe el motivo.' })
+    .trim()
+    .min(3, { message: 'Escribe el motivo (mínimo 3 caracteres).' })
+    .max(500, { message: 'Máximo 500 caracteres.' }),
+});
+export type ArchiveAnimalInput = z.infer<typeof archiveAnimalSchema>;
+
+/** Restaurar un archivado (ANI-03 CA2). `newCode` si su código ya lo tiene otro animal. */
+export const restoreAnimalSchema = z.object({ newCode: animalCodeSchema.optional() });
+export type RestoreAnimalInput = z.infer<typeof restoreAnimalSchema>;
+
+// ---------------------------------------------------------------------------------------------
 // Vistas
 // ---------------------------------------------------------------------------------------------
 
@@ -486,11 +549,32 @@ export type AnimalDetail = AnimalListItem & {
   readonly reproduction: ReproductiveSummary | null;
   readonly vaccines: readonly VaccineStatusView[];
   readonly withdrawalUntil: IsoDate | null;
+  /** Número anterior (ANI-11). */
+  readonly codeHistory: CodeHistory;
+  /** Archivo (ANI-03): instante y motivo; `null` si no está archivado. */
+  readonly archive: { readonly archivedAt: string; readonly reason: string | null } | null;
   readonly version: number;
   readonly economics?: { readonly purchasePrice: MoneyString | null };
 };
 
 export type AnimalDetailWithWarnings = AnimalDetail & { readonly warnings: readonly Warning[] };
+
+/** Otro animal que tuvo o tiene el mismo número (ANI-11), para enlazar su ficha. */
+export type CodeHolderView = {
+  readonly animalId: string;
+  readonly code: string;
+  readonly status: AnimalStatus;
+  readonly exitDate: IsoDate | null;
+};
+
+/**
+ * Número anterior (ANI-11). En un animal activo, `previousHolder` es el último que tuvo su número
+ * y salió. En un animal que salió, `currentHolder` es el activo que lo tiene hoy.
+ */
+export type CodeHistory = {
+  readonly previousHolder: CodeHolderView | null;
+  readonly currentHolder: CodeHolderView | null;
+};
 
 /** Por qué coincidió un resultado de la búsqueda. */
 export type SearchMatch =

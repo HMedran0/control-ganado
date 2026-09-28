@@ -71,6 +71,8 @@ enum IdentifierRetireReason {
   DAMAGED
   REASSIGNED
   OTHER
+  EXITED
+  ARCHIVED
 }
 
 enum ServiceMethod {
@@ -338,7 +340,9 @@ model Animal {
   valuations         Valuation[]
   workSessionEntries WorkSessionEntry[]
 
-  // Único parcial (farm_id, code) WHERE deleted_at IS NULL → migración SQL manual.
+  // Desde M4c (RN-30, RN-31), en migración SQL manual: único parcial sobre
+  // (farm_id, hato_normalize_code(code)) de los activos y un índice no único sobre la misma
+  // expresión. Prisma no expresa índices sobre funciones, así que no se declaran aquí.
   @@index([farmId])
   @@index([farmId, lotId])
   @@index([damId])

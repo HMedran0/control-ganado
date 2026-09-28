@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
 import { AnimalsModule } from './animals/animals.module.js';
+import { AuditModule } from './audit/audit.module.js';
 import { AccessGuard } from './auth/access.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { PasswordChangeGuard } from './auth/password-change.guard.js';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     CatalogsModule,
     AnimalsModule,
+    AuditModule,
     HealthModule,
   ],
   providers: [

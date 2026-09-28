@@ -53,7 +53,8 @@ function priority(match: SearchMatch): number {
  * Búsqueda global (ANI-05, IDN-02 CA2).
  *
  * 1. **Exacta:** el texto, normalizado como cada tipo de identificador lo normaliza, contra los
- *    identificadores activos y retirados; y contra el código, sin distinguir mayúsculas. Si
+ *    identificadores activos y retirados; y contra el código normalizado (RN-30). Si hay
+ *    coincidencias de animales activos, se descartan las de los que salieron (ANI-11). Si
  *    todas las coincidencias son del mismo animal (lo normal: chapeta «087» y código «087»),
  *    responde `exactMatch` y la interfaz abre la ficha. Si son de animales distintos, no hay
  *    `exactMatch`: se listan, cada uno con el porqué.
@@ -67,7 +68,9 @@ export class AnimalSearchService {
   constructor(private readonly prisma: PrismaService) {}
 
   async search(scope: FarmScope, q: string): Promise<SearchResult> {
-    const exact = await this.exactMatches(scope, q);
+    const allExact = await this.exactMatches(scope, q);
+    const exactAnimals = await this.summaries(scope, [...allExact.keys()]);
+    const exact = preferActive(allExact, exactAnimals);
     const exactIds = [...exact.keys()];
 
     let exactMatch: SearchResult['exactMatch'] = null;
@@ -86,9 +89,12 @@ export class AnimalSearchService {
         ? await this.fuzzyMatches(scope, q, exactIds)
         : [];
 
-    const animals = await this.summaries(scope, [
-      ...exactIds,
-      ...fuzzy.map((entry) => entry.animalId),
+    const animals = new Map([
+      ...exactAnimals,
+      ...(await this.summaries(
+        scope,
+        fuzzy.map((entry) => entry.animalId),
+      )),
     ]);
 
     const items: SearchResultItem[] = [];
@@ -120,14 +126,13 @@ export class AnimalSearchService {
         select: { animalId: true, type: true, value: true, retiredAt: true },
         orderBy: [{ retiredAt: { sort: 'desc', nulls: 'first' } }, { assignedAt: 'desc' }],
       }),
-      this.prisma.animal.findMany({
-        where: {
-          farmId: scope.farmId,
-          deletedAt: null,
-          code: { equals: q.trim(), mode: 'insensitive' },
-        },
-        select: { id: true, code: true },
-      }),
+      // Código normalizado (RN-30): «5», «05» y « 5 » encuentran el mismo animal.
+      this.prisma.$queryRaw<{ id: string; code: string }[]>`
+        SELECT a.id, a.code
+          FROM animals a
+         WHERE a.farm_id = ${scope.farmId}::uuid
+           AND hato_normalize_code(a.code) = hato_normalize_code(${q}::text)
+           AND a.deleted_at IS NULL`,
     ]);
 
     const matches: { animalId: string; match: SearchMatch }[] = [
@@ -224,6 +229,21 @@ export class AnimalSearchService {
     });
     return new Map(rows.map((row) => [row.id, row]));
   }
+}
+
+/**
+ * Con numeración reutilizable, un mismo número puede ser del activo que lo tiene hoy y del que lo
+ * tuvo y salió (con su chapeta retirada). La búsqueda exacta devuelve el **activo** (ANI-11
+ * CA1): si alguna coincidencia exacta es de un animal activo, se descartan las de los que
+ * salieron. Si ninguna lo es, quedan las de los que salieron, con su estado.
+ */
+function preferActive(
+  exact: Map<string, SearchMatch[]>,
+  animals: Map<string, AnimalSummary>,
+): Map<string, SearchMatch[]> {
+  const isActive = (id: string) => animals.get(id)?.exitType === null;
+  if (![...exact.keys()].some(isActive)) return exact;
+  return new Map([...exact].filter(([id]) => isActive(id)));
 }
 
 function toItem(animal: AnimalSummary, exact: boolean, matches: SearchMatch[]): SearchResultItem {

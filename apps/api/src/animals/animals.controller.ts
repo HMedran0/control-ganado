@@ -1,24 +1,31 @@
 import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
+  ROLE,
   addIdentifierSchema,
+  archiveAnimalSchema,
   bulkLotSchema,
   bulkTagsSchema,
   createAnimalSchema,
+  exitAnimalSchema,
   listAnimalsQuerySchema,
   nextCodeQuerySchema,
   replaceIdentifierSchema,
+  restoreAnimalSchema,
   retireIdentifierSchema,
+  revertExitSchema,
   searchAnimalsQuerySchema,
   updateAnimalSchema,
   type AddIdentifierInput,
   type AnimalDetail,
   type AnimalDetailWithWarnings,
   type AnimalList,
+  type ArchiveAnimalInput,
   type BulkLotInput,
   type BulkLotResult,
   type BulkTagsInput,
   type BulkTagsResult,
   type CreateAnimalInput,
+  type ExitAnimalInput,
   type Genealogy,
   type IdentifierView,
   type IsoDate,
@@ -26,7 +33,9 @@ import {
   type NextCodeResult,
   type ReplaceIdentifierInput,
   type ReplaceIdentifierResult,
+  type RestoreAnimalInput,
   type RetireIdentifierInput,
+  type RevertExitInput,
   type SearchAnimalsQuery,
   type SearchResult,
   type Timeline,
@@ -37,8 +46,10 @@ import { z } from 'zod';
 
 import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import { Roles } from '../common/roles/roles.decorator.js';
 import { ZodBody, ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { AnimalDetailService } from './animal-detail.service.js';
+import { AnimalLifecycleService } from './animal-lifecycle.service.js';
 import { AnimalListService } from './animal-list.service.js';
 import { AnimalSearchService } from './animal-search.service.js';
 import { AnimalsService } from './animals.service.js';
@@ -62,6 +73,7 @@ export class AnimalsController {
     private readonly searchService: AnimalSearchService,
     private readonly details: AnimalDetailService,
     private readonly animals: AnimalsService,
+    private readonly lifecycle: AnimalLifecycleService,
     private readonly identifiers: IdentifiersService,
   ) {}
 
@@ -128,6 +140,46 @@ export class AnimalsController {
     @CurrentScope() scope: FarmScope,
   ): Promise<AnimalDetailWithWarnings> {
     return this.animals.update(scope, id, body);
+  }
+
+  @Post(':id/exit')
+  @Roles(ROLE.ADMIN)
+  exit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(exitAnimalSchema) body: ExitAnimalInput,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<AnimalDetailWithWarnings> {
+    return this.lifecycle.exit(scope, id, body);
+  }
+
+  @Post(':id/revert-exit')
+  @Roles(ROLE.ADMIN)
+  revertExit(
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(revertExitSchema) body: RevertExitInput,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<AnimalDetailWithWarnings> {
+    return this.lifecycle.revertExit(scope, id, body);
+  }
+
+  @Post(':id/archive')
+  @Roles(ROLE.ADMIN)
+  archive(
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(archiveAnimalSchema) body: ArchiveAnimalInput,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<AnimalDetailWithWarnings> {
+    return this.lifecycle.archive(scope, id, body);
+  }
+
+  @Post(':id/restore')
+  @Roles(ROLE.ADMIN)
+  restore(
+    @Param('id', ParseUUIDPipe) id: string,
+    @ZodBody(restoreAnimalSchema) body: RestoreAnimalInput,
+    @CurrentScope() scope: FarmScope,
+  ): Promise<AnimalDetailWithWarnings> {
+    return this.lifecycle.restore(scope, id, body);
   }
 
   @Get(':id/timeline')

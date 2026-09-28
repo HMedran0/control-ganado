@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { DomainError } from '../errors.js';
 import {
+  cleanAnimalCode,
   DEFAULT_CALF_CODE_PATTERN,
   formatCalfCode,
   isValidCalfCodePattern,
+  lowestFreeCode,
   nextCalfCode,
+  normalizeAnimalCode,
 } from './codes.js';
 
 const PATRON = DEFAULT_CALF_CODE_PATTERN;
@@ -109,5 +112,75 @@ describe('nextCalfCode (RN-28)', () => {
   it('el año de dos dígitos no confunde siglos', () => {
     expect(nextCalfCode({ pattern: PATRON, year: 2026, existingCodes: ['26-044'] })).toBe('26-045');
     expect(nextCalfCode({ pattern: PATRON, year: 2027, existingCodes: ['26-044'] })).toBe('27-001');
+  });
+});
+
+describe('normalizeAnimalCode (RN-30)', () => {
+  it.each([
+    ['5', '5'],
+    ['05', '5'],
+    ['005', '5'],
+    ['000', '0'],
+    ['0', '0'],
+    [' 12 ', '12'],
+    ['\t7\n', '7'],
+    [' 8 ', '8'],
+    ['a-12', 'A-12'],
+    ['niña', 'NIÑA'],
+    ['ñandú', 'ÑANDÚ'],
+    ['pingüino', 'PINGÜINO'],
+    ['árbol é í ó ú', 'ÁRBOL É Í Ó Ú'],
+    ['26-001', '26-001'],
+    ['05-A', '05-A'],
+    ['A 05', 'A 05'],
+    ['', ''],
+    ['   ', ''],
+  ])('«%s» → «%s»', (code, expected) => {
+    expect(normalizeAnimalCode(code)).toBe(expected);
+  });
+
+  it('une las formas NFD y NFC de la misma letra', () => {
+    const nfd = 'ña'; // «ña» con la tilde como carácter combinado
+    expect(normalizeAnimalCode(nfd)).toBe('ÑA');
+    expect(normalizeAnimalCode(nfd)).toBe(normalizeAnimalCode('ña'));
+  });
+
+  it('solo quita los espacios de la lista, no otros separadores Unicode', () => {
+    expect(normalizeAnimalCode(' 5 ')).toBe(' 5 ');
+    expect(normalizeAnimalCode('\r5')).toBe('\r5');
+  });
+
+  it('no toca letras fuera de la lista ni dígitos que no son ASCII', () => {
+    expect(normalizeAnimalCode('ç')).toBe('ç');
+    expect(normalizeAnimalCode('٠٥')).toBe('٠٥');
+  });
+
+  it('cleanAnimalCode conserva mayúsculas y ceros', () => {
+    expect(cleanAnimalCode(' 05-a ')).toBe('05-a');
+    expect(cleanAnimalCode('ñ')).toBe('ñ');
+  });
+});
+
+describe('lowestFreeCode (ANI-10 CA2)', () => {
+  it('devuelve 1 si no hay códigos', () => {
+    expect(lowestFreeCode([])).toBe('1');
+  });
+
+  it('llena el primer hueco: si se vendió el 5, sugiere 5', () => {
+    expect(lowestFreeCode(['1', '2', '3', '4', '6', '7'])).toBe('5');
+  });
+
+  it('sigue después del último si no hay huecos', () => {
+    expect(lowestFreeCode(['1', '2', '3'])).toBe('4');
+  });
+
+  it('compara normalizado e ignora los códigos no numéricos', () => {
+    expect(lowestFreeCode(['01', ' 2', '003', '26-004', 'A'])).toBe('4');
+  });
+});
+
+describe('nextCalfCode compara normalizado (RN-30)', () => {
+  it('no sugiere un código que ya existe con espacios o en minúsculas', () => {
+    expect(nextCalfCode({ pattern: 'c{N}', year: 2026, existingCodes: ['c1', ' C2 '] })).toBe('c3');
   });
 });

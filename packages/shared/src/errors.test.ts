@@ -12,11 +12,11 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 34 códigos de error de 05-api.md', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(34);
+  it('tiene los 36 códigos de error de 05-api.md implementados hasta M4c', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(36);
   });
 
-  it('tiene las 9 advertencias de 05-api.md', () => {
+  it('tiene las 10 advertencias de 05-api.md', () => {
     expect(Object.keys(WARNING_CATALOG)).toEqual([
       'WEIGHT_OUTLIER',
       'RFID_FOREIGN_COUNTRY',
@@ -27,6 +27,7 @@ describe('catálogo', () => {
       'CYCLE_OVERLAP',
       'LOT_HAS_ACTIVE_ANIMALS',
       'VACCINE_IN_ACTIVE_CYCLE',
+      'IDENTIFIER_NOT_RESTORED',
     ]);
   });
 

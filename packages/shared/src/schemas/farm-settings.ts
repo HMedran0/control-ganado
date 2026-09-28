@@ -13,6 +13,16 @@ import { DEFAULT_CALF_CODE_PATTERN, isValidCalfCodePattern } from '../domain/cod
 import { DEFAULT_FARM_GESTATION_DAYS } from '../domain/pregnancy.js';
 
 /**
+ * Cómo sugiere la finca el código de un animal nuevo (ANI-10): con el patrón de las crías o con
+ * el menor número libre.
+ */
+export const CODE_SUGGESTION = {
+  PATTERN: 'PATTERN',
+  LOWEST_FREE: 'LOWEST_FREE',
+} as const;
+export type CodeSuggestion = (typeof CODE_SUGGESTION)[keyof typeof CODE_SUGGESTION];
+
+/**
  * Campos de `Farm.settings` sin valores por defecto. Se separan de ellos porque en zod 4
  * `.partial()` sigue aplicando los `.default()`: un cambio parcial («solo el destete») habría
  * devuelto el resto de la configuración a sus valores de fábrica.
@@ -36,6 +46,15 @@ const settingsFields = {
   }),
   /** ¿La finca está en zona de riesgo de rabia silvestre? (08 §1.5) */
   rabiesRiskZone: z.boolean(),
+  /**
+   * Reutilizar el número de un animal que salió de la finca (ANI-10). Con `true`, el código solo
+   * es único entre los animales activos (RN-01, RN-31).
+   */
+  codeReuse: z.boolean(),
+  /** Sugerencia de código: patrón de las crías o menor número libre (ANI-10 CA2). */
+  codeSuggestion: z.enum([CODE_SUGGESTION.PATTERN, CODE_SUGGESTION.LOWEST_FREE], {
+    message: 'Elige cómo se sugiere el código.',
+  }),
   /** Precio por kilo para avalúos, por categoría de manejo. Montos como cadena decimal. */
   pricePerKgByCategory: z.record(z.string(), z.string()),
 };
@@ -52,6 +71,8 @@ export const farmSettingsSchema = z
     calfCodePattern: settingsFields.calfCodePattern.default(DEFAULT_CALF_CODE_PATTERN),
     rabiesRiskZone: settingsFields.rabiesRiskZone.default(true),
     pricePerKgByCategory: settingsFields.pricePerKgByCategory.default({}),
+    codeReuse: settingsFields.codeReuse.default(false),
+    codeSuggestion: settingsFields.codeSuggestion.default(CODE_SUGGESTION.PATTERN),
   })
   .strict();
 
