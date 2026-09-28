@@ -194,6 +194,17 @@ export const EXPECTED_LOTS = {
  * 17 ni el 33), tres salidas (el 5 y el 17 vendidos, el 12 muerto), y los números 5 y 12
  * repetidos entre un activo y uno que salió.
  */
+/**
+ * Finca La Nueva (08 §3.7, M4d): recién creada, sin animales, con el catálogo de razas y lotes de
+ * La Esperanza, para importar la plantilla de referencia (ANI-09).
+ */
+export const EXPECTED_NUEVA = {
+  animals: 0,
+  breeds: 15,
+  lots: 4,
+  users: 1,
+} as const;
+
 export const EXPECTED_RETIRO = {
   total: 41,
   active: 38,

@@ -10,12 +10,14 @@ import {
   EXPECTED_INVENTORY,
   EXPECTED_LOTS,
   EXPECTED_REPRODUCTION,
+  EXPECTED_NUEVA,
   EXPECTED_RETIRO,
   EXPECTED_VACCINES_AT_SECOND_DATE,
   EXPECTED_VACCINES_TODAY,
   SECOND_EVALUATION,
   type VaccineTally,
 } from '../prisma/seed/expected.js';
+import { NUEVA } from '../prisma/seed/nueva.js';
 import { RETIRO } from '../prisma/seed/retiro.js';
 import { runReferenceSeed } from '../prisma/seed/run.js';
 import { resetFarmData } from '../prisma/seed/write.js';
@@ -51,6 +53,7 @@ describe('seed de la finca de referencia', () => {
   let prisma: SeedClient;
   let farmId: string;
   let retiroId: string;
+  let nuevaId: string;
 
   const count = async (where: Prisma.Sql): Promise<number> => {
     const rows = await prisma.$queryRaw<{ total: bigint }[]>(
@@ -63,17 +66,19 @@ describe('seed de la finca de referencia', () => {
 
   beforeAll(async () => {
     prisma = createSeedClient(testDatabaseUrl());
-    const { seed, retiro } = await runReferenceSeed(prisma, {
+    const { seed, retiro, nueva } = await runReferenceSeed(prisma, {
       password: PASSWORD,
       today: SEED_TODAY,
     });
     farmId = seed.catalog.farmId;
     retiroId = retiro.farmId;
+    nuevaId = nueva.farmId;
   }, 120_000);
 
   afterAll(async () => {
     if (farmId !== undefined) await resetFarmData(prisma, farmId);
     if (retiroId !== undefined) await resetFarmData(prisma, retiroId, [RETIRO.admin.username]);
+    if (nuevaId !== undefined) await resetFarmData(prisma, nuevaId, [NUEVA.admin.username]);
     await prisma.$disconnect();
   });
 
@@ -604,6 +609,40 @@ describe('seed de la finca de referencia', () => {
         GROUP BY a.id`);
       expect(sold?.lifelong).toEqual([...EXPECTED_RETIRO.lifelongOnSold]);
       expect(Number(sold?.sales)).toBe(1);
+    });
+  });
+
+  describe('Finca La Nueva (08 §3.7)', () => {
+    it('sin animales, con el catálogo de la plantilla y su propio ADMIN', async () => {
+      expect(await prisma.animal.count({ where: { farmId: nuevaId } })).toBe(
+        EXPECTED_NUEVA.animals,
+      );
+      const breeds = await prisma.breed.findMany({ where: { farmId: nuevaId } });
+      expect(breeds).toHaveLength(EXPECTED_NUEVA.breeds);
+      expect(breeds.find((breed) => breed.name === 'Brahman × Pardo')).toMatchObject({
+        group: 'CROSS',
+        gestationDays: 288,
+      });
+      const lots = await prisma.lot.findMany({
+        where: { farmId: nuevaId },
+        orderBy: { name: 'asc' },
+      });
+      expect(lots.map((lot) => lot.name)).toEqual([
+        'Horras y novillas',
+        'Levante',
+        'Paridas',
+        'Toros',
+      ]);
+      expect(lots).toHaveLength(EXPECTED_NUEVA.lots);
+      const members = await prisma.membership.findMany({
+        where: { farmId: nuevaId },
+        include: { user: true },
+      });
+      expect(members).toHaveLength(EXPECTED_NUEVA.users);
+      expect(members[0]).toMatchObject({
+        role: 'ADMIN',
+        user: { username: NUEVA.admin.username, email: NUEVA.admin.email },
+      });
     });
   });
 

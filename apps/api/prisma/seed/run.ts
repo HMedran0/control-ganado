@@ -13,6 +13,7 @@ import { buildHistory, type History } from './history.js';
 import { createIdFactory } from './ids.js';
 import { hashSeedPassword } from './password.js';
 import { createRandom, REFERENCE_FARM_SEED } from './random.js';
+import { buildNuevaSeed, writeNuevaSeed, type NuevaSeed } from './nueva.js';
 import { buildRetiroSeed, writeRetiroSeed, type RetiroSeed } from './retiro.js';
 import { verifyHerd } from './verify.js';
 import { resetFarmData, writeSeed } from './write.js';
@@ -44,8 +45,8 @@ export function buildReferenceSeed(today: IsoDate): ReferenceSeed {
 }
 
 /**
- * Escribe la finca de referencia y la segunda finca de pruebas, El Retiro (08 §3.5), borrando
- * antes lo que hubiera de ellas.
+ * Escribe la finca de referencia y las fincas de pruebas El Retiro (08 §3.5) y La Nueva
+ * (08 §3.7), borrando antes lo que hubiera de ellas.
  *
  * El hash de la contraseña se calcula con el generador ya consumido por la construcción,
  * para que la sal siga siendo determinista y distinta de los identificadores.
@@ -58,6 +59,7 @@ export async function runReferenceSeed(
 ): Promise<{
   readonly seed: ReferenceSeed;
   readonly retiro: RetiroSeed;
+  readonly nueva: NuevaSeed;
   readonly counts: Record<string, number>;
 }> {
   const seed = buildReferenceSeed(options.today);
@@ -83,5 +85,8 @@ export async function runReferenceSeed(
   const retiro = buildRetiroSeed(options.today);
   const retiroCounts = await writeRetiroSeed(prisma, retiro, options.password, options.today);
 
-  return { seed, retiro, counts: { ...counts, ...retiroCounts } };
+  const nueva = buildNuevaSeed();
+  const nuevaCounts = await writeNuevaSeed(prisma, nueva, options.password, options.today);
+
+  return { seed, retiro, nueva, counts: { ...counts, ...retiroCounts, ...nuevaCounts } };
 }
