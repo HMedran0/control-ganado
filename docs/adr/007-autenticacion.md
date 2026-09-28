@@ -147,6 +147,7 @@ vigente. Estado: aceptadas; se implementan en M4d (decisión 6) y M10a (decision
   usuario de su finca (equipo perdido o prestado).
 
 **Implementación (M4d).**
+
 - La rotación revoca el token anterior y crea el nuevo **en la misma transacción**: una sesión
   abierta tiene siempre un token sin revocar y sin vencer, y ninguna petición cae en el hueco.
 - El token de acceso lleva la sesión en el claim `sid`. `AccessGuard` comprueba, en paralelo con
