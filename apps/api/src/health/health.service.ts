@@ -8,9 +8,9 @@ import { PrismaService } from '../infra/prisma.service.js';
 export type HealthReport = {
   readonly status: 'ok';
   readonly database: 'ok';
-  /** Fecha de negocio de hoy según el `Clock`, útil para detectar un `SEED_TODAY` olvidado. */
+  /** Fecha de negocio de hoy según el `Clock`, útil para detectar un `CLOCK_FIXED_TODAY` olvidado. */
   readonly today: IsoDate;
-  /** `true` si «hoy» está fijado por `SEED_TODAY`. */
+  /** `true` si «hoy» está fijado por `CLOCK_FIXED_TODAY` (ADR-010). */
   readonly clockFixed: boolean;
 };
 

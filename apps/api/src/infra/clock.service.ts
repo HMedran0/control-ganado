@@ -7,16 +7,17 @@ import type { Env } from '../config/env.schema.js';
 /**
  * Único lugar de la API que consulta el instante actual (CLAUDE.md, regla 6).
  *
- * `today()` devuelve el día en `APP_TIMEZONE` (America/Bogota). Si `SEED_TODAY` está definida
- * —solo en desarrollo y pruebas— devuelve esa fecha fija, que es lo que permite al seed y a
- * las pruebas afirmar cifras exactas (07-plan-desarrollo.md §2.1).
+ * `today()` devuelve el día real en `APP_TIMEZONE` (America/Bogota). Solo si
+ * `CLOCK_FIXED_TODAY` está definida —pensada para pruebas y prohibida en producción— devuelve
+ * esa fecha fija (ADR-010). `SEED_TODAY` es del seed y aquí no cuenta: el `.env` de desarrollo
+ * la trae para sembrar la finca de referencia, y la API no debe quedar congelada por eso.
  */
 @Injectable()
 export class Clock {
   private readonly fixedToday: IsoDate | null;
 
-  constructor(@Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE' | 'SEED_TODAY'>) {
-    this.fixedToday = env.SEED_TODAY === undefined ? null : toIsoDate(env.SEED_TODAY);
+  constructor(@Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE' | 'CLOCK_FIXED_TODAY'>) {
+    this.fixedToday = env.CLOCK_FIXED_TODAY === undefined ? null : toIsoDate(env.CLOCK_FIXED_TODAY);
   }
 
   /** Fecha de negocio de hoy en la zona de la finca. */
@@ -35,7 +36,7 @@ export class Clock {
     return new Date();
   }
 
-  /** ¿«Hoy» está fijado por `SEED_TODAY`? Lo usan el arranque y las pruebas para avisarlo. */
+  /** ¿«Hoy» está fijado por `CLOCK_FIXED_TODAY`? Lo usan el arranque y `/health` para avisarlo. */
   isFixed(): boolean {
     return this.fixedToday !== null;
   }

@@ -19,13 +19,13 @@ function env(overrides: Partial<Env> = {}): Env {
 }
 
 describe('Clock', () => {
-  it('con SEED_TODAY devuelve esa fecha fija', () => {
-    const clock = new Clock(env({ SEED_TODAY: '2026-09-25' }));
+  it('con CLOCK_FIXED_TODAY devuelve esa fecha fija', () => {
+    const clock = new Clock(env({ CLOCK_FIXED_TODAY: '2026-09-25' }));
     expect(clock.today()).toBe('2026-09-25');
     expect(clock.isFixed()).toBe(true);
   });
 
-  it('sin SEED_TODAY devuelve el día en la zona de la finca', () => {
+  it('sin CLOCK_FIXED_TODAY devuelve el día real en la zona de la finca', () => {
     const clock = new Clock(env());
     const instant = new Date('2026-09-26T02:00:00.000Z');
     vi.spyOn(clock, 'now').mockReturnValue(instant);
@@ -51,8 +51,8 @@ describe('Clock', () => {
     expect(clock.today()).toBe('2026-09-26');
   });
 
-  it('rechaza un SEED_TODAY que no es una fecha real', () => {
-    expect(() => new Clock(env({ SEED_TODAY: '2026-02-30' }))).toThrow();
+  it('rechaza un CLOCK_FIXED_TODAY que no es una fecha real', () => {
+    expect(() => new Clock(env({ CLOCK_FIXED_TODAY: '2026-02-30' }))).toThrow();
   });
 
   it('now() devuelve un instante', () => {

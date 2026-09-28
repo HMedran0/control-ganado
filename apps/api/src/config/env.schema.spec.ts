@@ -20,7 +20,7 @@ describe('parseEnv', () => {
     expect(env.PORT).toBe(3000);
     expect(env.APP_TIMEZONE).toBe('America/Bogota');
     expect(env.LOG_LEVEL).toBe('info');
-    expect(env.SEED_TODAY).toBeUndefined();
+    expect(env.CLOCK_FIXED_TODAY).toBeUndefined();
     expect(env.RATE_LIMIT_PER_IP).toBe(60);
   });
 
@@ -80,8 +80,26 @@ describe('parseEnv', () => {
       ).toThrow(/valor de ejemplo/);
     });
 
-    it('SEED_TODAY con otro formato', () => {
-      expect(() => parseEnv({ ...validEnv(), SEED_TODAY: '25/09/2026' })).toThrow(/AAAA-MM-DD/);
+    it('CLOCK_FIXED_TODAY con otro formato o que no es una fecha real', () => {
+      for (const value of ['25/09/2026', '2026-02-30']) {
+        expect(() => parseEnv({ ...validEnv(), CLOCK_FIXED_TODAY: value })).toThrow(/AAAA-MM-DD/);
+      }
+    });
+
+    it('CLOCK_FIXED_TODAY en producción: la API no arranca (ADR-010)', () => {
+      expect(() =>
+        parseEnv({ ...validEnv(), NODE_ENV: 'production', CLOCK_FIXED_TODAY: '2026-09-25' }),
+      ).toThrow(/CLOCK_FIXED_TODAY es solo para pruebas/);
+      expect(
+        parseEnv({ ...validEnv(), NODE_ENV: 'test', CLOCK_FIXED_TODAY: '2026-09-25' })
+          .CLOCK_FIXED_TODAY,
+      ).toBe('2026-09-25');
+    });
+
+    it('SEED_TODAY es solo del seed: la API la ignora aunque esté en el .env', () => {
+      const env = parseEnv({ ...validEnv(), SEED_TODAY: '2026-09-25' });
+      expect(env).not.toHaveProperty('SEED_TODAY');
+      expect(env.CLOCK_FIXED_TODAY).toBeUndefined();
     });
 
     it('un origen de CORS que no es una URL', () => {

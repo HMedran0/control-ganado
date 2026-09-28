@@ -48,5 +48,6 @@ export function applyTestEnv(): void {
   process.env.CORS_ORIGINS ??= 'http://localhost:5173';
   process.env.PUBLIC_WEB_URL ??= 'http://localhost:5173';
   process.env.LOG_LEVEL = 'silent';
-  delete process.env.SEED_TODAY;
+  // «Hoy» lo fija cada prueba con `FakeClock` (ADR-010), nunca una variable heredada del `.env`.
+  delete process.env.CLOCK_FIXED_TODAY;
 }

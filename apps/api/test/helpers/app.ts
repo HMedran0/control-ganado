@@ -30,7 +30,7 @@ export class FakeClock extends Clock {
   private current: Date;
 
   constructor(start = new Date('2026-09-25T12:00:00.000Z')) {
-    super({ APP_TIMEZONE: 'America/Bogota', SEED_TODAY: undefined });
+    super({ APP_TIMEZONE: 'America/Bogota', CLOCK_FIXED_TODAY: undefined });
     this.current = start;
   }
 

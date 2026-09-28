@@ -164,7 +164,7 @@ Transversales (`common/`):
 | test | Base efímera por ejecución de pruebas | Migraciones aplicadas al iniciar. |
 | producción | Postgres en el VPS (volumen persistente) o administrado | HTTPS con Caddy; respaldos activos. |
 
-Variables (`.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REFRESH_TOKEN_PEPPER`, `CORS_ORIGINS`, `APP_TIMEZONE=America/Bogota`, `SEED_TODAY` (solo desarrollo y pruebas), `S3_*` (respaldos, fotos), `PUBLIC_WEB_URL` (para URLs de QR y, desde M10a, enlaces de los correos y retorno de Google).
+Variables (`.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REFRESH_TOKEN_PEPPER`, `CORS_ORIGINS`, `APP_TIMEZONE=America/Bogota`, `SEED_TODAY` (solo el seed; la API la ignora), `CLOCK_FIXED_TODAY` (fecha fija del `Clock` de la API, solo para pruebas; con `NODE_ENV=production` la API no arranca si está definida, ADR-010), `S3_*` (respaldos, fotos), `PUBLIC_WEB_URL` (para URLs de QR y, desde M10a, enlaces de los correos y retorno de Google).
 
 Variables nuevas por la validación con ganaderos (09 §5):
 

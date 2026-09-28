@@ -15,7 +15,7 @@ class FakeClock extends Clock {
   current = new Date('2026-09-25T12:00:00.000Z');
 
   constructor() {
-    super({ APP_TIMEZONE: 'America/Bogota', SEED_TODAY: undefined });
+    super({ APP_TIMEZONE: 'America/Bogota', CLOCK_FIXED_TODAY: undefined });
   }
 
   override now(): Date {

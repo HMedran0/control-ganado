@@ -46,7 +46,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       port: env.PORT,
       env: env.NODE_ENV,
       timezone: env.APP_TIMEZONE,
-      seedToday: env.SEED_TODAY ?? null,
+      clockFixedToday: env.CLOCK_FIXED_TODAY ?? null,
     },
     'API de Hato lista en /api/v1',
   );

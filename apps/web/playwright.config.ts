@@ -30,16 +30,9 @@ const DEV_UI_SPEC = /dev-ui\.spec\.ts$/;
  * de desarrollo que ya estuviera corriendo, las pruebas escribirían en la base de desarrollo.
  */
 const API_URL = `http://localhost:${E2E_API_PORT}`;
+// «Hoy» de la API de las pruebas es la fecha real en Bogotá, la misma que usa el navegador:
+// la API ignora `SEED_TODAY` y no se le pasa `CLOCK_FIXED_TODAY` (ADR-010).
 const DATABASE_URL = e2eDatabaseUrl(process.env);
-/**
- * «Hoy» de la API de las pruebas: la fecha real en Bogotá, la misma que usa el navegador. El
- * `.env` de desarrollo trae `SEED_TODAY=2026-09-25` y Playwright no puede quitar una variable
- * heredada, así que se reemplaza: si la API tuviera fijado otro día, rechazaría como futura la
- * fecha de «hoy» que propone la web (DATE_IN_FUTURE).
- */
-const TODAY_IN_BOGOTA = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(
-  Date.now(),
-);
 
 export default defineConfig({
   testDir: './e2e',
@@ -99,7 +92,6 @@ export default defineConfig({
         RATE_LIMIT_PER_IP: '1000',
         PORT: String(E2E_API_PORT),
         DATABASE_URL,
-        SEED_TODAY: TODAY_IN_BOGOTA,
       },
       url: `${API_URL}/api/v1/health`,
       // Nunca se reutiliza: un servidor ya levantado podría estar conectado a otra base.

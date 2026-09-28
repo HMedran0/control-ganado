@@ -1,3 +1,4 @@
+import { isIsoDate } from '@hato/shared';
 import { z } from 'zod';
 
 /**
@@ -33,41 +34,63 @@ const commaSeparated = z
   )
   .pipe(z.array(httpUrl).min(1, 'Indica al menos un origen permitido.'));
 
-export const envSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
-  APP_TIMEZONE: z.string().min(1).default('America/Bogota'),
+export const envSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+    APP_TIMEZONE: z.string().min(1).default('America/Bogota'),
 
-  DATABASE_URL: z
-    .string()
-    .startsWith('postgresql://', 'DATABASE_URL debe ser una URL de PostgreSQL.'),
+    DATABASE_URL: z
+      .string()
+      .startsWith('postgresql://', 'DATABASE_URL debe ser una URL de PostgreSQL.'),
 
-  JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
-  REFRESH_TOKEN_PEPPER: secret('REFRESH_TOKEN_PEPPER'),
+    JWT_ACCESS_SECRET: secret('JWT_ACCESS_SECRET'),
+    REFRESH_TOKEN_PEPPER: secret('REFRESH_TOKEN_PEPPER'),
 
-  CORS_ORIGINS: commaSeparated,
-  PUBLIC_WEB_URL: httpUrl,
+    CORS_ORIGINS: commaSeparated,
+    PUBLIC_WEB_URL: httpUrl,
 
-  /** Fecha fija de «hoy» para el seed y las pruebas deterministas (08 §3). */
-  SEED_TODAY: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, 'SEED_TODAY debe tener el formato AAAA-MM-DD.')
-    .optional(),
+    /**
+     * Fecha fija de «hoy» para el `Clock` de la API, **solo para pruebas** (ADR-010). En
+     * producción está prohibida (ver `parseEnv`). No confundir con `SEED_TODAY`, que solo lee el
+     * seed y que la API ignora.
+     */
+    CLOCK_FIXED_TODAY: z
+      .string()
+      // `boolean` explícito: sin él, TypeScript infiere el predicado y el tipo pasaría a
+      // `IsoDate`; el `Clock` la convierte con `toIsoDate`, que valida otra vez.
+      .refine((value): boolean => isIsoDate(value), {
+        message: 'CLOCK_FIXED_TODAY debe ser una fecha real con el formato AAAA-MM-DD.',
+      })
+      .optional(),
 
-  /**
-   * Peticiones por minuto de una IP sin sesión (ADR-007). Por defecto 60. Solo se sube para
-   * las pruebas de extremo a extremo, que hacen decenas de inicios de sesión desde una sola IP;
-   * en producción se deja el valor por defecto.
-   */
-  RATE_LIMIT_PER_IP: z.coerce
-    .number()
-    .int()
-    .min(1, 'RATE_LIMIT_PER_IP debe ser al menos 1.')
-    .default(60),
+    /**
+     * Peticiones por minuto de una IP sin sesión (ADR-007). Por defecto 60. Solo se sube para
+     * las pruebas de extremo a extremo, que hacen decenas de inicios de sesión desde una sola IP;
+     * en producción se deja el valor por defecto.
+     */
+    RATE_LIMIT_PER_IP: z.coerce
+      .number()
+      .int()
+      .min(1, 'RATE_LIMIT_PER_IP debe ser al menos 1.')
+      .default(60),
 
-  // `silent` apaga el log por completo; lo usan las pruebas.
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
-});
+    // `silent` apaga el log por completo; lo usan las pruebas.
+    LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent'])
+      .default('info'),
+  })
+  .superRefine((env, context) => {
+    // Un «hoy» fijo en producción congelaría alertas, edades y vencimientos sin que nadie lo note.
+    if (env.NODE_ENV === 'production' && env.CLOCK_FIXED_TODAY !== undefined) {
+      context.addIssue({
+        code: 'custom',
+        path: ['CLOCK_FIXED_TODAY'],
+        message:
+          'CLOCK_FIXED_TODAY es solo para pruebas: quítala del entorno de producción (ADR-010).',
+      });
+    }
+  });
 
 /** Entorno validado. */
 export type Env = z.infer<typeof envSchema>;
