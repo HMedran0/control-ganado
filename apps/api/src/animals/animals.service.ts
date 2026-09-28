@@ -180,16 +180,12 @@ export class AnimalsService {
           damId: input.damId ?? null,
           sireId: input.sireId ?? null,
         });
-        await assertCodeAvailable(
-          tx,
-          scope,
-          {
-            code: input.code,
-            excludeAnimalId: null,
-            codeReuse: context.settings.codeReuse,
-            willBeActive: true,
-          },
-        );
+        await assertCodeAvailable(tx, scope, {
+          code: input.code,
+          excludeAnimalId: null,
+          codeReuse: context.settings.codeReuse,
+          willBeActive: true,
+        });
 
         const identifiers: CheckedIdentifier[] = [];
         for (const [index, identifier] of (input.identifiers ?? []).entries()) {
@@ -389,16 +385,12 @@ export class AnimalsService {
           tagIds: [],
         });
         if (input.code !== undefined && input.code !== current.code) {
-          await assertCodeAvailable(
-            tx,
-            scope,
-            {
-              code: input.code,
-              excludeAnimalId: id,
-              codeReuse: context.settings.codeReuse,
-              willBeActive: current.exitType === null,
-            },
-            );
+          await assertCodeAvailable(tx, scope, {
+            code: input.code,
+            excludeAnimalId: id,
+            codeReuse: context.settings.codeReuse,
+            willBeActive: current.exitType === null,
+          });
         }
         const found =
           input.damId !== undefined || input.sireId !== undefined || input.birthDate !== undefined
