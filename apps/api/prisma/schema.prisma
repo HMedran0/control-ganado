@@ -136,6 +136,7 @@ enum AuditAction {
   REVERT_EXIT
   LOGIN
   IMPORT
+  REVOKE_SESSIONS
 }
 
 model Farm {

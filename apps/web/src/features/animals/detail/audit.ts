@@ -34,6 +34,7 @@ const ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   REVERT_EXIT: 'Salida revertida',
   LOGIN: 'Inicio de sesión',
   IMPORT: 'Importación',
+  REVOKE_SESSIONS: 'Sesiones cerradas',
 };
 
 /** Campos que no son del formulario del animal: salida, archivo e identificadores. */

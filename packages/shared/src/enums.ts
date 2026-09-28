@@ -172,6 +172,7 @@ export const AUDIT_ACTION = {
   REVERT_EXIT: 'REVERT_EXIT',
   LOGIN: 'LOGIN',
   IMPORT: 'IMPORT',
+  REVOKE_SESSIONS: 'REVOKE_SESSIONS',
 } as const;
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
 

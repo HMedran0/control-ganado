@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { describeUserAgent, DomainError, type SessionView } from '@hato/shared';
+import { AUDIT_ACTION, describeUserAgent, DomainError, type SessionView } from '@hato/shared';
 
 import type { Tx } from '../common/persistence.js';
 import { Clock } from '../infra/clock.service.js';
@@ -65,26 +65,59 @@ export class SessionsService {
    *
    * @throws {DomainError} `NOT_FOUND` si no es una sesión abierta de este usuario.
    */
-  async revoke(userId: string, sessionId: string): Promise<void> {
-    const { count } = await this.prisma.refreshToken.updateMany({
-      where: { familyId: sessionId, userId, revokedAt: null },
-      data: { revokedAt: this.clock.now() },
+  async revoke(farmId: string, userId: string, sessionId: string): Promise<void> {
+    const now = this.clock.now();
+    await this.prisma.$transaction(async (tx) => {
+      const { count } = await tx.refreshToken.updateMany({
+        where: { familyId: sessionId, userId, revokedAt: null },
+        data: { revokedAt: now },
+      });
+      if (count === 0) throw new DomainError('NOT_FOUND');
+      await this.audit(tx, farmId, userId, { revokedSessions: 1, which: 'one' });
     });
-    if (count === 0) throw new DomainError('NOT_FOUND');
   }
 
   /** Cierra todas las sesiones del usuario menos la actual (AUT-11 CA2). Devuelve cuántas. */
-  async revokeOthers(userId: string, currentSessionId: string): Promise<number> {
-    const families = await this.prisma.refreshToken.findMany({
-      where: { userId, revokedAt: null, familyId: { not: currentSessionId } },
-      distinct: ['familyId'],
-      select: { familyId: true },
+  async revokeOthers(farmId: string, userId: string, currentSessionId: string): Promise<number> {
+    const now = this.clock.now();
+    return this.prisma.$transaction(async (tx) => {
+      const families = await tx.refreshToken.findMany({
+        where: {
+          userId,
+          revokedAt: null,
+          expiresAt: { gt: now },
+          familyId: { not: currentSessionId },
+        },
+        distinct: ['familyId'],
+        select: { familyId: true },
+      });
+      await tx.refreshToken.updateMany({
+        where: { userId, revokedAt: null, familyId: { not: currentSessionId } },
+        data: { revokedAt: now },
+      });
+      await this.audit(tx, farmId, userId, { revokedSessions: families.length, which: 'others' });
+      return families.length;
     });
-    await this.prisma.refreshToken.updateMany({
-      where: { userId, revokedAt: null, familyId: { not: currentSessionId } },
-      data: { revokedAt: this.clock.now() },
+  }
+
+  /** El propio usuario cerró sesiones (03 §2, AuditLog: `REVOKE_SESSIONS`). */
+  private async audit(
+    tx: Tx,
+    farmId: string,
+    userId: string,
+    diff: { revokedSessions: number; which: 'one' | 'others' },
+  ): Promise<void> {
+    await tx.auditLog.create({
+      data: {
+        farmId,
+        userId,
+        entity: 'User',
+        entityId: userId,
+        action: AUDIT_ACTION.REVOKE_SESSIONS,
+        diff,
+        createdAt: this.clock.now(),
+      },
     });
-    return families.length;
   }
 
   /**

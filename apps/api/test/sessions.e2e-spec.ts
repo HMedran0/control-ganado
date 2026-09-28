@@ -258,6 +258,11 @@ describe('Sesiones (AUT-10, AUT-11)', () => {
       expect(await canAccess(phone)).toBe(true);
       await renew(phone);
       expect(await sessionsOf(phone)).toHaveLength(1);
+      const audit = await prisma.auditLog.findFirstOrThrow({
+        where: { farmId: farm.farmId, action: 'REVOKE_SESSIONS' },
+        orderBy: { id: 'desc' },
+      });
+      expect(audit.diff).toEqual({ revokedSessions: 2, which: 'others' });
     });
 
     it('no cierra la sesión de otro usuario: 404', async () => {
@@ -300,7 +305,7 @@ describe('Sesiones (AUT-10, AUT-11)', () => {
         where: { farmId: farm.farmId, entity: 'User', entityId: wilmerId },
         orderBy: { id: 'desc' },
       });
-      expect(audit.diff).toMatchObject({ changed: ['sessions'], revokedSessions: 2 });
+      expect(audit).toMatchObject({ action: 'REVOKE_SESSIONS', diff: { revokedSessions: 2 } });
     });
 
     it('OPERATOR y VET no pueden: 403', async () => {

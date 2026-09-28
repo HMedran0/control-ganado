@@ -209,8 +209,7 @@ export class UsersService {
     await this.findMembership(farmId, userId);
     const revoked = await this.prisma.$transaction(async (tx) => {
       const count = await this.sessions.revokeAll(userId, tx);
-      await this.audit(tx, farmId, actorId, userId, AUDIT_ACTION.UPDATE, {
-        changed: ['sessions'],
+      await this.audit(tx, farmId, actorId, userId, AUDIT_ACTION.REVOKE_SESSIONS, {
         revokedSessions: count,
       });
       return count;

@@ -110,7 +110,7 @@ export class AuthController {
     @CurrentSession() sessionId: string,
     @Res({ passthrough: true }) reply: FastifyReply,
   ): Promise<{ ok: true; current: boolean }> {
-    await this.sessions.revoke(scope.userId ?? '', id);
+    await this.sessions.revoke(scope.farmId, scope.userId ?? '', id);
     const current = id === sessionId;
     if (current) reply.clearCookie(REFRESH_COOKIE, { path: REFRESH_COOKIE_PATH });
     return { ok: true, current };
@@ -122,7 +122,9 @@ export class AuthController {
     @CurrentScope() scope: FarmScope,
     @CurrentSession() sessionId: string,
   ): Promise<{ revoked: number }> {
-    return { revoked: await this.sessions.revokeOthers(scope.userId ?? '', sessionId) };
+    return {
+      revoked: await this.sessions.revokeOthers(scope.farmId, scope.userId ?? '', sessionId),
+    };
   }
 
   @Get('me')
