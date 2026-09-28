@@ -137,7 +137,7 @@ Restricciones:
 | value | text | Normalizado: sin espacios; RFID solo dígitos (15). |
 | assigned_at | date | |
 | retired_at | date? | Nulo = activo. |
-| retire_reason | enum? `LOST`/`DAMAGED`/`REASSIGNED`/`EXITED`/`OTHER` | `EXITED` (M4c, IDN-06): chapeta liberada al registrar la salida en una finca con numeración reutilizable. Nunca se usa con DIN ni RFID (RN-32). |
+| retire_reason | enum? `LOST`/`DAMAGED`/`REASSIGNED`/`EXITED`/`ARCHIVED`/`OTHER` | Los pone el sistema, nunca una persona: `EXITED` (M4c, IDN-06), chapeta liberada al registrar la salida en una finca con numeración reutilizable, nunca con DIN ni RFID (RN-32); `ARCHIVED` (M4c, ANI-03 CA4), cualquier identificador retirado al archivar el animal, DIN y RFID incluidos (única excepción de RN-32). Revertir la salida o restaurar el animal los reactiva si siguen libres. Un valor `EXITED` se reasigna sin confirmación; uno `ARCHIVED`, con la del ADMIN (RN-19). |
 | replaced_by_id | uuid? FK → identifiers | |
 
 Índice único parcial: (`farm_id`, `type`, `value`) `WHERE retired_at IS NULL` (RN-19). Índice no único en (`farm_id`, `value`) para la búsqueda global por cualquier tipo.
@@ -297,7 +297,7 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 - `vaccination_records (farm_id, animal_id, vaccine_id, applied_on DESC)`, `(farm_id, next_due_on)`.
 - `weight_records (animal_id, weighed_on DESC)`.
 - `expense_allocations (animal_id)`, `(expense_id)`.
-- Desde M4c: único parcial sobre el código normalizado de los animales activos (RN-30, RN-31), en lugar del de `(farm_id, code)` entre no archivados.
+- Desde M4c: único parcial `animals_farm_code_norm_active_uq` sobre `(farm_id, hato_normalize_code(code))` de los animales activos (RN-30, RN-31), en lugar del de `(farm_id, code)` entre no archivados, y un índice no único `animals_farm_code_norm_idx` sobre la misma expresión para la búsqueda exacta, el número anterior (ANI-11) y la verificación de las fincas sin reutilización. `hato_normalize_code` es la traducción literal de `normalizeAnimalCode` de shared (NFC; sin espacio, tabulador, salto de línea ni U+00A0 en los extremos; mayúsculas con una lista cerrada de letras; sin ceros a la izquierda si es numérico) y una prueba de integración las compara. La migración falla, nombrando los códigos, si encuentra duplicados normalizados.
 - `milk_records (farm_id, recorded_on)`, `(animal_id, recorded_on DESC)` y único parcial `(animal_id, recorded_on, milking) WHERE voided_at IS NULL`; `dry_off_records (animal_id, dried_on DESC)` (M9b).
 - `refresh_tokens (user_id, family_id)` para listar sesiones; `email_tokens (token_hash)` único y `(user_id, purpose, created_at)`; `invitations (token_hash)` único y único parcial `(farm_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL`; `user_identities (provider, subject)` único; `oauth_intents (intent_hash)` y `oauth_states (state_hash)` únicos (M4d, M10a).
 - Índices parciales y `pg_trgm` se crean con migraciones SQL manuales, porque Prisma no los expresa todos.

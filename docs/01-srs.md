@@ -246,6 +246,7 @@ Cumple el requisito de "eliminación" del enunciado sin perder historial.
 - CA1: Solo ADMIN. Requiere motivo (por ejemplo, "registro duplicado por error").
 - CA2: El animal archivado desaparece de listados, conteos y reportes, pero puede restaurarse desde Configuración → Archivados.
 - CA3: No existe borrado físico desde la interfaz (RN-11).
+- CA4 (M4c): Al archivar se retiran **todos** los identificadores activos del animal, DIN y RFID incluidos, con motivo `ARCHIVED` (excepción de RN-32): un registro duplicado por error no debe seguir ocupando el DIN del animal real. Al restaurarlo, se reactivan los que sigan libres y se avisa de los demás; si su código ya lo tiene otro animal, hay que darle uno nuevo (`ANIMAL_CODE_TAKEN`).
 
 **ANI-04 — Registrar salida** · M · F1
 Tipos: venta, muerte, sacrificio, robo, traslado a otra finca, otro.
@@ -294,7 +295,7 @@ Muchas fincas numeran sus animales 1, 2, 3… y le dan el número de un animal v
 - `codeReuse` (por defecto `false`): "Reutilizar números de animales que salen de la finca".
 - `codeSuggestion`: `PATTERN` (patrón `calfCodePattern`, comportamiento de la v1.1) o `LOWEST_FREE` (sugiere el número libre más bajo entre los animales activos).
 - CA1: Con `codeReuse = true`, el código solo es único entre animales **activos** (sin salida y no archivados). Con `false`, sigue siendo único entre todos los no archivados (RN-01).
-- CA2: Con `LOWEST_FREE`, `next-code` devuelve el menor entero positivo que no usa ningún animal activo (si se vendió el 5, sugiere 5). Solo aplica a códigos numéricos.
+- CA2: Con `LOWEST_FREE`, `next-code` devuelve el menor entero positivo libre en el mismo conjunto donde la finca exige la unicidad (CA1): entre los animales activos si `codeReuse = true` (si se vendió el 5, sugiere 5), entre todos los no archivados si `codeReuse = false` (el 5 vendido sigue ocupado). Compara códigos normalizados (RN-30) y solo cuenta los numéricos.
 - CA3: Cambiar de `codeReuse = true` a `false` se rechaza si hoy hay dos animales (uno activo y otro que salió) con el mismo código; el mensaje indica cuáles (`CODE_REUSE_CONFLICT`).
 
 **ANI-11 — Número anterior en la ficha y en la búsqueda** · M · F1 (M4c)
@@ -625,11 +626,11 @@ Las fincas de lechería y doble propósito necesitan llevar la producción de le
 | RN-25 | Horra: vaca (categoría `COW`) sin preñez abierta y cuyo último parto fue hace ≥ edad de destete. |
 | RN-26 | Una vacuna con `blockIneligibleSex = true` no puede registrarse en animales del sexo no elegible (brucelosis en machos, norma ICA). La elegibilidad por edad solo genera advertencia. |
 | RN-27 | La categoría de manejo y las etiquetas se calculan con las mismas funciones de `packages/shared/src/domain` en tablero, listados, reportes e importación. |
-| RN-28 | Los códigos sugeridos con `calfCodePattern` nunca reutilizan un código existente (activo o archivado) de la finca. Con `codeSuggestion = LOWEST_FREE` (ANI-10 CA2), se sugiere el menor número libre entre los animales activos. |
+| RN-28 | Los códigos sugeridos con `calfCodePattern` nunca reutilizan un código existente (activo o archivado) de la finca. Con `codeSuggestion = LOWEST_FREE` (ANI-10 CA2), se sugiere el menor número libre del conjunto donde se exige la unicidad (activos o no archivados, según `codeReuse`). |
 | RN-29 | La importación nunca crea crías a partir de "número de partos previos": crea preñeces históricas cerradas marcadas como importadas. |
 | RN-30 | La unicidad del código compara el código normalizado: sin espacios al inicio ni al final, en mayúsculas y, si es solo numérico, sin ceros a la izquierda ("5", "05" y "005" son el mismo código). Aplica en todas las fincas. |
 | RN-31 | La base garantiza la unicidad entre animales activos con un índice único parcial. La regla más estricta de las fincas con `codeReuse = false` (únicos entre todos los no archivados) se verifica en la aplicación dentro de la transacción. |
-| RN-32 | DIN y RFID son identificadores de por vida: nunca se reasignan a otro animal, sin importar el modo de numeración. Solo `VISUAL_TAG`, `BRAND` y `OTHER` pueden liberarse. |
+| RN-32 | DIN y RFID son identificadores de por vida: nunca se reasignan a otro animal, sin importar el modo de numeración. Solo `VISUAL_TAG`, `BRAND` y `OTHER` pueden liberarse. Única excepción: archivar un animal (ANI-03 CA4) retira todos sus identificadores, DIN y RFID incluidos, con motivo `ARCHIVED`; reasignar uno de ellos a otro animal sigue exigiendo la confirmación del ADMIN (RN-19). |
 | RN-33 | Un número liberado conserva la trazabilidad: cada animal que lo usó mantiene su identificador interno, su historial completo y la fecha en que tuvo ese número. |
 | RN-34 | Una lactancia empieza en la fecha de un parto con desenlace `CALVED` (con o sin cría viva) y termina en el primer secado posterior o en la salida de la vaca. |
 | RN-35 | `MilkRecord.recorded_on` debe estar dentro de una lactancia abierta de la vaca; nunca en el futuro (RN-14). |

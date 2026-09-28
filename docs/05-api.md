@@ -75,15 +75,15 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | GET | /animals/:id | T | Ficha: datos, identificadores, etiquetas derivadas y manuales, edad, alertas, resumen reproductivo, último peso. Campos económicos solo para A |
 | PATCH | /animals/:id | T | Editar (con `version`) |
 | POST | /animals/:id/archive | A | `{ reason }` |
-| POST | /animals/:id/restore | A | Restaurar archivado |
+| POST | /animals/:id/restore | A | Restaurar archivado. `{ newCode? }` si su código ya lo tiene otro animal |
 | POST | /animals/:id/exit | A | `{ type, date, reason?, sale?: { amount, buyer? }, confirmWithdrawal? }` |
-| POST | /animals/:id/revert-exit | A | Revierte salida (y anula la venta asociada) |
+| POST | /animals/:id/revert-exit | A | Revierte salida (y anula la venta asociada). `{ newCode? }` si su código o su chapeta los tiene otro activo |
 | GET | /animals/:id/timeline | T | Historial unificado paginado |
 | GET | /animals/:id/genealogy | T | Madre, padre, crías (2 niveles) |
 | POST | /animals/bulk/tags | T (forSale solo A) | `{ animalIds, add?: [], remove?: [], forSale? }` |
 | POST | /animals/bulk/lot | T | `{ animalIds, lotId, date }` crea `LotMovement` |
 | GET | /animals/:id/qr | T | PNG/SVG del QR |
-| GET | /animals/next-code?birthDate= | T | Siguiente código sugerido según `calfCodePattern` |
+| GET | /animals/next-code?birthDate= | T | Siguiente código sugerido según `codeSuggestion`: `calfCodePattern` o el menor número libre (ANI-10) |
 | POST | /animals/qr-sheet | A | `{ animalIds, layout }` → PDF de etiquetas |
 
 **Detalles de M4a.**
@@ -94,10 +94,19 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 - `POST /animals/bulk/tags` y `/bulk/lot` son todo o nada: si un animal no es de la finca (404), está archivado (`ANIMAL_ARCHIVED`) o salió (`ANIMAL_EXITED`), no se cambia ninguno. `add` y `remove` son ids de etiquetas manuales. Respuestas: `{ updated }` y `{ moved, unchanged }`.
 - `GET /animals/:id/timeline` → `{ items: [{ key, kind, date, voided, data }], nextCursor }`, del más reciente al más antiguo; los eventos anulados vienen con `voided: true`. No incluye datos económicos.
 
+**Detalles de M4c** (salida, archivo, numeración reutilizable y auditoría).
+- `exit`, `revert-exit`, `archive` y `restore` son solo de ADMIN, bloquean la fila del animal y responden 201 con la ficha y `warnings`. Un OPERATOR o VET recibe `FORBIDDEN_ROLE`; un animal de otra finca, 404.
+- `exit`: venta sin `sale.amount` → `SALE_AMOUNT_REQUIRED` (422, con el campo `sale.amount` marcado); `sale` en una salida que no es venta → `VALIDATION_FAILED`. Venta o sacrificio con retiro vigente hasta la fecha de salida → `WITHDRAWAL_ACTIVE` (con `context.withdrawalUntil`) si no llega `confirmWithdrawal: true`; la confirmación queda en la auditoría (RN-22). Una venta crea su `Sale`. Animal que ya salió → `ANIMAL_EXITED`; archivado → `ANIMAL_ARCHIVED`. La fecha no puede ser futura ni anterior al nacimiento o al ingreso. Quita «Disponible para venta».
+- `revert-exit`: anula la venta (`voidedAt`), borra la salida y reactiva las chapetas `EXITED` que sigan libres. Si el código o una chapeta `EXITED` ya los tiene otro animal activo y no llega `newCode`, `CODE_REASSIGNED` con ese animal en `context` (`animalId`, `animalCode`). Con `newCode`, el código nuevo se verifica igual que al crear (`ANIMAL_CODE_TAKEN`) y cada chapeta que no se pudo reactivar llega como advertencia `IDENTIFIER_NOT_RESTORED`. Un animal sin salida → `VALIDATION_FAILED`.
+- `archive` `{ reason }` (3 a 500 caracteres) retira todos los identificadores activos con motivo `ARCHIVED` (ANI-03 CA4). `restore` `{ newCode? }`: si el código ya lo tiene otro animal en el conjunto donde la finca exige unicidad, `ANIMAL_CODE_TAKEN` con ese animal en `context`; reactiva los identificadores `ARCHIVED` libres y avisa de los demás con `IDENTIFIER_NOT_RESTORED`. Los archivados se listan con `GET /animals?status=archived` (solo ADMIN).
+- El código se compara normalizado (RN-30): «5», «05» y « 005 » son el mismo. Registro, edición, reversión y restauración usan la misma verificación, con un candado por código dentro de la transacción: dos registros simultáneos del mismo código dan un 201 y un 409, nunca un 500. `ANIMAL_CODE_TAKEN` lleva el animal que lo tiene en `context`.
+- La ficha trae `codeHistory` y `archive: { archivedAt, reason } | null`.
+- Una chapeta liberada con `EXITED` se asigna a otro animal sin `confirmReuse` (IDN-06 CA1). `retire` y `replace` de identificadores solo aceptan los motivos `LOST`, `DAMAGED`, `REASSIGNED` y `OTHER`: `EXITED` y `ARCHIVED` los pone el sistema.
+
 **Cambios de la validación con ganaderos.**
 - M4c, numeración reutilizable (ANI-10, ANI-11, IDN-06):
-  - `GET /animals/next-code` con `codeSuggestion = LOWEST_FREE` devuelve el menor entero libre entre los activos.
-  - La búsqueda exacta de un código devuelve el animal **activo** que lo tiene; si ninguno, el que lo tuvo y salió, con su `status`.
+  - `GET /animals/next-code` con `codeSuggestion = LOWEST_FREE` devuelve el menor entero libre en el conjunto donde se exige la unicidad: los activos si `codeReuse = true`, los no archivados si no (ANI-10 CA2).
+  - La búsqueda exacta de un código (normalizado) devuelve el animal **activo** que lo tiene: si alguna coincidencia exacta es de un activo, se descartan las de los que salieron. Si ninguna, la del que lo tuvo y salió, con su `status`.
   - La ficha trae `codeHistory`: `previousHolder` (quién tuvo antes este número y cuándo salió) o, si el animal salió, `currentHolder` (quién lo tiene hoy), con `{ animalId, code, status, exitDate }` para enlazar.
   - `POST /animals/:id/exit` en una finca con `codeReuse` retira las chapetas con motivo `EXITED`; DIN y RFID siguen del animal (RN-32).
   - `POST /animals/:id/revert-exit` responde `CODE_REASSIGNED` (con el animal que lo tiene en `context`) si su código o su chapeta ya los tiene otro animal activo; se reintenta con `{ newCode }`.
@@ -192,7 +201,11 @@ Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); 
 ## Auditoría
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | /audit?entity&entityId&from&to | A | Consulta |
+| GET | /audit?animalId&entity&entityId&from&to&limit&cursor | A | Consulta paginada, de la más reciente a la más antigua |
+
+- `animalId` trae el animal y sus identificadores (pestaña «Cambios» de la ficha); no se combina con `entity`. `entityId` exige `entity`. `entity`: `Animal`, `Identifier`, `Breed`, `Lot`, `Tag`, `Vaccine`, `VaccinationCycle`, `Farm`, `User`. `from` y `to` son días en la zona de la finca, ambos incluidos.
+- Respuesta `{ items, nextCursor }`; cada elemento: `{ id, at, action, entity, entityId, entityLabel, user: { id, name } | null, changes: [{ field, before, after }] }`. `entityLabel` es el código del animal, el valor del identificador o el nombre del registro. En `changes`, los ids de raza, lote, madre, padre y etiquetas llegan como nombre o código.
+- **Nunca** trae montos: no consulta gastos, ventas ni inicios de sesión, y descarta los campos con montos o precios (`amount`, `purchasePrice`, `pricePerKgByCategory`…). Un cambio de contraseña aparece como `password` sin valores.
 
 ## Sincronización (F2)
 | Método | Ruta | Rol | Descripción |
@@ -262,4 +275,4 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `RATE_LIMITED` | 429 | Demasiadas solicitudes. Espera un momento. |
 | `INTERNAL_ERROR` | 500 | Ocurrió un error inesperado. Ya quedó registrado. |
 
-Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `DAM_AGE_LOW` (la madre era menor que la edad mínima reproductiva al nacer la cría, RN-23), `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro), `SCALE_DUPLICATE_READING` (el mismo animal dos veces el mismo día en el archivo de la báscula: se conserva el último, PES-04), `MILK_UNFIT_FOR_SALE` (leche de una vaca con retiro de leche vigente, LEC-01 CA4).
+Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `DAM_AGE_LOW` (la madre era menor que la edad mínima reproductiva al nacer la cría, RN-23), `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro), `IDENTIFIER_NOT_RESTORED` (al revertir una salida o restaurar un archivado, un identificador que ya tiene otro animal activo quedó retirado; M4c), `SCALE_DUPLICATE_READING` (el mismo animal dos veces el mismo día en el archivo de la báscula: se conserva el último, PES-04), `MILK_UNFIT_FOR_SALE` (leche de una vaca con retiro de leche vigente, LEC-01 CA4).
