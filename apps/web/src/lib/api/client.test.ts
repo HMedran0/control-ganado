@@ -240,6 +240,19 @@ describe('ApiClient', () => {
       });
     });
 
+    it('problem+json con context → datos del caso para la interfaz', async () => {
+      const { api } = setup(() =>
+        problem(409, 'IDENTIFIER_TAKEN', 'El identificador 87 ya está asignado al animal 26-001.', {
+          context: { animalId: '0199a1b2-0000-7000-8000-000000000001', animalCode: '26-001' },
+        }),
+      );
+
+      await expect(api.post('/x', {}, { auth: false })).rejects.toMatchObject({
+        code: 'IDENTIFIER_TAKEN',
+        context: { animalId: '0199a1b2-0000-7000-8000-000000000001', animalCode: '26-001' },
+      });
+    });
+
     it('sin red → NETWORK_ERROR con el mensaje de conexión', async () => {
       const { api } = setup(() => {
         throw new TypeError('Failed to fetch');

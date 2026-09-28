@@ -79,6 +79,7 @@ export class ProblemJsonFilter implements ExceptionFilter {
         code: exception.code,
         instance,
         ...(exception.fieldErrors === undefined ? {} : { errors: exception.fieldErrors }),
+        ...(exception.context === undefined ? {} : { context: exception.context }),
         ...(requestId === undefined ? {} : { requestId }),
       };
     }

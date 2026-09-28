@@ -16,6 +16,8 @@ export type ProblemDetails = {
   readonly code: string;
   /** Ruta que produjo el error. */
   readonly instance?: string;
+  /** Datos del caso para la interfaz: por ejemplo, qué animal tiene un identificador. */
+  readonly context?: Readonly<Record<string, string>>;
   /** Errores por campo, para las validaciones. */
   readonly errors?: Readonly<Record<string, readonly string[]>>;
   /** Identificador de la petición, para cruzar con los logs. */

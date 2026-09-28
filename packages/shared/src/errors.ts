@@ -148,6 +148,13 @@ export function warning(code: WarningCode, params?: MessageParams): Warning {
   return { code, message: warningMessage(code, params) };
 }
 
+/**
+ * Datos del caso que la interfaz necesita para ofrecer la salida, además del mensaje. Por
+ * ejemplo, en `IDENTIFIER_TAKEN`, qué animal tiene el identificador, para enlazar a su ficha.
+ * Viaja en `problem+json` como `context`.
+ */
+export type ErrorContext = Readonly<Record<string, string>>;
+
 /** Opciones de `DomainError`. */
 export type DomainErrorOptions = {
   /** Valores para los marcadores del mensaje del catálogo. */
@@ -158,6 +165,8 @@ export type DomainErrorOptions = {
   readonly fieldErrors?: Readonly<Record<string, readonly string[]>>;
   /** Causa original, si este error envuelve otro. */
   readonly cause?: unknown;
+  /** Datos del caso para la interfaz (ver `ErrorContext`). */
+  readonly context?: ErrorContext;
 };
 
 /**
@@ -169,6 +178,7 @@ export class DomainError extends Error {
   readonly status: number;
   readonly detail: string;
   readonly fieldErrors: Readonly<Record<string, readonly string[]>> | undefined;
+  readonly context: ErrorContext | undefined;
 
   constructor(code: ErrorCode, options: DomainErrorOptions = {}) {
     const detail = options.detail ?? errorDetail(code, options.params);
@@ -178,6 +188,7 @@ export class DomainError extends Error {
     this.status = ERROR_CATALOG[code].status;
     this.detail = detail;
     this.fieldErrors = options.fieldErrors;
+    this.context = options.context;
   }
 }
 

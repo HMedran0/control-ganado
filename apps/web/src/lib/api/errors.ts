@@ -31,12 +31,15 @@ export class ApiError extends Error {
   readonly code: ApiErrorCode;
   readonly detail: string;
   readonly fieldErrors: FieldErrors | undefined;
+  /** Datos del caso que manda la API en `context` (por ejemplo, `animalId` y `animalCode`). */
+  readonly context: Readonly<Record<string, string>> | undefined;
 
   constructor(input: {
     status: number;
     code: ApiErrorCode;
     detail: string;
     fieldErrors?: FieldErrors | undefined;
+    context?: Readonly<Record<string, string>> | undefined;
     cause?: unknown;
   }) {
     super(input.detail, input.cause === undefined ? undefined : { cause: input.cause });
@@ -45,6 +48,7 @@ export class ApiError extends Error {
     this.code = input.code;
     this.detail = input.detail;
     this.fieldErrors = input.fieldErrors;
+    this.context = input.context;
   }
 }
 
@@ -84,6 +88,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
           ? body.detail
           : errorDetail(body.code),
       fieldErrors: isFieldErrors(body.errors) ? body.errors : undefined,
+      context: isContext(body.context) ? body.context : undefined,
     });
   }
 
@@ -96,7 +101,7 @@ export async function toApiError(response: Response): Promise<ApiError> {
   });
 }
 
-type ProblemBody = { code?: unknown; detail?: unknown; errors?: unknown };
+type ProblemBody = { code?: unknown; detail?: unknown; errors?: unknown; context?: unknown };
 
 async function readProblem(response: Response): Promise<ProblemBody | null> {
   const type = response.headers.get('content-type') ?? '';
@@ -107,6 +112,14 @@ async function readProblem(response: Response): Promise<ProblemBody | null> {
   } catch {
     return null;
   }
+}
+
+function isContext(value: unknown): value is Readonly<Record<string, string>> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).every((item) => typeof item === 'string')
+  );
 }
 
 function isFieldErrors(value: unknown): value is FieldErrors {

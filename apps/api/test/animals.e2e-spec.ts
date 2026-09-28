@@ -651,6 +651,8 @@ describe('Animales e identificadores', () => {
       expect(taken.body).toMatchObject({
         code: 'IDENTIFIER_TAKEN',
         detail: 'El identificador 87 ya está asignado al animal 26-001.',
+        // Para que la interfaz enlace a la ficha del animal que lo tiene.
+        context: { animalId: first.id, animalCode: '26-001' },
       });
       // Otro tipo con el mismo valor sí.
       await http()
@@ -765,6 +767,7 @@ describe('Animales e identificadores', () => {
         code: 'IDENTIFIER_PREVIOUSLY_USED',
         detail:
           'El identificador 87 perteneció al animal 26-001. Solo un administrador puede reasignarlo.',
+        context: { animalId: first.id, animalCode: '26-001' },
       });
       await http()
         .post(`/api/v1/animals/${second.id}/identifiers`)

@@ -56,7 +56,10 @@ export async function checkIdentifier(
 
   const active = existing.find((identifier) => identifier.retiredAt === null);
   if (active !== undefined) {
-    throw new DomainError('IDENTIFIER_TAKEN', { params: { value, code: active.animal.code } });
+    throw new DomainError('IDENTIFIER_TAKEN', {
+      params: { value, code: active.animal.code },
+      context: { animalId: active.animalId, animalCode: active.animal.code },
+    });
   }
 
   const previousOwner = existing.find((identifier) => identifier.animalId !== input.animalId);
@@ -64,6 +67,7 @@ export async function checkIdentifier(
     if (input.confirmReuse !== true) {
       throw new DomainError('IDENTIFIER_PREVIOUSLY_USED', {
         params: { value, code: previousOwner.animal.code },
+        context: { animalId: previousOwner.animalId, animalCode: previousOwner.animal.code },
       });
     }
     if (scope.role !== ROLE.ADMIN) {
