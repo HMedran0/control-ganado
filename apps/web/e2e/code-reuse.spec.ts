@@ -16,7 +16,13 @@ import { isMobile, login, RETIRO_NAME } from './helpers';
 const capturas = fileURLToPath(new URL('./capturas/', import.meta.url));
 const run = `${Date.now() % 100_000}`.padStart(5, '0');
 
-type Numbers = { reused: string; renamed: string; archived: string };
+type Numbers = {
+  reused: string;
+  renamed: string;
+  archived: string;
+  tagged: string;
+  tagHolder: string;
+};
 /** Números de este proyecto; solo dígitos, como los numera la finca. */
 function numbers(testInfo: TestInfo): Numbers {
   const project = isMobile(testInfo) ? '1' : '2';
@@ -24,6 +30,8 @@ function numbers(testInfo: TestInfo): Numbers {
     reused: `9${project}${run}1`,
     renamed: `9${project}${run}2`,
     archived: `9${project}${run}3`,
+    tagged: `9${project}${run}4`,
+    tagHolder: `9${project}${run}5`,
   };
 }
 
@@ -45,13 +53,14 @@ async function capture(page: Page, testInfo: TestInfo, screen: string): Promise<
   });
 }
 
-async function registerAnimal(page: Page, code: string): Promise<string> {
+async function registerAnimal(page: Page, code: string, visualTag?: string): Promise<string> {
   await page.goto('/animals/new');
   await page.getByRole('radio', { name: 'Nació en la finca' }).click();
   await page.getByRole('radio', { name: 'Hembra' }).click();
   await page.getByLabel('Raza').selectOption({ label: 'Brahman' });
   await page.getByLabel('Fecha de nacimiento').fill('2025-06-10');
   await page.getByLabel('Código').fill(code);
+  if (visualTag !== undefined) await page.getByLabel('Chapeta').fill(visualTag);
   await page.getByRole('button', { name: 'Registrar animal' }).click();
   await expect(page.getByRole('heading', { level: 1, name: code })).toBeVisible();
   const id = /\/animals\/([^/?]+)/.exec(page.url())?.[1];
@@ -175,5 +184,32 @@ test.describe.serial('numeración reutilizable (El Retiro)', () => {
     await expect(panel).not.toContainText('3.200.000');
     await expectNoViolations(page);
     await capture(page, testInfo, 'cambios');
+  });
+  test('revertir con el número libre pero la chapeta ocupada: revierte y avisa (IDN-06 CA3)', async ({
+    page,
+  }, testInfo) => {
+    const { tagged, tagHolder } = numbers(testInfo);
+    await login(page, 'retiro.admin', RETIRO_NAME);
+    const soldId = await registerAnimal(page, tagged, tagged);
+    await page.getByRole('button', { name: 'Registrar salida' }).click();
+    const exitDialog = page.getByRole('dialog');
+    await exitDialog.getByLabel('Precio de venta').fill('2500000');
+    await exitDialog.getByRole('button', { name: 'Registrar salida' }).click();
+    await expect(page.getByText(`Salida de ${tagged} registrada.`)).toBeVisible();
+
+    // Otro animal, con otro número, recibe la chapeta liberada.
+    await registerAnimal(page, tagHolder, tagged);
+
+    await page.goto(`/animals/${soldId}`);
+    await page.getByRole('button', { name: 'Revertir salida' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Revertir salida' }).click();
+    await expect(page.getByText(`${tagged} volvió al inventario.`)).toBeVisible();
+    await expect(
+      page.getByText(
+        `El identificador ${tagged} ya lo tiene el animal ${tagHolder}: quedó retirado en este animal.`,
+      ),
+    ).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: tagged })).toBeVisible();
+    await expectNoViolations(page);
   });
 });

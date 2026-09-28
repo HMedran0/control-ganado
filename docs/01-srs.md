@@ -254,7 +254,7 @@ Tipos: venta, muerte, sacrificio, robo, traslado a otra finca, otro.
 - CA2: Si el tipo es venta, exige precio de venta y comprador (opcional), y crea el ingreso económico correspondiente (ECO-04).
 - CA3: Si el animal tiene un período de retiro de medicamento vigente y la salida es venta o sacrificio, se muestra una advertencia que exige confirmación explícita (RN-22).
 - CA4: El animal sale del inventario activo y queda con la etiqueta "Vendido" o "Retirado".
-- CA5: Se puede revertir una salida registrada por error (solo ADMIN, queda en auditoría). Si mientras tanto su código o su chapeta los tomó otro animal activo (numeración reutilizable), hay que asignarle un código nuevo (IDN-06 CA3).
+- CA5: Se puede revertir una salida registrada por error (solo ADMIN, queda en auditoría). Si mientras tanto su código lo tomó otro animal activo (numeración reutilizable), hay que asignarle un código nuevo; si solo su chapeta la tiene otro animal, la reversión se hace y esa chapeta queda retirada con un aviso (IDN-06 CA3).
 
 **ANI-05 — Búsqueda rápida** · M · F1
 Un único campo de búsqueda, disponible en toda la aplicación, que acepta: código interno, nombre, número de chapeta visual, DIN, RFID o contenido de un QR del sistema.
@@ -332,7 +332,7 @@ Tipos: `VISUAL_TAG`, `DIN`, `RFID`, `QR`, `BRAND` (hierro/marca), `OTHER`.
 **IDN-06 — Liberación de chapetas al salir** · M · F1 (M4c)
 - CA1: Con `codeReuse = true`, al registrar la salida de un animal, sus identificadores `VISUAL_TAG` se retiran automáticamente con motivo `EXITED` y fecha de salida, y quedan disponibles para otro animal sin confirmación (excepción a RN-19).
 - CA2: Los identificadores `DIN` y `RFID` **nunca** se liberan ni se reutilizan: son únicos de por vida según el ICA. Siguen asociados al animal que salió (RN-32).
-- CA3: Revertir una salida (ANI-04 CA5) cuando su código o su chapeta ya los tiene otro animal activo exige asignarle un código nuevo; error `CODE_REASSIGNED` con el código del animal que lo tiene.
+- CA3: Revertir una salida (ANI-04 CA5) cuando su **código** ya lo tiene otro animal activo exige asignarle un código nuevo; error `CODE_REASSIGNED` con el código del animal que lo tiene. Si el código está libre y solo alguna chapeta la tiene otro animal activo, la reversión se hace: esa chapeta queda retirada en el animal que vuelve y la respuesta trae la advertencia `IDENTIFIER_NOT_RESTORED` (M4d; antes también bloqueaba).
 
 ### 3.4 Clasificación del ganado (CLS)
 

@@ -197,8 +197,9 @@ export class AnimalLifecycleService {
    * Revierte una salida registrada por error (ANI-04 CA5): anula la venta, reactiva las chapetas
    * liberadas que sigan libres y avisa de las demás.
    *
-   * Si el código o una chapeta ya los tiene otro animal activo, responde `CODE_REASSIGNED` con
-   * ese animal en `context` (IDN-06 CA3); se reintenta con `newCode`.
+   * Solo el **código** bloquea: si ya lo tiene otro animal activo, responde `CODE_REASSIGNED` con
+   * ese animal en `context` (IDN-06 CA3) y se reintenta con `newCode`. Una chapeta que tomó otro
+   * animal no impide revertir: queda retirada y llega como advertencia `IDENTIFIER_NOT_RESTORED`.
    */
   async revertExit(
     scope: FarmScope,
@@ -242,13 +243,7 @@ export class AnimalLifecycleService {
             context: { animalId: holder.id, animalCode: holder.code },
           });
         }
-        const tag = blocked[0];
-        if (tag !== undefined) {
-          throw new DomainError('CODE_REASSIGNED', {
-            detail: `La chapeta ${tag.identifier.value} ya la tiene el animal activo ${tag.holderCode}. Asígnale un código nuevo para revertir la salida.`,
-            context: { animalId: tag.holderId, animalCode: tag.holderCode },
-          });
-        }
+        // Una chapeta ocupada no bloquea: queda retirada y se avisa (IDN-06 CA3).
       } else {
         await assertCodeAvailable(tx, scope, {
           code: input.newCode,

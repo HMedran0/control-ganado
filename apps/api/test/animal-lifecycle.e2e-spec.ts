@@ -486,7 +486,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
       expect(reverted.identifiers[0]).toMatchObject({ retireReason: 'EXITED' });
     });
 
-    it('solo su chapeta la tiene otro activo: también CODE_REASSIGNED', async () => {
+    it('solo su chapeta la tiene otro activo: revierte con su código y la chapeta queda retirada', async () => {
       const old = await create(admin, retiro, {
         code: '5',
         identifiers: [{ type: 'VISUAL_TAG', value: '5' }],
@@ -496,16 +496,23 @@ describe('Salida, archivo y numeración reutilizable', () => {
         code: '30',
         identifiers: [{ type: 'VISUAL_TAG', value: '5' }],
       });
-      const conflict = await http()
-        .post(`/api/v1/animals/${old.id}/revert-exit`)
-        .set(admin)
-        .send({})
-        .expect(409);
-      expect(conflict.body).toMatchObject({
-        code: 'CODE_REASSIGNED',
-        context: { animalId: other.id, animalCode: '30' },
-      });
-      expect(conflict.body.detail).toContain('La chapeta 5 ya la tiene el animal activo 30');
+
+      const reverted = (
+        await http().post(`/api/v1/animals/${old.id}/revert-exit`).set(admin).send({}).expect(201)
+      ).body as AnimalDetailWithWarnings;
+      expect(reverted).toMatchObject({ code: '5', status: 'ACTIVE' });
+      expect(reverted.warnings).toEqual([
+        {
+          code: 'IDENTIFIER_NOT_RESTORED',
+          message: 'El identificador 5 ya lo tiene el animal 30: quedó retirado en este animal.',
+        },
+      ]);
+      expect(reverted.identifiers[0]).toMatchObject({ value: '5', retireReason: 'EXITED' });
+
+      // La chapeta sigue siendo del otro animal.
+      const holder = (await http().get(`/api/v1/animals/${other.id}`).set(admin).expect(200))
+        .body as AnimalDetailWithWarnings;
+      expect(holder.identifiers[0]).toMatchObject({ value: '5', retiredAt: null });
     });
 
     it('OPERATOR y VET no pueden; otra finca, 404; un animal activo no se revierte', async () => {
