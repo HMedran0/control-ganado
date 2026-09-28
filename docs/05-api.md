@@ -25,14 +25,16 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /auth/change-password | T | `{ currentPassword, newPassword }` |
 | GET | /auth/config | — | `{ google: boolean, passwordRecovery: boolean }`: qué ofrece la pantalla de inicio de sesión (M10a). Sin `GOOGLE_*`, `google` es `false`; sin SMTP, `passwordRecovery` es `false` |
 | GET | /me | T | Usuario, finca y rol actuales; incluye `emailVerified` y los métodos de acceso vinculados |
-| GET | /auth/sessions | T | Sesiones abiertas del usuario (AUT-11, M4d): `[{ id, device, startedAt, lastUsedAt, current }]`. `id` es la familia; `device` sale del `userAgent` |
-| POST | /auth/sessions/:id/revoke | T | Cierra una sesión propia. Si es la actual, equivale a salir |
-| POST | /auth/sessions/revoke-others | T | Cierra todas las sesiones propias menos la actual |
+| GET | /auth/sessions | T | Sesiones abiertas del usuario (AUT-11, M4d): `{ items: [{ id, device, startedAt, lastUsedAt, current }] }`, de la usada más recientemente a la más antigua. `id` es la familia; `device` sale del `userAgent` («Chrome · Android»); `current` marca «Este equipo» |
+| POST | /auth/sessions/:id/revoke | T | Cierra una sesión propia → `{ ok: true, current }`. Si es la actual, equivale a salir (borra la cookie). Una sesión que no es del usuario, 404 |
+| POST | /auth/sessions/revoke-others | T | Cierra todas las sesiones propias menos la actual → `{ revoked }` |
 | POST | /auth/forgot-password | — | `{ email }` → 202 siempre, exista o no la cuenta (AUT-14, M10a). Solo envía a correos verificados; 3 por correo por hora |
 | POST | /auth/reset-password | — | `{ token, newPassword }` → revoca todas las sesiones y entrega una nueva. `EMAIL_TOKEN_INVALID` si venció o ya se usó |
 | POST | /auth/verify-email | — | `{ token }` → marca el correo como verificado (AUT-14 CA1) |
 | GET | /auth/google/start | — | Redirige a Google (AUT-15, M10a). Sin parámetros, inicio de sesión; con `?intent=` (intención de un solo uso de 5 min), vincular o aceptar una invitación. Guarda `state`, `nonce` y `code_verifier` en el servidor |
 | GET | /auth/google/callback | — | Retorno de Google: valida `state` e `id_token`, deja la cookie del refresco y redirige a la web. Los errores redirigen a la web con el código en el fragmento (`#error=GOOGLE_NO_ACCESS`) |
+
+**Sesiones (M4d, ADR-007 decisión 6).** Cada renovación extiende el refresco a `REFRESH_TTL_DAYS` desde ese momento, sin pasar de `REFRESH_MAX_AGE_DAYS` desde el inicio de sesión que originó la familia; la cookie dura lo mismo. El token de acceso lleva la sesión en el claim `sid` y cada petición comprueba que siga abierta: cerrar una sesión (propia, las demás, o todas las de un usuario por el ADMIN), cambiar o restablecer la contraseña y desactivar al usuario cortan su acceso de inmediato con `AUTH_TOKEN_EXPIRED`. Un token sin `sid` (emitido antes de M4d) ya no sirve y la web lo renueva sola. `last_used_at` se escribe al renovar, como máximo una vez por hora.
 
 ## Usuarios y finca
 | Método | Ruta | Rol | Descripción |
@@ -41,7 +43,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /users | A | Crear usuario (`username` obligatorio, `email` opcional salvo para ADMIN: `EMAIL_REQUIRED_FOR_ADMIN`) con rol y contraseña temporal. Sigue siendo el camino para quien no tiene correo (AUT-13 CA4) |
 | PATCH | /users/:id | A | Editar nombre, rol, activo. Pasar a ADMIN a alguien sin correo responde `EMAIL_REQUIRED_FOR_ADMIN`; desactivarlo revoca sus sesiones |
 | POST | /users/:id/reset-password | A | Genera contraseña temporal |
-| POST | /users/:id/sessions/revoke | A | Cierra todas las sesiones de un usuario de la finca (AUT-11 CA3, M4d): equipo perdido o prestado |
+| POST | /users/:id/sessions/revoke | A | Cierra todas las sesiones de un usuario de la finca, también las de sus otras fincas (AUT-11 CA3, M4d): equipo perdido o prestado → `{ revoked }`, auditado. Usuario de otra finca, 404 |
 | GET | /invitations | A | Invitaciones pendientes, aceptadas y anuladas de la finca (AUT-13, M10a) |
 | POST | /invitations | A | `{ email, role }` → envía el enlace (7 días). Si el correo ya es de un usuario de **otra** finca, la invitación se crea igual; `INVITATION_EMAIL_TAKEN` solo si ya es miembro de esta finca |
 | POST | /invitations/:id/resend | A | Genera un token nuevo (el enlace anterior deja de servir) y lo reenvía |
@@ -82,9 +84,9 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | GET | /animals/:id/genealogy | T | Madre, padre, crías (2 niveles) |
 | POST | /animals/bulk/tags | T (forSale solo A) | `{ animalIds, add?: [], remove?: [], forSale? }` |
 | POST | /animals/bulk/lot | T | `{ animalIds, lotId, date }` crea `LotMovement` |
-| GET | /animals/:id/qr | T | PNG/SVG del QR |
+| GET | /animals/export.xlsx | T | El listado en Excel con los mismos filtros que `GET /animals`, sin paginar (ANI-06 CA4, M4d). Valor de compra solo para A |
+| GET | /animals/labels | A | Hoja de etiquetas con QR (IDN-03 CA2, M4d): `?ids=` (selección, hasta 200) o los filtros del listado → `{ items: [{ id, code, name, sex, visualTag, din, rfid, qrUrl }], truncated }` (hasta 1.000) |
 | GET | /animals/next-code?birthDate= | T | Siguiente código sugerido según `codeSuggestion`: `calfCodePattern` o el menor número libre (ANI-10) |
-| POST | /animals/qr-sheet | A | `{ animalIds, layout }` → PDF de etiquetas |
 
 **Detalles de M4a.**
 - Cada fila trae `expectedCalvingDate`: el parto estimado de la preñez abierta confirmada, o `null` (columna «Parto estimado» de 06 §5.2).
@@ -93,6 +95,12 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 - `GET /animals/:id`: `economics: { purchasePrice }` solo existe en la respuesta de ADMIN. `POST /animals` y `PATCH /animals/:id` responden la ficha con `warnings`.
 - `POST /animals/bulk/tags` y `/bulk/lot` son todo o nada: si un animal no es de la finca (404), está archivado (`ANIMAL_ARCHIVED`) o salió (`ANIMAL_EXITED`), no se cambia ninguno. `add` y `remove` son ids de etiquetas manuales. Respuestas: `{ updated }` y `{ moved, unchanged }`.
 - `GET /animals/:id/timeline` → `{ items: [{ key, kind, date, voided, data }], nextCursor }`, del más reciente al más antiguo; los eventos anulados vienen con `voided: true`. No incluye datos económicos.
+
+**Detalles de M4d** (exportación, QR y etiquetas).
+- `GET /animals/export.xlsx`: hoja «Animales» con encabezados en español y fila fija: código, nombre, sexo, raza, fecha de nacimiento, nacimiento aproximado, edad (texto y meses), categoría, etiquetas, partos, parto estimado, lote, último peso (kg) y su fecha, alertas, chapeta, DIN, RFID, madre, procedencia, fecha de ingreso, estado, fecha de salida y, solo para ADMIN, valor de compra (RN-20: para los demás la columna no existe y ni se consulta). Fechas como fechas de Excel y números como números; los textos que empiezan por `=`, `+`, `-`, `@`, tabulador o retorno llevan un apóstrofo delante. Hasta 50.000 filas.
+- El QR codifica `${PUBLIC_WEB_URL}/a/<id>` y nada más (IDN-03 CA3). La ficha trae `qrUrl`; la web dibuja el QR en SVG. Reemplaza a `GET /animals/:id/qr` y `POST /animals/qr-sheet` (PDF), que no se implementan: la hoja se imprime desde el navegador y el PDF es de M19.
+- `GET /animals/search?q=` reconoce el contenido de un QR del sistema: `exactMatch.via = { kind: 'QR', value: <id> }` si el animal es de la finca.
+- La ficha trae además `entryDateEstimated` (la importación tomó la de nacimiento; deja de serlo al corregir la fecha con `PATCH`) y `reproduction.importedPriorCalvings` (RN-29).
 
 **Detalles de M4c** (salida, archivo, numeración reutilizable y auditoría).
 - `exit`, `revert-exit`, `archive` y `restore` son solo de ADMIN, bloquean la fila del animal y responden 201 con la ficha y `warnings`. Un OPERATOR o VET recibe `FORBIDDEN_ROLE`; un animal de otra finca, 404.
@@ -216,10 +224,17 @@ Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); 
 ## Importación (ANI-09, solo ADMIN)
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | /imports/animals/template | Descarga la plantilla `.xlsx` (instrucciones, datos, listas válidas del catálogo de la finca) |
-| POST | /imports/animals?dryRun=true | `multipart/form-data` con el archivo → `{ totalRows, valid, warnings: [...], errors: [{ row, column, code, message }] }`. No guarda nada. |
-| POST | /imports/animals | Mismo archivo + `{ createMissingBreeds?: boolean }` → importa filas válidas; responde `{ importBatchId, created, skipped }` |
-| GET | /imports/:id/errors.xlsx | Filas rechazadas con columna "Error" |
+| GET | /imports/animals/template | Descarga la plantilla `.xlsx`: hoja de instrucciones, hoja «Animales» y hoja «Listas» con las razas y los lotes activos de la finca |
+| POST | /imports/animals?dryRun=true | Simulación (CA3): `multipart/form-data` con `file` y los campos `createMissingBreeds` (`true`/`false`) y `skipRows` («5,9») → `{ fileName, totalRows, validRows, warningRows, errorRows, importable, issues: [{ row, column, severity, message }], newBreeds, previousImport }`. No guarda nada. 200 |
+| POST | /imports/animals | Confirmación (CA5): el mismo archivo y campos, más `importKey` (UUID, obligatorio) y `expectedRows` (opcional) → 201 `{ importBatchId, created, skipped, replayed: false }`. Con una `importKey` ya usada, 200 con el lote de antes y `replayed: true` |
+| POST | /imports/animals/errors | El mismo archivo → `.xlsx` con las filas que tienen error, sus valores originales y una columna «Error» (CA5) |
+
+**Detalles (M4d, ADR-011).**
+- Archivo: `.xlsx` o `.csv` (UTF-8 o Windows-1252; separador `;`, `,` o tabulador), hasta 5 MB (`IMPORT_FILE_TOO_LARGE`, 413) y 5.000 filas (`IMPORT_TOO_MANY_ROWS`, 413). Se comprueba el tipo real: un `.xlsx` que no es un ZIP de hoja de cálculo, un `.csv` binario, un libro con macros (`.xlsm`, aunque se renombre) o un ZIP que se infla por encima del límite o trae rutas que salen de la carpeta responden `IMPORT_FILE_INVALID` (422) con el motivo en `detail`. Faltan columnas obligatorias → `IMPORT_FILE_INVALID` con cuáles.
+- De las fórmulas se usa el valor guardado; una fórmula sin valor guardado es un error de la fila.
+- Cada problema trae su fila (como la ve la persona en Excel), su columna (`code`, `dam`, `rfid`…, o `null` si es de la fila) y el mensaje en español. Las filas con advertencias también se importan, salvo que vengan en `skipRows`.
+- La confirmación vuelve a validar todo dentro de una transacción de hasta 60 s y escribe todas las filas elegidas o ninguna. Un candado por finca serializa las importaciones. Si `expectedRows` no coincide con lo que entraría, `VERSION_CONFLICT` (409) y no se importa nada.
+- Queda en `import_batches` (con `idempotency_key` y `file_sha256`) y en la auditoría: una entrada `IMPORT` del lote y una `CREATE` por animal con el archivo y la fila.
 
 ## Catálogo de códigos de error
 Definido en `packages/shared/src/errors.ts` como constante; el `detail` en español es el mensaje por defecto (la UI puede usarlo tal cual). Estado HTTP entre paréntesis.
@@ -231,7 +246,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `AUTH_ACCOUNT_LOCKED` | 423 | La cuenta está bloqueada por intentos fallidos. Intenta de nuevo en 15 minutos. |
 | `AUTH_PASSWORD_CHANGE_REQUIRED` | 403 | Debes cambiar tu contraseña temporal. |
 | `AUTH_TOKEN_EXPIRED` | 401 | La sesión expiró. Vuelve a iniciar sesión. |
-| `AUTH_SESSION_MAX_AGE` | 401 | Por seguridad, vuelve a escribir tu contraseña. (tope de la sesión deslizante, AUT-10 CA2) |
+| `AUTH_SESSION_MAX_AGE` | 401 | Por seguridad, vuelve a escribir tu contraseña. (tope de la sesión deslizante, AUT-10 CA2; solo para un token legítimo vencido por el tope, con `context.login`) |
 | `FORBIDDEN_ROLE` | 403 | Tu rol no permite esta acción. |
 | `NOT_FOUND` | 404 | El registro no existe o no pertenece a esta finca. |
 | `VERSION_CONFLICT` | 409 | Otra persona modificó este registro. Recarga para ver los cambios. |
@@ -259,6 +274,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `WORK_SESSION_CLOSED` | 409 | La jornada ya fue cerrada. |
 | `IMPORT_FILE_INVALID` | 422 | El archivo no tiene el formato de la plantilla. |
 | `IMPORT_TOO_MANY_ROWS` | 413 | El archivo supera las 5.000 filas. |
+| `IMPORT_FILE_TOO_LARGE` | 413 | El archivo supera los 5 MB. |
 | `CODE_REASSIGNED` | 409 | El código {code} ya lo tiene el animal activo {holder}. Asígnale un código nuevo para revertir la salida. (IDN-06 CA3, con el animal en `context`) |
 | `CODE_REUSE_CONFLICT` | 409 | Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización. (ANI-10 CA3) |
 | `SCALE_FILE_INVALID` | 422 | No pudimos leer el archivo de la báscula. Revisa el formato o el perfil de báscula. (PES-04) |

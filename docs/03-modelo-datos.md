@@ -60,7 +60,9 @@ Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PA
 
 **RefreshToken** — `id, user_id, farm_id, token_hash, family_id, family_started_at timestamptz, last_used_at timestamptz, expires_at, revoked_at, created_at, user_agent`. La rotación usa `family_id` para detectar reutilización y revocar toda la familia. `farm_id` es la finca activa de la sesión: la rotación la conserva, de modo que renovar el token no devuelve al usuario a su finca por defecto (M1, ADR-007).
 - Sesión deslizante (M4d, AUT-10): cada rotación recalcula `expires_at = min(ahora + REFRESH_TTL_DAYS, family_started_at + REFRESH_MAX_AGE_DAYS)`. `family_started_at` se copia de token en token y no cambia dentro de la familia: es el inicio de sesión con contraseña (o Google) que la originó.
-- `last_used_at` alimenta la lista de sesiones (AUT-11) y se actualiza como máximo una vez por hora por familia.
+- `last_used_at` alimenta la lista de sesiones (AUT-11) y se actualiza como máximo una vez por hora por familia: al rotar, el token nuevo copia el valor anterior si tiene menos de una hora (implementado en M4d).
+- La rotación revoca el token anterior y crea el nuevo en la misma transacción: una familia abierta siempre tiene exactamente un token sin revocar y sin vencer. Una **sesión** abierta es eso, y `AccessGuard` lo comprueba en cada petición con el `sid` del token de acceso.
+- La migración de M4d rellenó `family_started_at` de los tokens existentes con la creación del primer token de su familia, y `last_used_at` con la de cada token.
 - Una **sesión** de la interfaz es una familia: se lista por `family_id` con el token vigente de cada una.
 
 **EmailToken** (M10a, AUT-14) — enlaces de un solo uso enviados por correo. `id, user_id, purpose enum (VERIFY_EMAIL, RESET_PASSWORD), email, token_hash (único), expires_at, used_at?, created_at`. Solo se guarda el hash (SHA-256 con el pepper, como el refresco). `email` es el correo normalizado al que se envió: si el usuario cambió de correo después, el enlace de verificación ya no sirve. Vencen a las 24 h (verificación) y a 1 h (recuperación). Índice: (`user_id`, `purpose`, `created_at`) para el límite de 3 envíos por hora.
@@ -107,6 +109,8 @@ Semilla (08 §3.3): Aftosa (`OFFICIAL_CYCLE`); Brucelosis RB51 (`AGE_WINDOW`, FE
 | origin | enum `BORN_ON_FARM`/`PURCHASED` | |
 | origin_detail | text? | Vendedor, finca de origen. |
 | entry_date | date | = birth_date si nació en la finca. |
+| entry_date_estimated | bool | La importación no traía la fecha de ingreso de un comprado y tomó la de nacimiento (ANI-09 CA2, M4d). Vuelve a `false` cuando alguien corrige la fecha. |
+| imported_prior_calvings | int, ≥ 0 | Partos anteriores al sistema que llegaron por importación sin fecha (RN-29, M4d). Número de partos = este valor + preñeces `CALVED` no anuladas; no aporta fecha de último parto. CHECK `imported_prior_calvings >= 0`. |
 | dam_id | uuid? FK → animals | Madre. |
 | sire_id | uuid? FK → animals | Padre si es toro de la finca. |
 | sire_external_ref | text? | Pajilla, toro prestado. |
@@ -211,9 +215,9 @@ Invariante (RN-17): suma de asignaciones = `expense.amount`. Se crean en la mism
 
 **WorkSessionEntry** — `id, work_session_id, animal_id, processed_at timestamptz, created_by_id`. Único (`work_session_id`, `animal_id`). Los eventos creados en la jornada referencian `work_session_id`.
 
-**ImportBatch** — `id, farm_id, file_name, total_rows, created_rows, error_rows, summary jsonb, created_by_id, created_at`. Registro de cada importación confirmada (ANI-09).
+**ImportBatch** — `id, farm_id, idempotency_key uuid, file_sha256 text, file_name, total_rows, created_rows, error_rows, summary jsonb, created_by_id, created_at`. Registro de cada importación confirmada (ANI-09). Único (`farm_id`, `idempotency_key`): la clave la genera la web al elegir el archivo y repetirla devuelve el mismo lote (ADR-011). `file_sha256` permite avisar en la simulación que el archivo ya se importó. `summary` guarda filas con advertencias, filas desmarcadas y razas creadas.
 
-**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS, diff jsonb, created_at timestamptz`.
+**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/IMPORT/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS, diff jsonb, created_at timestamptz`.
 Cuentas y correo (M4d, M10a): invitación creada, reenviada y anulada → entidad `Invitation` con `CREATE`, `UPDATE` y `VOID`; aceptada → `ACCEPT_INVITATION`; correo verificado → `VERIFY_EMAIL`; contraseña restablecida por correo → `RESET_PASSWORD`; Google vinculado y desvinculado → `LINK_IDENTITY` y `UNLINK_IDENTITY`; sesiones cerradas por el ADMIN o por el propio usuario → `REVOKE_SESSIONS`. El `diff` nunca guarda tokens, hashes, contraseñas ni el `code_verifier`.
 Índices: (`farm_id`, `entity`, `entity_id`), (`farm_id`, `created_at` DESC). Solo inserción.
 
@@ -313,4 +317,5 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 - `pnpm db:seed:load` genera 5.000 animales y 50.000 eventos para pruebas de rendimiento (RNF-01).
 - M4c agrega una segunda finca de pruebas, **Finca El Retiro** [Ficticio], con `codeReuse = true`, `LOWEST_FREE` y numeración 1–40, con al menos dos números reutilizados (08 §3.5). La finca de referencia sigue con `codeReuse = false`.
 - M9b agrega a la finca de referencia 90 días de control lechero y algunos secados (08 §3.6), con sus cifras nuevas en `expected.ts`.
-- La plantilla `docs/referencia/plantilla-importacion.xlsx` contiene 12 filas de ejemplo de esta misma finca para probar ANI-09.
+- La plantilla `docs/referencia/plantilla-importacion.xlsx` contiene 12 filas de ejemplo de esta misma finca para probar ANI-09 (11 entran; la 13 tiene un error a propósito).
+- M4d agrega una tercera finca de pruebas, **Finca La Nueva** [Ficticio] (08 §3.7): sin animales, con las razas y los lotes de La Esperanza y el ADMIN `nueva.admin`, para importar la plantilla (sus códigos chocarían con los de La Esperanza). Las cifras de las otras dos fincas no cambian.

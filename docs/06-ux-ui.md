@@ -149,6 +149,8 @@ Cada fila completa es táctil y abre el listado filtrado. Las cifras usan Barlow
 ```
 La chapeta a la izquierda de cada fila es la ancla visual. Las alertas se muestran como texto con ícono, no solo color.
 
+Arriba, junto a **Nuevo animal** (M4d): **⤓ Excel** para todos, que descarga exactamente lo filtrado (ANI-06 CA4), y para el ADMIN **Etiquetas**, que abre la hoja de etiquetas de lo filtrado (§5.15). Con animales seleccionados, la barra de acciones en lote suma **Imprimir etiquetas** (ADMIN, hasta 200).
+
 ### 5.3 Ficha del animal
 ```
 ┌──────────────────────────────────┐
@@ -175,6 +177,10 @@ La chapeta a la izquierda de cada fila es la ancla visual. Las alertas se muestr
 └──────────────────────────────────┘
 ```
 En móvil la barra de pestañas se desplaza de lado dentro de sí misma, sin desplazar la página; la pestaña activa queda a la vista al entrar y cada pestaña mide al menos 48 px de alto (M4b).
+
+**QR del sistema (IDN-03, M4d).** Al final del Resumen, bajo los identificadores: el QR de la ficha (unos 3 cm), con "Escanéalo con el celular para abrir esta ficha. Pide iniciar sesión y no muestra datos del animal a nadie de fuera de la finca." y, para el ADMIN, el enlace **Imprimir etiqueta**. Todos los roles ven el QR.
+
+**Importados (ANI-09, M4d).** Una fecha de ingreso que la importación tomó del nacimiento se muestra como "12/03/2020 (estimada: es la de nacimiento)" hasta que alguien la corrige. En Reproducción, "Partos: 4 (3 anteriores al sistema, sin fecha)".
 
 **Número anterior (ANI-11, M4c).** En una finca con numeración reutilizable, bajo el encabezado y en tono informativo: «Este número lo tuvo antes 5 · vendido el 12/03/2026», con enlace a la ficha de ese animal. En la ficha de un animal que salió: «Su número 5 lo tiene hoy otro animal», con enlace. El historial nunca mezcla los eventos de los dos.
 
@@ -227,8 +233,15 @@ El código de la cría se sugiere con el patrón de la finca (por defecto año-c
 Tras guardar, el campo de lectura recupera el foco automáticamente. Si el animal ya fue trabajado: "P-19 ya se vacunó en esta jornada a las 9:42".
 
 ### 5.6 Importar inventario (ANI-09, escritorio)
-Paso 1: "Descarga la plantilla" y "Sube tu archivo". Paso 2 (simulación): tres contadores grandes — **Listas para importar**, **Con advertencias**, **Con errores** — y debajo la tabla de problemas (fila, columna, mensaje) con filtro. Botón principal: **Importar 271 animales**; secundario: **Descargar filas con error**. Paso 3: confirmación "271 animales importados · 13 filas por corregir" con enlace al listado.
-Texto de ayuda: "Puedes importar varias veces. Los códigos que ya existen se omiten."
+Configuración → **Importar inventario** (ADMIN). Pensada para escritorio, funciona también en el celular.
+
+Paso 1, "Descarga la plantilla": botón **Descargar la plantilla**, que trae las razas y los lotes de la finca en listas desplegables. Paso 2, "Sube tu archivo": campo "Archivo (.xlsx o .csv, hasta 5 MB)" y la casilla "Crear las razas que no existen" ("Se crean en el grupo Cruce; después puedes ajustarlas en Configuración → Razas."). Al elegir el archivo se simula sin guardar nada ("Revisando el archivo…").
+
+Paso 3, simulación: si ese mismo archivo ya se importó, un aviso "Este archivo ya se importó el 28/09/2026 (11 animales)". Tres contadores grandes — **Listas para importar**, **Con advertencias**, **Con errores** — y debajo los problemas **agrupados por fila**, con `SegmentedChoice` "Mostrar: Todas · Errores · Advertencias". Cada fila es una tarjeta con borde de color y texto ("Fila 13 · Error: no se importa", "Fila 4 · Advertencia") y la lista de problemas con su columna ("Código madre: La madre 012 es macho."). Las filas con advertencia traen la casilla "Importar la fila 4", marcada; desmarcarla vuelve a simular sin ella, así el número del botón siempre es el real (si se desmarca una madre, sus crías del archivo también quedan fuera). Se muestran 100 filas y **Mostrar más**. Botón principal: **Importar 271 animales**; secundarios: **Descargar filas con error** y **Elegir otro archivo**.
+
+Resultado: "271 animales importados · 13 filas por corregir", con **Ver los animales** e **Importar otro archivo**. Un doble clic no importa dos veces; si la confirmación llega repetida, "Esta importación ya se había hecho; no se repitió."
+
+Texto de ayuda: "Primero revisamos el archivo sin guardar nada. Puedes importar varias veces: los códigos que ya existen quedan como error y no se tocan."
 
 ### 5.7 Inicio de sesión
 Campos "Usuario" (acepta también correo) y "Contraseña" con opción de mostrarla; botón **Entrar**.
@@ -264,7 +277,9 @@ Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categor�
 - Cerrar una sesión o las demás pide confirmación corta, porque obliga a volver a entrar en ese equipo: "¿Cerrar la sesión en Edge · Windows? Tendrás que volver a entrar en ese equipo."
 - Correo: sin verificar, "Sin verificar · Reenviar el enlace"; cambiarlo pide la contraseña actual y deja el nuevo sin verificar hasta abrir el enlace.
 - Google: **Vincular** y **Desvincular** piden la contraseña actual. Desvincular el único método de acceso no se ofrece: "Crea una contraseña antes de desvincular Google".
-- En Configuración → Usuarios, el ADMIN tiene en cada usuario **Cerrar todas sus sesiones** ("equipo perdido o prestado"), y en la parte de arriba **Invitar por correo** (correo y rol) con la lista de invitaciones pendientes (correo, rol, vence el…, **Reenviar**, **Anular**).
+- La lista va de la sesión usada más recientemente a la más antigua; el último uso se lee "usada hoy", "usada ayer", "usada hace 3 días" y, pasada una semana, "usada el 14/08/2026". "Cerrar las demás sesiones" solo aparece si hay otras, y al terminar dice "Se cerró 1 sesión." o "Se cerraron 2 sesiones."
+- Al cumplirse el tope de la sesión, el inicio de sesión dice "Por seguridad, vuelve a escribir tu contraseña" con el usuario ya escrito (§5.7).
+- En Configuración → Usuarios, el ADMIN tiene en cada usuario **Cerrar todas sus sesiones** ("equipo perdido o prestado"; el diálogo dice "Se cerrará su sesión en todos sus equipos."), y en la parte de arriba **Invitar por correo** (correo y rol) con la lista de invitaciones pendientes (correo, rol, vence el…, **Reenviar**, **Anular**).
 
 ### 5.10 Aceptar invitación (AUT-13, M10a)
 El enlace del correo abre `/invitacion#token=…`. La página lee el token del fragmento, lo borra de la barra de direcciones (`history.replaceState`) y lo envía en el cuerpo (`POST /invitations/preview`). Se sirve con `Referrer-Policy: no-referrer`.
@@ -335,6 +350,24 @@ Todas estas acciones son del ADMIN: los demás roles no ven los botones y la API
 **Configuración → Archivados.** Lista de los animales archivados ("Animales que se sacaron del hato por error o por estar duplicados. Abre la ficha para ver el motivo y restaurarlo."), una fila por animal con código y nombre, sexo, categoría y raza, y **Cargar más** al final. Vacía: `EmptyState` "No hay animales archivados · Cuando archives un registro duplicado o hecho por error, aparece aquí."
 
 **Pestaña Cambios (AUD-01 CA2, solo ADMIN).** Última pestaña de la ficha. Cada cambio del animal o de sus identificadores, del más reciente al más antiguo, en lenguaje de finca: la acción ("Registro", "Cambio", "Salida", "Salida revertida", "Archivado", "Restaurado", "Anulación"), sobre qué ("animal 5", "chapeta 5"), quién y cuándo, y la lista de campos con antes → después ("Tipo de salida: Venta → —"). Los ids de raza, lote, madre y padre se muestran como nombre o código, y los montos nunca aparecen, ni siquiera para el ADMIN (se consultan en Costos). Vacía: "Sin cambios registrados".
+
+### 5.15 Hoja de etiquetas con QR (IDN-03, M4d)
+Solo ADMIN. Se llega desde **Etiquetas** en el listado (todo lo filtrado), **Imprimir etiquetas** en la selección o **Imprimir etiqueta** en la ficha. Título "Etiquetas con QR" ("Para tarjetas de manejo o fichas de potrero. El QR abre la ficha del animal después de iniciar sesión.").
+
+Controles: `SegmentedChoice` **Papel** (Carta · A4, por defecto carta, el que venden las papelerías en Colombia) y **Formato** (Tarjetas (2 × 4) · Etiquetas (3 × 7)), botón **Imprimir** y el resumen "22 etiquetas · 2 hojas". Ayuda: "En el diálogo de impresión deja la escala en 100 % y sin encabezados ni pies de página." Si son más de 1.000, se avisa que la hoja trae las primeras.
+
+Debajo, la vista previa: hojas blancas del tamaño real (márgenes de 10 mm), con una cuadrícula de etiquetas separadas por una línea punteada. Cada etiqueta: la **Chapeta** con el código (grande en tarjetas, mediana en etiquetas), el nombre, "Chapeta 087", "DIN …", "Chip 170 000123456789" y, a la derecha, el QR tan grande como cabe. Al imprimir solo salen las hojas: la navegación, el título y los controles se ocultan, y cada hoja va en su página. No se genera PDF (M19).
+
+```
+┌────────────────────┬────────────────────┬────────────────────┐
+│ ┌────┐     ▄▄▄▄▄   │ ┌────┐     ▄▄▄▄▄   │ ┌────┐     ▄▄▄▄▄   │
+│ │087 │     █ ▄ █   │ │140 │     █▀▄ █   │ │201 │     █ ▀▄█   │
+│ └────┘     ▀▀▀▀▀   │ └────┘     ▀▀▀▀▀   │ └────┘     ▀▀▀▀▀   │
+│ Canela             │ Chapeta 140        │ Estrella           │
+│ Chip 170 0001…     │                    │ Chapeta 201        │
+├────────────────────┼────────────────────┼────────────────────┤
+│        …           │         …          │         …          │
+```
 
 ## 6. Componentes del sistema de diseño
 

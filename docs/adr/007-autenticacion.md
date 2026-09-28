@@ -146,6 +146,20 @@ vigente. Estado: aceptadas; se implementan en M4d (decisión 6) y M10a (decision
   usuario o quitarle la membresía revoca todas sus familias; el ADMIN puede revocar las de un
   usuario de su finca (equipo perdido o prestado).
 
+**Implementación (M4d).**
+- La rotación revoca el token anterior y crea el nuevo **en la misma transacción**: una sesión
+  abierta tiene siempre un token sin revocar y sin vencer, y ninguna petición cae en el hueco.
+- El token de acceso lleva la sesión en el claim `sid`. `AccessGuard` comprueba, en paralelo con
+  la membresía, que esa familia siga abierta: cerrar una sesión corta su acceso al instante y no a
+  los 15 minutos. Un token sin `sid` se rechaza y la web lo renueva sola.
+- `AUTH_SESSION_MAX_AGE` solo responde a un token legítimo (existe, no revocado ni reutilizado,
+  usuario activo) cuyo vencimiento era el tope de su familia; lleva `context.login` para escribir el
+  usuario en el formulario. Cualquier otro caso responde el `AUTH_TOKEN_EXPIRED` genérico, sin datos.
+- `last_used_at` se escribe al rotar: el token nuevo copia el valor del anterior si tiene menos de
+  una hora. No agrega consultas por petición.
+- El ADMIN cierra **todas** las sesiones de un usuario, también en sus otras fincas: el equipo
+  perdido es el mismo. Queda auditado (`REVOKE_SESSIONS`), igual que las que cierra el propio usuario.
+
 ### Decisión 7 — Correo saliente y enlaces de un solo uso (AUT-12 a AUT-14)
 
 - El correo sale por una interfaz `Mailer`. En producción, SMTP genérico (el proveedor se

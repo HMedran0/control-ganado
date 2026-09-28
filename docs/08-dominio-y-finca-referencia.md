@@ -188,6 +188,14 @@ Finca pequeña para probar la numeración reutilizable (ANI-10, ANI-11, IDN-06).
 - Un animal vendido con chapeta liberada (`EXITED`) y DIN y RFID que siguen asociados a él (RN-32).
 - Un ADMIN propio con correo, para las pruebas de aislamiento por finca.
 
+### 3.7 Tercera finca de pruebas: Finca La Nueva — [Ficticio] (M4d)
+Finca recién creada para probar la importación del inventario (ANI-09) con la plantilla de referencia, cuyos códigos (087, 012, 26-031…) chocarían con los de La Esperanza. No cambia ninguna cifra de las otras dos fincas.
+- Sin animales. Las mismas razas (con su grupo y gestación) y los mismos lotes que La Esperanza, que son los que usa la plantilla.
+- Un ADMIN propio con correo, `nueva.admin`.
+- Las pruebas de extremo a extremo importan en ella la plantilla una vez (en escritorio): hay que volver a sembrar la base de pruebas antes de repetirlas.
+
+**Decisión de la importación (M4d).** La plantilla de referencia trae a Canela (087, nacida en 2019) con padre 012, un toro nacido en 2020. Un padre más joven que la cría no puede ser ese animal: con numeración reutilizable, lo normal es que sea otro con el mismo número. La importación guarda lo escrito como referencia externa del padre y avisa; la madre sí se exige (ANI-09 CA4).
+
 ### 3.6 Control lechero del seed — [Ficticio] (M9b)
 La finca de referencia (doble propósito) recibe 90 días de control lechero coherente para sus vacas en ordeño y algunos secados. Producción por vaca entre 4 y 10 litros diarios, consistente con UPRA (2024), que reporta 5,69 a 9,88 litros por vaca al día en doble propósito. Las cifras esperadas (vacas en ordeño, secas, secar pronto, producción de ayer y del mes) se agregan a `expected.ts` en M9b.
 

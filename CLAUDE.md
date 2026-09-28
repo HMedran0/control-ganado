@@ -43,7 +43,7 @@ Desde la raíz del monorepo:
 | `pnpm db:generate` | Genera el cliente de Prisma desde el esquema. No se versiona; `build`, `typecheck` y `test` dependen de él. |
 | `pnpm db:migrate` | `prisma migrate dev`: crea y aplica una migración nueva. |
 | `pnpm db:reset` | **Borra y recrea la base**, aplica las migraciones y corre el seed. Solo en desarrollo. |
-| `pnpm db:seed` | Carga la finca de referencia (08 §3): 297 animales, 284 activos, historial 2024–2026. Necesita `SEED_PASSWORD`. Se puede repetir: borra su finca antes de sembrarla. |
+| `pnpm db:seed` | Carga la finca de referencia (08 §3): 297 animales, 284 activos, historial 2024–2026; y las fincas de pruebas El Retiro (numeración reutilizable) y La Nueva (vacía, para importar la plantilla). Necesita `SEED_PASSWORD`. Se puede repetir: borra sus fincas antes de sembrarlas. |
 | `pnpm db:seed:load` | Carga 5.000 animales y 50.000 eventos (más identificadores y nombres) en una finca aparte, para las pruebas de rendimiento (RNF-01). Muestra el tiempo por etapa. |
 | `pnpm --filter @hato/api test:perf` | Pruebas de rendimiento (RNF-01): p95 de búsqueda < 1 s y de listado filtrado < 2 s sobre la finca de carga en `hato_test`. Antes: `DATABASE_URL=$TEST_DATABASE_URL pnpm db:seed:load` (repetirlo después de `pnpm test`, que vacía esa base). En local aplica los umbrales; en CI solo reporta los tiempos en el resumen del job. |
 
@@ -83,6 +83,7 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 - **ADR-008** Web y API en el mismo origen: proxy de `/api` en Vite (desarrollo y `preview`) y Caddy en producción. La cookie del refresco (`SameSite=Strict`) funciona sin CORS. El access token vive solo en memoria; los refrescos se serializan entre pestañas con Web Locks.
 - **ADR-009** Clasificación en SQL: la CTE `classificationCtes` filtra y cuenta categorías, etiquetas y alertas con todos los valores como parámetros y los parámetros de la finca leídos de `settings`; lo que se muestra sale de shared. RN-27 se garantiza con una prueba de equivalencia animal por animal sobre el seed. Las alertas de vacunas siguen en shared (`vaccineStatus`), no en SQL.
 - **ADR-010** «Hoy» de la API: el `Clock` usa la fecha real de America/Bogota; `SEED_TODAY` es solo del seed. `CLOCK_FIXED_TODAY` fija la fecha solo en pruebas y con `NODE_ENV=production` la API no arranca si está definida.
+- **ADR-011** Importación: `.xlsx`/`.csv`, 5 MB, 5.000 filas; tipo real por contenido; lector propio del ZIP que descomprime con límite y reempaqueta sin compresión para `exceljs`; fórmulas por su valor guardado; idempotencia por clave del archivo elegido (única por finca) y candado por finca. Nunca el paquete `xlsx` de npm.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro; con leche (M9b), En ordeño y Seca. Ojo: `DRY` es **Horra**, no «seca»; «Seca» es `DRIED_OFF`. Manuales: Cotero, Disponible para venta.

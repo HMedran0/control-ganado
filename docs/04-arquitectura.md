@@ -117,7 +117,8 @@ Transversales (`common/`):
 
 - Login → `accessToken` (JWT, 15 min, en memoria del cliente) + `refreshToken` (opaco, aleatorio, guardado como hash). Web: refresh token en cookie `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`. Móvil: en almacenamiento seguro del sistema.
 - Rotación: cada refresh emite uno nuevo y revoca el anterior; si se reutiliza uno revocado, se revoca toda la familia (posible robo).
-- Sesión deslizante (M4d, ADR-007 decisión 6): cada rotación extiende el vencimiento a `REFRESH_TTL_DAYS` desde ese momento, hasta un tope de `REFRESH_MAX_AGE_DAYS` desde el inicio de la familia. Cada familia es una sesión que el usuario ve y puede cerrar en Mi cuenta; el ADMIN puede cerrar las de un usuario de su finca.
+- Sesión deslizante (M4d, ADR-007 decisión 6): cada rotación extiende el vencimiento a `REFRESH_TTL_DAYS` desde ese momento, hasta un tope de `REFRESH_MAX_AGE_DAYS` desde el inicio de la familia. Cada familia es una sesión que el usuario ve y puede cerrar en Mi cuenta; el ADMIN puede cerrar las de un usuario de su finca (todas, en todas sus fincas). La rotación revoca y emite en una transacción, y el token de acceso lleva la sesión (`sid`): `AccessGuard` comprueba en cada petición, en paralelo con la membresía, que siga abierta, así que cerrar una sesión corta su acceso de inmediato.
+- Archivos subidos (M4d, ADR-011): solo la importación del inventario recibe archivos, por `@fastify/multipart` con un archivo de hasta 5 MB y pocos campos cortos, en memoria (nada va a disco). El tipo se comprueba por el contenido; un lector propio del ZIP descomprime cada entrada con un límite real antes de que `exceljs` vea nada, y las fórmulas nunca se evalúan. Todo archivo que genera la API escapa el texto que una hoja de cálculo ejecutaría como fórmula.
 - Correo (M10a, ADR-007 decisión 7): interfaz `Mailer` con SMTP en producción, Mailpit en desarrollo y un `Mailer` en memoria en pruebas. Los enlaces de invitación, verificación y recuperación llevan el token en el fragmento de la URL, nunca en la query string; la página lo borra con `history.replaceState` y lo envía en el cuerpo. Esas páginas van con `Referrer-Policy: no-referrer`.
 - Google (M10a, ADR-007 decisión 8): OpenID Connect con código de autorización y PKCE del lado del servidor; `state`, `nonce` y `code_verifier` guardados en el servidor con vencimiento corto; no crea cuentas ni fincas.
 - Contraseñas: Argon2id. Política mínima: 8 caracteres.
@@ -148,7 +149,7 @@ Transversales (`common/`):
 
 ## 7. Reportes y exportación
 - Consultas agregadas en SQL (vistas o `$queryRaw` tipado) dentro del módulo `reports`.
-- Excel con `exceljs` en streaming para listados grandes. PDF de ficha individual (S) con plantilla HTML renderizada en el servidor (evaluar `@react-pdf/renderer` o Playwright; decidir con ADR).
+- Excel con `exceljs` (M4d): la exportación del listado arma el libro en memoria, hasta 50.000 filas, con fechas y números reales y el texto escapado contra la inyección de fórmulas; si un reporte llega a pasar ese tamaño, se cambia a su escritor en streaming. La importación usa el mismo paquete para leer (ADR-011). PDF de ficha individual (S) con plantilla HTML renderizada en el servidor (evaluar `@react-pdf/renderer` o Playwright; decidir con ADR).
 - Los números del tablero y los reportes salen de las mismas funciones de consulta.
 
 ## 8. Copias de seguridad (BAK-01)

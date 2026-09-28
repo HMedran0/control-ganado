@@ -186,14 +186,15 @@ Entrar con usuario y contraseña cada vez que se quiere consultar algo desanima 
 
 **AUT-10 — Sesión deslizante** · M · F1 (M4d)
 - CA1: Cada renovación del token de actualización extiende su vencimiento a 30 días desde ese momento (`REFRESH_TTL_DAYS`). Quien abre la app al menos una vez al mes no vuelve a escribir la contraseña en ese equipo.
-- CA2: Tope absoluto por familia de sesión de `REFRESH_MAX_AGE_DAYS` (por defecto 180 días [Validar]); al cumplirse, se pide la contraseña una vez y empieza una familia nueva.
+- CA2: Tope absoluto por familia de sesión de `REFRESH_MAX_AGE_DAYS` (por defecto 180 días [Validar]); al cumplirse, se pide la contraseña una vez y empieza una familia nueva. Solo un token legítimo que venció por el tope responde `AUTH_SESSION_MAX_AGE` con el usuario (para escribirlo ya en el formulario); un token revocado, reutilizado, desconocido o vencido por falta de uso responde el error genérico, sin datos del usuario (M4d).
 - CA3: Cambiar la contraseña, desactivar al usuario o quitarle la membresía revoca todas sus sesiones (lo último ya lo cubre AccessGuard; se agrega la revocación explícita).
 - CA4: Se mantiene todo lo de ADR-007: rotación en cada uso, revocación de la familia si se reutiliza un token rotado, cookie HttpOnly/Secure/SameSite=Strict, token de acceso de 15 minutos solo en memoria.
 
 **AUT-11 — Sesiones activas** · M · F1 (M4d)
 - CA1: En Mi cuenta → Sesiones: lista de equipos con sesión abierta (navegador y sistema resumidos del `userAgent`, fecha de inicio, último uso), marcando "Este equipo".
 - CA2: "Cerrar sesión en este equipo" para cada fila y "Cerrar las demás sesiones".
-- CA3: El ADMIN puede cerrar todas las sesiones de un usuario de su finca desde Usuarios (equipo perdido o prestado).
+- CA3: El ADMIN puede cerrar todas las sesiones de un usuario de su finca desde Usuarios (equipo perdido o prestado). Se cierran **todas**, también las que ese usuario tenga abiertas en otras fincas, y queda en la auditoría con cuántas se cerraron. Un usuario de otra finca no existe para ese ADMIN (404).
+- CA5 (M4d): Cerrar una sesión corta su acceso **de inmediato**: el token de acceso lleva la sesión (`sid`) y cada petición comprueba que siga abierta, sin esperar los 15 minutos del token.
 - CA4: El último uso se actualiza como máximo una vez por hora por sesión para no escribir en cada petición.
 
 **AUT-12 — Correo saliente** · M · F1 (M10a)
@@ -257,7 +258,7 @@ Tipos: venta, muerte, sacrificio, robo, traslado a otra finca, otro.
 - CA5: Se puede revertir una salida registrada por error (solo ADMIN, queda en auditoría). Si mientras tanto su código lo tomó otro animal activo (numeración reutilizable), hay que asignarle un código nuevo; si solo su chapeta la tiene otro animal, la reversión se hace y esa chapeta queda retirada con un aviso (IDN-06 CA3).
 
 **ANI-05 — Búsqueda rápida** · M · F1
-Un único campo de búsqueda, disponible en toda la aplicación, que acepta: código interno, nombre, número de chapeta visual, DIN, RFID o contenido de un QR del sistema.
+Un único campo de búsqueda, disponible en toda la aplicación, que acepta: código interno, nombre, número de chapeta visual, DIN, RFID o contenido de un QR del sistema (la URL `…/a/<id>`, que abre la ficha si el animal es de la finca; M4d).
 - CA1: La búsqueda por coincidencia exacta de cualquier identificador abre directamente la ficha.
 - CA2: La búsqueda parcial muestra resultados en menos de 1 segundo con 5.000 animales.
 - CA3: Un lector RFID en modo teclado que "escribe" 15 dígitos seguidos de Enter abre la ficha del animal (o ofrece asociar el código si no existe).
@@ -267,7 +268,7 @@ Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada
 - CA1: Los filtros se reflejan en la URL (se pueden compartir y volver a abrir).
 - CA2: El listado muestra: chapeta con código, nombre, sexo, raza, edad legible ("2 a 4 m"), etiquetas, último peso y alertas.
 - CA3: Paginación por cursor; ordenable por código, edad y último peso.
-- CA4: Exportable a Excel con los filtros aplicados.
+- CA4: Exportable a Excel con los filtros aplicados (M4d): lo mismo que muestra el listado, sin paginar; fechas como fechas de Excel y números como números; encabezados en español con la fila fija; el valor de compra solo para ADMIN (RN-20); los textos que empiezan por `=`, `+`, `-`, `@`, tabulador o retorno se escapan para que la hoja no los ejecute como fórmulas. Todos los roles exportan.
 
 **ANI-07 — Ficha del animal (historial individual)** · M · F1
 - CA1: Encabezado: código, nombre, identificadores, sexo, raza, edad calculada, etiquetas de clasificación, lote, alertas activas.
@@ -282,13 +283,13 @@ Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada
 **ANI-09 — Importar inventario desde Excel/CSV** · M · F1
 Carga inicial (y actualizaciones posteriores) del hato desde una hoja de cálculo. Referente real: módulos de importación de Progan y paso de datos desde Excel de Control Ganadero.
 - CA1: El sistema ofrece una **plantilla descargable** (`.xlsx`) con una hoja de instrucciones, una hoja de datos y listas válidas (sexo, raza, lote, procedencia). Referencia: `docs/referencia/plantilla-importacion.xlsx`.
-- CA2: Columnas: código (obligatorio), nombre, sexo (obligatorio), raza (obligatoria, debe existir en el catálogo o crearse al confirmar), fecha de nacimiento (obligatoria; acepta `dd/mm/aaaa`), fecha aproximada (sí/no), procedencia, código de la madre, código o referencia del padre, lote, chapeta visual, DIN, RFID, número de partos previos, fecha del último parto, preñada (sí/no), fecha de servicio, último peso (kg), fecha del último peso, observaciones.
+- CA2: Columnas: código (obligatorio), nombre, sexo (obligatorio), raza (obligatoria, debe existir en el catálogo o crearse al confirmar con «Crear las razas que no existen», en el grupo Cruce con su gestación por defecto), fecha de nacimiento (obligatoria; acepta `dd/mm/aaaa`), fecha aproximada (sí/no), procedencia, **fecha de ingreso** (opcional, M4d), código de la madre, código o referencia del padre, lote, chapeta visual, DIN, RFID, número de partos previos, fecha del último parto, preñada (sí/no), fecha de servicio, último peso (kg), fecha del último peso, observaciones. Las columnas se reconocen por su nombre, en cualquier orden. Fechas y decimales en formato es-CO («452,5»). Un comprado sin fecha de ingreso toma la de nacimiento, marcada como estimada, con la advertencia «Se tomó la fecha de nacimiento como fecha de ingreso; corrígela en la ficha si la conoces»; la ficha la muestra como estimada hasta que alguien la corrige (no se usa hoy: lo dejaría fuera de los ciclos pasados, ADR-004, y ocultaría vacunas pendientes).
 - CA3: **Simulación primero:** el archivo se valida sin guardar y se muestra un resumen: filas válidas, filas con advertencias y filas con errores, con el número de fila, la columna y el mensaje (por ejemplo, "Fila 14: la madre 087 es macho").
-- CA4: Validaciones: todas las del registro individual (ANI-01, IDN-01) más: códigos duplicados dentro del archivo, madre que debe ser hembra y existir en el archivo o en la finca (se resuelve en dos pasadas), fechas no futuras, madre mayor que la cría, RFID de 15 dígitos, preñada solo si es hembra.
-- CA5: Al confirmar, se importan solo las filas válidas en una transacción por lote; las filas con error se descargan en un Excel con una columna "Error" para corregirlas y volver a importar.
-- CA6: "Número de partos previos" y "fecha del último parto" crean preñeces históricas cerradas (`CALVED`, marcadas como importadas) para que la clasificación (Vaca, Parida, Horra) sea correcta sin inventar crías. "Preñada = sí" crea una preñez abierta confirmada con la fecha de servicio indicada o estimada.
-- CA7: Máximo 5.000 filas por archivo. Solo ADMIN.
-- CA8: Queda registrado como lote de importación (archivo, usuario, fecha, filas creadas) en auditoría.
+- CA4: Validaciones: todas las del registro individual (ANI-01, IDN-01), con las mismas funciones (código con `assertCodeAvailable`, identificadores con `checkIdentifier`), más: códigos duplicados dentro del archivo (normalizados, RN-30) e identificadores duplicados dentro del archivo, madre que debe ser hembra y existir en el archivo o en la finca (se resuelve en dos pasadas; si la madre del archivo tiene errores, la cría tampoco entra), fechas no futuras, madre mayor que la cría, RFID de 15 dígitos, preñada solo si es hembra y con fecha de servicio («Indica la fecha de servicio»). Un padre del archivo o de la finca que nació después que la cría no puede serlo: lo escrito se guarda como referencia externa, con advertencia (M4d; la plantilla de referencia lo trae en la fila 2).
+- CA5: Al confirmar, se importan las filas válidas elegidas (las que tienen advertencias se pueden desmarcar) en **una** transacción: entran todas o ninguna. Las filas con error se descargan en un Excel con una columna "Error" para corregirlas y volver a importar. Un doble clic o un reintento no importa dos veces: la confirmación lleva una clave que la web genera al elegir el archivo (ADR-011). Si al confirmar el resultado ya no es el de la simulación, no se importa nada.
+- CA6: "Número de partos previos" y "fecha del último parto" dejan la clasificación (Vaca, Parida, Horra) correcta sin inventar crías ni fechas (RN-29): el último parto se importa como preñez cerrada `CALVED` con su fecha real, marcada como importada y con la fecha de servicio estimada (el parto menos la gestación de la raza); los anteriores quedan como un número en el animal (`imported_prior_calvings`). Número de partos = partos anteriores importados + partos registrados. "Preñada = sí" crea una preñez abierta confirmada con la fecha de servicio indicada (obligatoria).
+- CA7: Máximo 5.000 filas y 5 MB por archivo, solo `.xlsx` o `.csv` (UTF-8 o Windows-1252); los libros con macros (`.xlsm`) se rechazan. Se comprueba el tipo real del archivo, no solo la extensión, y de las fórmulas se lee el valor guardado, nunca se evalúan (ADR-011). Solo ADMIN. 5.000 filas válidas se confirman en menos de 60 s.
+- CA8: Queda registrado como lote de importación (archivo, usuario, fecha, filas creadas) en auditoría: una entrada `IMPORT` por lote y cada animal como creado por la importación, con su fila. La simulación avisa si el mismo archivo (por su huella SHA-256) ya se importó.
 
 **ANI-10 — Modo de numeración de la finca** · M · F1 (M4c)
 Muchas fincas numeran sus animales 1, 2, 3… y le dan el número de un animal vendido a uno nuevo (09 §2). La finca elige en Configuración:
@@ -318,8 +319,8 @@ Tipos: `VISUAL_TAG`, `DIN`, `RFID`, `QR`, `BRAND` (hierro/marca), `OTHER`.
 - CA2: El identificador anterior queda inactivo pero visible en el historial y sigue siendo buscable (la búsqueda indica "identificador anterior").
 
 **IDN-03 — QR del sistema** · S · F1
-- CA1: Cada animal tiene un QR que codifica una URL `https://<dominio>/a/<uuid>` que abre su ficha tras iniciar sesión.
-- CA2: El ADMIN puede imprimir etiquetas QR en lote (hoja A4 con cuadrícula configurable, mostrando código y QR) para tarjetas de manejo o fichas de potrero.
+- CA1: Cada animal tiene un QR que codifica una URL `${PUBLIC_WEB_URL}/a/<uuid>` que abre su ficha tras iniciar sesión. La ficha lo muestra a todos los roles.
+- CA2: El ADMIN puede imprimir etiquetas QR en lote para tarjetas de manejo o fichas de potrero: desde el listado (todo lo filtrado o una selección) o desde la ficha. Hoja carta o A4, en tarjetas 2 × 4 o etiquetas 3 × 7, con el código grande en la tipografía de la Chapeta, el QR y los identificadores principales. Se imprime desde el navegador; el PDF queda para M19.
 - CA3: El QR no expone datos del animal sin autenticación.
 
 **IDN-04 — Lectura RFID por Bluetooth** · S · F2 (M15)
@@ -627,7 +628,7 @@ Las fincas de lechería y doble propósito necesitan llevar la producción de le
 | RN-26 | Una vacuna con `blockIneligibleSex = true` no puede registrarse en animales del sexo no elegible (brucelosis en machos, norma ICA). La elegibilidad por edad solo genera advertencia. |
 | RN-27 | La categoría de manejo y las etiquetas se calculan con las mismas funciones de `packages/shared/src/domain` en tablero, listados, reportes e importación. |
 | RN-28 | Los códigos sugeridos con `calfCodePattern` nunca reutilizan un código existente (activo o archivado) de la finca. Con `codeSuggestion = LOWEST_FREE` (ANI-10 CA2), se sugiere el menor número libre del conjunto donde se exige la unicidad (activos o no archivados, según `codeReuse`). |
-| RN-29 | La importación nunca crea crías a partir de "número de partos previos": crea preñeces históricas cerradas marcadas como importadas. |
+| RN-29 | La importación nunca crea crías ni inventa fechas a partir de "número de partos previos": el último parto (con fecha) se importa como preñez cerrada marcada como importada, con la fecha de servicio estimada; los anteriores quedan como un número en el animal (`imported_prior_calvings`). El número de partos es la suma de los dos. |
 | RN-30 | La unicidad del código compara el código normalizado: sin espacios al inicio ni al final, en mayúsculas y, si es solo numérico, sin ceros a la izquierda ("5", "05" y "005" son el mismo código). Aplica en todas las fincas. |
 | RN-31 | La base garantiza la unicidad entre animales activos con un índice único parcial. La regla más estricta de las fincas con `codeReuse = false` (únicos entre todos los no archivados) se verifica en la aplicación dentro de la transacción. |
 | RN-32 | DIN y RFID son identificadores de por vida: nunca se reasignan a otro animal, sin importar el modo de numeración. Solo `VISUAL_TAG`, `BRAND` y `OTHER` pueden liberarse. Única excepción: archivar un animal (ANI-03 CA4) retira todos sus identificadores, DIN y RFID incluidos, con motivo `ARCHIVED`; reasignar uno de ellos a otro animal sigue exigiendo la confirmación del ADMIN (RN-19). |
@@ -636,6 +637,7 @@ Las fincas de lechería y doble propósito necesitan llevar la producción de le
 | RN-35 | `MilkRecord.recorded_on` debe estar dentro de una lactancia abierta de la vaca; nunca en el futuro (RN-14). |
 | RN-36 | Solo puede haber un registro de leche por vaca, fecha y ordeño; un segundo registro del mismo ordeño reemplaza al anterior (se anula el anterior con motivo). |
 | RN-37 | Registrar un nuevo parto en una vaca en ordeño cierra implícitamente la lactancia anterior (sin secado registrado) y abre una nueva; la ficha lo muestra como "Lactancia cerrada por nuevo parto". |
+| RN-38 | Los indicadores reproductivos (M8), como el intervalo entre partos y el de parto a concepción, solo usan preñeces con fecha de servicio real: las de fecha de servicio estimada (`service_date_estimated`, como el último parto importado, RN-29) y los partos anteriores importados sin fecha no entran en el cálculo. |
 
 ---
 
