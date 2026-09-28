@@ -13,6 +13,7 @@ import { buildHistory, type History } from './history.js';
 import { createIdFactory } from './ids.js';
 import { hashSeedPassword } from './password.js';
 import { createRandom, REFERENCE_FARM_SEED } from './random.js';
+import { buildRetiroSeed, writeRetiroSeed, type RetiroSeed } from './retiro.js';
 import { verifyHerd } from './verify.js';
 import { resetFarmData, writeSeed } from './write.js';
 
@@ -43,7 +44,8 @@ export function buildReferenceSeed(today: IsoDate): ReferenceSeed {
 }
 
 /**
- * Escribe la finca de referencia, borrando antes lo que hubiera de ella.
+ * Escribe la finca de referencia y la segunda finca de pruebas, El Retiro (08 §3.5), borrando
+ * antes lo que hubiera de ellas.
  *
  * El hash de la contraseña se calcula con el generador ya consumido por la construcción,
  * para que la sal siga siendo determinista y distinta de los identificadores.
@@ -53,7 +55,11 @@ export function buildReferenceSeed(today: IsoDate): ReferenceSeed {
 export async function runReferenceSeed(
   prisma: SeedClient,
   options: { readonly password: string; readonly today: IsoDate },
-): Promise<{ readonly seed: ReferenceSeed; readonly counts: Record<string, number> }> {
+): Promise<{
+  readonly seed: ReferenceSeed;
+  readonly retiro: RetiroSeed;
+  readonly counts: Record<string, number>;
+}> {
   const seed = buildReferenceSeed(options.today);
   if (seed.problems.length > 0) {
     throw new Error(
@@ -72,5 +78,10 @@ export async function runReferenceSeed(
     today: options.today,
   });
 
-  return { seed, counts };
+  // Después de la de referencia: `createIdFactory` reinicia el estado de `uuidv7`, y así los
+  // identificadores de La Esperanza no cambian por existir El Retiro.
+  const retiro = buildRetiroSeed(options.today);
+  const retiroCounts = await writeRetiroSeed(prisma, retiro, options.password, options.today);
+
+  return { seed, retiro, counts: { ...counts, ...retiroCounts } };
 }

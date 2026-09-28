@@ -10,11 +10,13 @@ import {
   EXPECTED_INVENTORY,
   EXPECTED_LOTS,
   EXPECTED_REPRODUCTION,
+  EXPECTED_RETIRO,
   EXPECTED_VACCINES_AT_SECOND_DATE,
   EXPECTED_VACCINES_TODAY,
   SECOND_EVALUATION,
   type VaccineTally,
 } from '../prisma/seed/expected.js';
+import { RETIRO } from '../prisma/seed/retiro.js';
 import { runReferenceSeed } from '../prisma/seed/run.js';
 import { resetFarmData } from '../prisma/seed/write.js';
 import { Prisma } from '../src/generated/prisma/client.js';
@@ -48,6 +50,7 @@ function monthsBetween(from: string, to: string): Prisma.Sql {
 describe('seed de la finca de referencia', () => {
   let prisma: SeedClient;
   let farmId: string;
+  let retiroId: string;
 
   const count = async (where: Prisma.Sql): Promise<number> => {
     const rows = await prisma.$queryRaw<{ total: bigint }[]>(
@@ -60,12 +63,17 @@ describe('seed de la finca de referencia', () => {
 
   beforeAll(async () => {
     prisma = createSeedClient(testDatabaseUrl());
-    const { seed } = await runReferenceSeed(prisma, { password: PASSWORD, today: SEED_TODAY });
+    const { seed, retiro } = await runReferenceSeed(prisma, {
+      password: PASSWORD,
+      today: SEED_TODAY,
+    });
     farmId = seed.catalog.farmId;
+    retiroId = retiro.farmId;
   }, 120_000);
 
   afterAll(async () => {
     if (farmId !== undefined) await resetFarmData(prisma, farmId);
+    if (retiroId !== undefined) await resetFarmData(prisma, retiroId, [RETIRO.admin.username]);
     await prisma.$disconnect();
   });
 
@@ -529,6 +537,73 @@ describe('seed de la finca de referencia', () => {
           AND (m.sex = 'MALE' OR s.sex = 'FEMALE')
         LIMIT 5`);
       expect(rows).toEqual([]);
+    });
+  });
+
+  describe('Finca El Retiro (08 §3.5)', () => {
+    const retiroCount = async (where: Prisma.Sql): Promise<number> => {
+      const rows = await prisma.$queryRaw<{ total: bigint }[]>(
+        Prisma.sql`SELECT count(*)::bigint AS total FROM animals a WHERE a.farm_id = ${retiroId}::uuid AND ${where}`,
+      );
+      return Number(rows[0]?.total ?? -1n);
+    };
+
+    it('reutiliza números y sugiere el menor libre, con su propio ADMIN con correo', async () => {
+      const farm = await prisma.farm.findUniqueOrThrow({ where: { id: retiroId } });
+      expect(farm.settings).toMatchObject({ codeReuse: true, codeSuggestion: 'LOWEST_FREE' });
+      const members = await prisma.membership.findMany({
+        where: { farmId: retiroId },
+        include: { user: true },
+      });
+      expect(members).toHaveLength(EXPECTED_RETIRO.users);
+      expect(members[0]).toMatchObject({
+        role: 'ADMIN',
+        user: { username: RETIRO.admin.username, email: RETIRO.admin.email },
+      });
+    });
+
+    it('tiene sus animales activos y los que salieron', async () => {
+      expect(await retiroCount(Prisma.sql`true`)).toBe(EXPECTED_RETIRO.total);
+      expect(await retiroCount(active)).toBe(EXPECTED_RETIRO.active);
+      expect(await retiroCount(Prisma.sql`a.exit_type IS NOT NULL`)).toBe(EXPECTED_RETIRO.exited);
+    });
+
+    it('comparte los números 5 y 12 entre un activo y uno que salió (RN-33)', async () => {
+      const rows = await prisma.$queryRaw<{ code: string }[]>(Prisma.sql`
+        SELECT hato_normalize_code(a.code) AS code FROM animals a
+        WHERE a.farm_id = ${retiroId}::uuid AND a.deleted_at IS NULL
+        GROUP BY hato_normalize_code(a.code)
+        HAVING count(*) FILTER (WHERE a.exit_type IS NULL) = 1
+           AND count(*) FILTER (WHERE a.exit_type IS NOT NULL) >= 1
+        ORDER BY 1`);
+      expect(rows.map((row) => row.code)).toEqual([...EXPECTED_RETIRO.reusedCodes]);
+    });
+
+    it('el menor número libre entre los activos es el 17 (ANI-10 CA2)', async () => {
+      const [row] = await prisma.$queryRaw<{ code: string }[]>(Prisma.sql`
+        SELECT min(n)::text AS code FROM generate_series(1, 100) AS n
+        WHERE NOT EXISTS (
+          SELECT 1 FROM animals a
+          WHERE a.farm_id = ${retiroId}::uuid AND a.deleted_at IS NULL AND a.exit_type IS NULL
+            AND hato_normalize_code(a.code) = n::text)`);
+      expect(row?.code).toBe(EXPECTED_RETIRO.nextCode);
+    });
+
+    it('el 5 vendido liberó su chapeta y conserva DIN y RFID (IDN-06, RN-32)', async () => {
+      const released = await prisma.identifier.count({
+        where: { farmId: retiroId, type: 'VISUAL_TAG', retireReason: 'EXITED' },
+      });
+      expect(released).toBe(EXPECTED_RETIRO.releasedTags);
+      const [sold] = await prisma.$queryRaw<{ lifelong: string[]; sales: bigint }[]>(Prisma.sql`
+        SELECT array_agg(i.type::text ORDER BY i.type::text)
+                 FILTER (WHERE i.retired_at IS NULL) AS lifelong,
+               (SELECT count(*) FROM sales s WHERE s.animal_id = a.id AND s.voided_at IS NULL)
+                 AS sales
+        FROM animals a JOIN identifiers i ON i.animal_id = a.id
+        WHERE a.farm_id = ${retiroId}::uuid AND a.code = '5' AND a.exit_type = 'SALE'
+        GROUP BY a.id`);
+      expect(sold?.lifelong).toEqual([...EXPECTED_RETIRO.lifelongOnSold]);
+      expect(Number(sold?.sales)).toBe(1);
     });
   });
 

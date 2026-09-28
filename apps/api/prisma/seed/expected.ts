@@ -187,3 +187,24 @@ export const EXPECTED_LOTS = {
   /** Cuatro toros y dos bueyes coteros. */
   Toros: 6,
 } as const;
+
+/**
+ * Finca El Retiro (08 §3.5, M4c): numeración reutilizable. Decisiones del seed, porque 08 solo
+ * pide «numeración 1–40» y «al menos dos números reutilizados»: 38 activos (del 1 al 40 sin el
+ * 17 ni el 33), tres salidas (el 5 y el 17 vendidos, el 12 muerto), y los números 5 y 12
+ * repetidos entre un activo y uno que salió.
+ */
+export const EXPECTED_RETIRO = {
+  total: 41,
+  active: 38,
+  exited: 3,
+  /** Números normalizados que comparten un activo y uno que salió (RN-33). */
+  reusedCodes: ['12', '5'],
+  /** Menor número libre entre los activos (ANI-10 CA2). */
+  nextCode: '17',
+  /** Chapetas liberadas al salir (`EXITED`): las de los tres que salieron. */
+  releasedTags: 3,
+  /** DIN y RFID que siguen activos en el 5 vendido (RN-32). */
+  lifelongOnSold: ['DIN', 'RFID'],
+  users: 1,
+} as const;

@@ -41,6 +41,7 @@ async function main(): Promise<void> {
       write(`  ${String(count).padStart(6)} ${what}`);
     }
     write(`  Usuarios: ${seed.catalog.users.map(({ user }) => user.username).join(', ')}.`);
+    write('  Finca El Retiro (numeración reutilizable, 08 §3.5): usuario retiro.admin.');
     write('  Contraseña: la de SEED_PASSWORD.');
   } finally {
     await prisma.$disconnect();
