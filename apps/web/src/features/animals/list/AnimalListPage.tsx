@@ -1,6 +1,6 @@
 import type { AnimalListItem, AnimalSort } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { Plus, SlidersHorizontal, Tags, X } from 'lucide-react';
+import { Download, Plus, SlidersHorizontal, Tags, X } from 'lucide-react';
 import { Fragment, useMemo, useState } from 'react';
 
 import { PageHeader } from '../../../components/layout/PageHeader';
@@ -13,7 +13,7 @@ import { isApiError } from '../../../lib/api/errors';
 import { useRequiredSession } from '../../../lib/auth/context';
 import { useToday } from '../../../lib/clock';
 import { useCatalog } from '../../settings/api';
-import { useAnimalList } from '../api';
+import { useAnimalList, useExportAnimals } from '../api';
 import { apiQuery, filterChips, hasFilters, type AnimalListFilters } from '../filters';
 import { animalsCount } from '../labels';
 import { AnimalSearchBar } from '../search/AnimalSearchBar';
@@ -70,6 +70,7 @@ export function AnimalListPage({
   const today = useToday();
   const query = apiQuery(filters);
   const list = useAnimalList(query);
+  const exportList = useExportAnimals();
   const lots = useCatalog('lots', true);
   const breeds = useCatalog('breeds', true);
   const tags = useCatalog('tags', true);
@@ -220,14 +221,35 @@ export function AnimalListPage({
             {chips.length === 0 ? 'Filtrar' : '+ Filtro'}
           </Button>
         </div>
-        <Link
-          to="/animals/new"
-          className="inline-flex min-h-touch-primary items-center gap-2 rounded-control bg-potrero px-5 font-bold text-white hover:bg-monte"
-        >
-          <Plus aria-hidden="true" className="size-5" />
-          Nuevo animal
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            disabled={exportList.isPending}
+            onClick={() => {
+              exportList.mutate(query);
+            }}
+          >
+            <Download aria-hidden="true" className="size-5" />
+            {exportList.isPending ? 'Preparando…' : 'Excel'}
+          </Button>
+          <Link
+            to="/animals/new"
+            className="inline-flex min-h-touch-primary items-center gap-2 rounded-control bg-potrero px-5 font-bold text-white hover:bg-monte"
+          >
+            <Plus aria-hidden="true" className="size-5" />
+            Nuevo animal
+          </Link>
+        </div>
       </div>
+      <FormError
+        message={
+          exportList.error === null
+            ? null
+            : isApiError(exportList.error)
+              ? exportList.error.detail
+              : 'No pudimos preparar el archivo.'
+        }
+      />
 
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <p aria-live="polite" className="font-bold">

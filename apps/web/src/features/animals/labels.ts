@@ -1,35 +1,45 @@
 import type {
-  AnimalAlert,
   AnimalStatus,
   DerivedTag,
   IdentifierRetireReason,
   IdentifierType,
   ManagementCategory,
-  Origin,
   Sex,
   WeightMethod,
 } from '@hato/shared';
 
+import {
+  ALERT_LABEL,
+  CATEGORY_LABEL,
+  DERIVED_TAG_LABEL,
+  IDENTIFIER_TYPE_LABEL,
+  ORIGIN_LABEL,
+  SEX_LABEL,
+  STATUS_LABEL,
+} from '@hato/shared';
+
 import type { TagTone } from '../../components/ui/Tag';
+
+// Los textos de los valores del dominio viven en shared: la exportación a Excel de la API dice
+// lo mismo que la pantalla.
+export {
+  ALERT_LABEL,
+  CATEGORY_LABEL,
+  DERIVED_TAG_LABEL,
+  IDENTIFIER_TYPE_LABEL,
+  ORIGIN_LABEL,
+  SEX_LABEL,
+  STATUS_LABEL,
+};
 
 /**
  * Textos de la interfaz de animales, con el vocabulario del ganadero (06 §7 y glosario del
  * SRS §1.4). El código y la API hablan en inglés; la pantalla, en español de Colombia.
  */
 
-export const SEX_LABEL: Readonly<Record<Sex, string>> = { FEMALE: 'Hembra', MALE: 'Macho' };
 export const SEX_FILTER_LABEL: Readonly<Record<Sex, string>> = {
   FEMALE: 'Hembras',
   MALE: 'Machos',
-};
-
-export const CATEGORY_LABEL: Readonly<Record<ManagementCategory, string>> = {
-  CALF_MALE: 'Ternero',
-  CALF_FEMALE: 'Ternera',
-  HEIFER: 'Novilla',
-  COW: 'Vaca',
-  YOUNG_MALE: 'Levante',
-  ADULT_MALE: 'Toro',
 };
 
 /** En plural, para los filtros («Vacas», «Terneras»). */
@@ -40,14 +50,6 @@ export const CATEGORY_FILTER_LABEL: Readonly<Record<ManagementCategory, string>>
   COW: 'Vacas',
   YOUNG_MALE: 'Levante',
   ADULT_MALE: 'Toros',
-};
-
-export const DERIVED_TAG_LABEL: Readonly<Record<DerivedTag, string>> = {
-  SERVED: 'Servida',
-  PREGNANT: 'Preñada',
-  CALVED: 'Parida',
-  DRY: 'Horra',
-  WITHDRAWAL: 'En retiro',
 };
 
 export const DERIVED_TAG_FILTER_LABEL: Readonly<Record<DerivedTag, string>> = {
@@ -65,35 +67,6 @@ export const DERIVED_TAG_TONE: Readonly<Record<DerivedTag, TagTone>> = {
   CALVED: 'potrero',
   DRY: 'neutro',
   WITHDRAWAL: 'aviso',
-};
-
-export const ALERT_LABEL: Readonly<Record<AnimalAlert, string>> = {
-  vaccine_overdue: 'Vacuna vencida',
-  vaccine_due: 'Vacuna pendiente',
-  calving_soon: 'Parto próximo',
-  withdrawal: 'En retiro',
-  unconfirmed_service: 'Servida sin diagnóstico',
-};
-
-export const STATUS_LABEL: Readonly<Record<AnimalStatus, string>> = {
-  ACTIVE: 'Activo',
-  SOLD: 'Vendido',
-  RETIRED: 'Retirado',
-  ARCHIVED: 'Archivado',
-};
-
-export const ORIGIN_LABEL: Readonly<Record<Origin, string>> = {
-  BORN_ON_FARM: 'Nació en la finca',
-  PURCHASED: 'Comprado',
-};
-
-export const IDENTIFIER_TYPE_LABEL: Readonly<Record<IdentifierType, string>> = {
-  VISUAL_TAG: 'Chapeta',
-  DIN: 'DIN',
-  RFID: 'Chip',
-  QR: 'QR',
-  BRAND: 'Hierro',
-  OTHER: 'Otro',
 };
 
 export const RETIRE_REASON_LABEL: Readonly<Record<IdentifierRetireReason, string>> = {

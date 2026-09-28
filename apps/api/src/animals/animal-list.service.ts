@@ -102,6 +102,9 @@ const SQL_ALERT_COLUMN: Readonly<Partial<Record<AnimalAlert, Prisma.Sql>>> = {
   [ANIMAL_ALERT.UNCONFIRMED_SERVICE]: Prisma.sql`c.unconfirmed_service`,
 };
 
+/** Tope de filas de la exportación: más que cualquier hato real, menos que un abuso. */
+export const EXPORT_MAX_ROWS = 50_000;
+
 /** Escapa los comodines de `ILIKE` para buscar el texto tal cual. */
 function likePattern(text: string): string {
   return `%${text.replace(/[\\%_]/g, (character) => `\\${character}`)}%`;
@@ -123,13 +126,23 @@ export class AnimalListService {
     private readonly vaccineStatus: VaccineStatusService,
   ) {}
 
-  async list(scope: FarmScope, query: ListAnimalsQuery): Promise<AnimalList> {
+  /**
+   * `unpaginated`: todas las filas con los filtros, sin cursor (exportación a Excel, ANI-06
+   * CA4), hasta `EXPORT_MAX_ROWS`.
+   */
+  async list(
+    scope: FarmScope,
+    query: ListAnimalsQuery,
+    options: { unpaginated?: boolean } = {},
+  ): Promise<AnimalList> {
     if (query.status === ANIMAL_LIST_STATUS.ARCHIVED && scope.role !== ROLE.ADMIN) {
       throw new DomainError('FORBIDDEN_ROLE', {
         detail: 'Solo un administrador puede ver los animales archivados.',
       });
     }
-    const pagination = parsePagination(query);
+    const pagination = options.unpaginated
+      ? { limit: EXPORT_MAX_ROWS, cursor: null }
+      : parsePagination(query);
     const context = await this.farmContext.load(scope);
 
     const wantsVaccineAlerts = (query.alerts ?? []).some(

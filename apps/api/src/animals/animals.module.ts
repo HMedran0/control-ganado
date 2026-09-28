@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 
 import { AnimalDetailService } from './animal-detail.service.js';
+import { AnimalExportService } from './animal-export.service.js';
 import { AnimalLifecycleService } from './animal-lifecycle.service.js';
 import { AnimalListService } from './animal-list.service.js';
 import { AnimalSearchService } from './animal-search.service.js';
@@ -20,6 +21,7 @@ import { VaccineStatusService } from './vaccine-status.service.js';
     FarmContextService,
     VaccineStatusService,
     AnimalListService,
+    AnimalExportService,
     AnimalSearchService,
     AnimalDetailService,
     AnimalsService,

@@ -33,6 +33,7 @@ import {
 } from '@tanstack/react-query';
 
 import { useAuth } from '../../lib/auth/context';
+import { saveFile } from '../../lib/files/save-file';
 
 /**
  * Datos de animales (M4a) con TanStack Query.
@@ -66,6 +67,16 @@ export const animalKeys = {
   audits: ['animals', 'audit'] as const,
   audit: (id: string) => ['animals', 'audit', id] as const,
 };
+
+/** El listado en Excel con los mismos filtros (ANI-06 CA4); lo descarga el navegador. */
+export function useExportAnimals() {
+  const { api } = useAuth();
+  return useMutation({
+    mutationFn: async (query: string) => {
+      saveFile(await api.download(`/animals/export.xlsx?${query}`));
+    },
+  });
+}
 
 /** Listado con «Cargar más» (paginación por cursor, ANI-06 CA3). */
 export function useAnimalList(query: string) {

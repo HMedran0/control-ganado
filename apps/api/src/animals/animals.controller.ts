@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
+import { Controller, Get, Param, ParseUUIDPipe, Patch, Post, Query, Res } from '@nestjs/common';
 import {
   ROLE,
   addIdentifierSchema,
@@ -42,6 +42,7 @@ import {
   type UpdateAnimalInput,
   type Warning,
 } from '@hato/shared';
+import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
@@ -49,6 +50,7 @@ import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { Roles } from '../common/roles/roles.decorator.js';
 import { ZodBody, ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
 import { AnimalDetailService } from './animal-detail.service.js';
+import { AnimalExportService, XLSX_CONTENT_TYPE } from './animal-export.service.js';
 import { AnimalLifecycleService } from './animal-lifecycle.service.js';
 import { AnimalListService } from './animal-list.service.js';
 import { AnimalSearchService } from './animal-search.service.js';
@@ -75,6 +77,7 @@ export class AnimalsController {
     private readonly animals: AnimalsService,
     private readonly lifecycle: AnimalLifecycleService,
     private readonly identifiers: IdentifiersService,
+    private readonly exporter: AnimalExportService,
   ) {}
 
   @Get()
@@ -83,6 +86,23 @@ export class AnimalsController {
     @CurrentScope() scope: FarmScope,
   ): Promise<AnimalList> {
     return this.listService.list(scope, query);
+  }
+
+  /**
+   * El listado en Excel, con los mismos filtros que `GET /animals` y sin paginar (ANI-06 CA4).
+   * El valor de compra solo va para ADMIN (RN-20).
+   */
+  @Get('export.xlsx')
+  async export(
+    @Query(new ZodValidationPipe(listAnimalsQuerySchema)) query: ListAnimalsQuery,
+    @CurrentScope() scope: FarmScope,
+    @Res({ passthrough: true }) reply: FastifyReply,
+  ): Promise<Buffer> {
+    const file = await this.exporter.export(scope, query);
+    reply.header('content-type', XLSX_CONTENT_TYPE);
+    reply.header('content-disposition', `attachment; filename="${file.fileName}"`);
+    reply.header('cache-control', 'no-store');
+    return file.data;
   }
 
   @Get('search')
