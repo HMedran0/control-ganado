@@ -27,11 +27,14 @@ export async function submitLogin(page: Page, login: string, password: string): 
   await page.getByRole('button', { name: 'Entrar' }).click();
 }
 
-/** Inicia sesión desde cero y espera el Inicio. */
-export async function login(page: Page, username: string): Promise<void> {
+/** Segunda finca del seed, con numeración reutilizable (08 §3.5). */
+export const RETIRO_NAME = 'Finca El Retiro';
+
+/** Inicia sesión desde cero y espera el Inicio de la finca. */
+export async function login(page: Page, username: string, farmName = FARM_NAME): Promise<void> {
   await page.goto('/login');
   await submitLogin(page, username, seedPassword());
-  await expect(page.getByRole('heading', { level: 1, name: FARM_NAME })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: farmName })).toBeVisible();
 }
 
 /** Navegación principal visible: la barra inferior en móvil o la lateral en escritorio. */
