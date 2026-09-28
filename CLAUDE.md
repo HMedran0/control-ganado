@@ -12,6 +12,7 @@ Plataforma para registrar y controlar el ganado bovino de una finca en Colombia:
 - `docs/06-ux-ui.md` — personas, principios, tokens, componentes, wireframes, redacción.
 - `docs/07-plan-desarrollo.md` — hitos en orden y definición de terminado. Trabaja un hito por sesión.
 - `docs/08-dominio-y-finca-referencia.md` — **decisiones de dominio** (categorías, destete, gestación por raza, plan oficial de vacunación, DIN) y la **finca de referencia ficticia** que reproduce el seed. Léelo antes de tocar reglas de negocio.
+- `docs/09-ampliacion-validacion-ganaderos.md` — hallazgos de la validación con ganaderos (numeración reutilizable, báscula, sistema productivo y leche, cuentas y correo) y en qué hito entra cada uno. Ya está integrado en 01 a 08; se conserva como registro del porqué.
 
 Si algo del código contradice la documentación, detente y pregunta; no "corrijas" la especificación en silencio.
 
@@ -83,12 +84,12 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 - **ADR-009** Clasificación en SQL: la CTE `classificationCtes` filtra y cuenta categorías, etiquetas y alertas con todos los valores como parámetros y los parámetros de la finca leídos de `settings`; lo que se muestra sale de shared. RN-27 se garantiza con una prueba de equivalencia animal por animal sobre el seed. Las alertas de vacunas siguen en shared (`vaccineStatus`), no en SQL.
 
 ## Dominio en una línea por tema (detalle en 08)
-- Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro. Manuales: Cotero, Disponible para venta.
+- Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro; con leche (M9b), En ordeño y Seca. Ojo: `DRY` es **Horra**, no «seca»; «Seca» es `DRIED_OFF`. Manuales: Cotero, Disponible para venta.
 - Destete 7 meses; gestación según la raza de la madre (cebuinos 293, europeos 283, cruces 288; finca 285).
 - Vacunas con cuatro tipos de programación: ciclo oficial (aftosa, rabia), ventana de edad (brucelosis: hembras 3–9 meses, prohibida en machos), intervalo, ninguna.
 - Login por nombre de usuario (el correo es opcional). Códigos de crías `{YY}-{NNN}`.
 - Datos de la finca **ficticios** pero coherentes; el seed es determinista con `SEED_TODAY=2026-09-25`.
-- Alcance núcleo para el piloto: M0–M6 y M8.
+- **Núcleo** (debe estar para el piloto): M0–M6 (M4 en cuatro partes, M4a a M4d), M8 y M10a. **Completo:** M7 (finanzas), M9 (jornadas web), M9b (control de leche) y M10b (endurecimiento y despliegue). M10b es obligatorio antes de cargar datos reales.
 
 ## Reglas no negociables
 1. **Multi-finca:** todo acceso a datos de negocio filtra por `farmId`, que viene del token (FarmScope), nunca del cuerpo de la petición.

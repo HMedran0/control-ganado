@@ -28,7 +28,7 @@ Versiones: usar la última estable de cada herramienta al iniciar el proyecto y 
 | ADR-07 | Estilos: Tailwind CSS + componentes accesibles propios sobre Radix UI (estilo shadcn/ui, código copiado al repo) | Material UI, Bootstrap | Control total sobre la identidad visual de `06-ux-ui.md` sin pelear con un tema ajeno. |
 | ADR-08 | Móvil (F2): React Native con Expo + SQLite local | Flutter; PWA | Reutiliza TypeScript, `shared` y el cliente de API. Bluetooth y cámara nativos fiables en Android (una PWA no tiene Web Bluetooth en iOS). |
 | ADR-09 | Escritorio (F3): Tauri empaquetando la web | Electron | Binarios mucho más livianos; la web ya es una SPA. |
-| ADR-10 | Autenticación propia con JWT de acceso (15 min) + refresh token rotado (30 días) | Proveedor externo (Auth0, Clerk) | Sin costo por usuario, funciona sin correo electrónico y es un contenido evaluable del proyecto académico. |
+| ADR-10 | Autenticación propia con JWT de acceso (15 min) + refresh token rotado, deslizante (30 días desde el último uso) con tope por familia (180 días); Google como método de acceso adicional por OpenID Connect con PKCE (M10a) | Proveedor externo (Auth0, Clerk) | Sin costo por usuario, funciona sin correo electrónico y es un contenido evaluable del proyecto académico. Detalle en `docs/adr/007-autenticacion.md`. |
 | ADR-11 | IDs UUIDv7 generados en la aplicación | Autoincrementales | Permiten crear registros sin conexión en el móvil (F2) sin colisiones; ordenables por tiempo. |
 | ADR-12 | Clasificaciones y alertas calculadas en consulta | Almacenadas y actualizadas por disparadores o tareas | Siempre consistentes; con índices adecuados el costo es bajo para miles de animales. Se revisa si RNF-01 no se cumple. |
 | ADR-13 | Despliegue con Docker Compose en un VPS (API + PostgreSQL + Caddy con HTTPS automático) | PaaS administrado | Costo bajo y predecible; migrable a PaaS después. |
@@ -117,8 +117,11 @@ Transversales (`common/`):
 
 - Login → `accessToken` (JWT, 15 min, en memoria del cliente) + `refreshToken` (opaco, aleatorio, guardado como hash). Web: refresh token en cookie `HttpOnly; Secure; SameSite=Strict; Path=/api/v1/auth`. Móvil: en almacenamiento seguro del sistema.
 - Rotación: cada refresh emite uno nuevo y revoca el anterior; si se reutiliza uno revocado, se revoca toda la familia (posible robo).
+- Sesión deslizante (M4d, ADR-007 decisión 6): cada rotación extiende el vencimiento a `REFRESH_TTL_DAYS` desde ese momento, hasta un tope de `REFRESH_MAX_AGE_DAYS` desde el inicio de la familia. Cada familia es una sesión que el usuario ve y puede cerrar en Mi cuenta; el ADMIN puede cerrar las de un usuario de su finca.
+- Correo (M10a, ADR-007 decisión 7): interfaz `Mailer` con SMTP en producción, Mailpit en desarrollo y un `Mailer` en memoria en pruebas. Los enlaces de invitación, verificación y recuperación llevan el token en el fragmento de la URL, nunca en la query string; la página lo borra con `history.replaceState` y lo envía en el cuerpo. Esas páginas van con `Referrer-Policy: no-referrer`.
+- Google (M10a, ADR-007 decisión 8): OpenID Connect con código de autorización y PKCE del lado del servidor; `state`, `nonce` y `code_verifier` guardados en el servidor con vencimiento corto; no crea cuentas ni fincas.
 - Contraseñas: Argon2id. Política mínima: 8 caracteres.
-- Límite de intentos: login 5 por 15 min por cuenta e IP; API general 300 peticiones/min por usuario.
+- Límite de intentos: login 5 fallos en 15 min **por cuenta** (nunca por IP: en la finca todos comparten la IP pública; ADR-007, revisión de M2a); límite de peticiones por IP sin autenticar (60/min) y por usuario (300/min); envío de correos de recuperación, 3 por correo por hora.
 - Cabeceras seguras (helmet), CORS restringido a los orígenes de los clientes.
 - Variables de entorno validadas con zod al arrancar; la API no inicia si falta alguna.
 
@@ -137,9 +140,11 @@ Transversales (`common/`):
 - Endpoints de sincronización: `GET /sync/pull?since=<cursor>` devuelve cambios por entidad desde el cursor (basado en `updated_at`/`created_at` y tombstones); `POST /sync/push` recibe operaciones y responde por operación: aplicada, rechazada (con motivo) o en conflicto.
 - Resolución (RN-24): eventos de solo adición sin conflicto; entidades editables con última escritura por registro y versión perdida en auditoría.
 - Por qué se diseña ya: IDs UUIDv7 del cliente, `version`, `updated_at`, anulación en lugar de borrado y eventos de solo adición son prerrequisitos que en F1 no cuestan casi nada y evitan migraciones dolorosas después.
+- Báscula (PES-03, M15): los indicadores de pesaje usan protocolos propios y, a menudo, Bluetooth clásico, que un navegador no alcanza; por eso la conexión directa es de la app móvil. Un `ScaleAdapter` por marca traduce cada protocolo a lecturas de «chip + peso estable»; se empieza con el modelo de la finca piloto. Mientras tanto, la web importa el archivo que exporta el indicador (PES-04).
+- Google (AUT-15): inicio de sesión nativo de Google en la app y refresco en el almacenamiento seguro del sistema, no en cookie.
 
 ### Escritorio (F3)
-- Tauri envolviendo el build de la web. Sin lógica propia salvo, si se requiere, acceso a puertos serie/USB para básculas.
+- Tauri envolviendo el build de la web. Sin lógica propia salvo el acceso a puertos serie/USB para la báscula (PES-07, M18), con el mismo `ScaleAdapter` de la app móvil.
 
 ## 7. Reportes y exportación
 - Consultas agregadas en SQL (vistas o `$queryRaw` tipado) dentro del módulo `reports`.
@@ -159,7 +164,17 @@ Transversales (`common/`):
 | test | Base efímera por ejecución de pruebas | Migraciones aplicadas al iniciar. |
 | producción | Postgres en el VPS (volumen persistente) o administrado | HTTPS con Caddy; respaldos activos. |
 
-Variables (`.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REFRESH_TOKEN_PEPPER`, `CORS_ORIGINS`, `APP_TIMEZONE=America/Bogota`, `SEED_TODAY` (solo desarrollo y pruebas), `S3_*` (respaldos, fotos), `PUBLIC_WEB_URL` (para URLs de QR).
+Variables (`.env.example`): `DATABASE_URL`, `JWT_ACCESS_SECRET`, `REFRESH_TOKEN_PEPPER`, `CORS_ORIGINS`, `APP_TIMEZONE=America/Bogota`, `SEED_TODAY` (solo desarrollo y pruebas), `S3_*` (respaldos, fotos), `PUBLIC_WEB_URL` (para URLs de QR y, desde M10a, enlaces de los correos y retorno de Google).
+
+Variables nuevas por la validación con ganaderos (09 §5):
+
+| Variable | Hito | Por defecto | Uso |
+|---|---|---|---|
+| `REFRESH_TTL_DAYS` | M4d | 30 | Días que dura la sesión desde el último uso (AUT-10). |
+| `REFRESH_MAX_AGE_DAYS` | M4d | 180 [Validar] | Tope absoluto por familia de sesión (AUT-10). |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `SMTP_SECURE` | M10a | — | Servidor de correo saliente (AUT-12). En desarrollo, Mailpit de `docker-compose.yml`. Sin ellos, la API usa el `Mailer` en memoria y la web no ofrece «¿Olvidaste tu contraseña?». |
+| `MAIL_FROM` | M10a | — | Remitente de los correos, del dominio propio con SPF, DKIM y DMARC. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | M10a | — | Acceso con Google (AUT-15). Sin ellos, el botón no aparece y los endpoints de Google responden 404. El URI de retorno registrado en Google es `${PUBLIC_WEB_URL}/api/v1/auth/google/callback`. |
 
 ## 10. Calidad y pruebas
 
@@ -183,7 +198,7 @@ CI (GitHub Actions): instalar → lint → typecheck → pruebas unitarias → p
 - `.claude/settings.json` (compartido en git): permisos que permiten sin preguntar los comandos habituales (`pnpm lint`, `pnpm test …`, `pnpm typecheck`, `pnpm db:*`, `git status/diff/log`) y **niegan** leer `.env` y ejecutar comandos destructivos (`git push --force`, `rm -rf`, `prisma migrate reset` fuera de desarrollo).
 - Hooks:
   - `PostToolUse` sobre `Edit|Write`: `.claude/hooks/format.sh` formatea con Prettier el archivo editado y ejecuta ESLint sobre él; si ESLint falla, devuelve el error a Claude para que lo corrija.
-  - `PreToolUse` sobre `Edit|Write`: `.claude/hooks/protect.sh` bloquea (exit 2) escrituras en `.env*`, en migraciones ya aplicadas (`apps/api/prisma/migrations/*` existentes) y en `docs/referencia/` salvo que el hito lo indique.
-  - Los scripts terminan sin error si todavía no existe `node_modules` (antes de M0.1).
+  - `PreToolUse` sobre `Edit|Write`: `.claude/hooks/protect.sh` bloquea (exit 2) escrituras en `.env*`, en migraciones ya versionadas en git (una recién generada, sin commit, sí se puede ajustar) y en `docs/referencia/` salvo que el hito lo indique. Falla cerrado: si `jq` no está instalado, bloquea toda edición y pide instalarlo.
+  - `format.sh` termina sin error si todavía no existe `node_modules` (antes de M0.1) y, sin `jq`, solo avisa.
 - `.claude/settings.local.json` (ignorado en git) para preferencias personales.
 - Referencia oficial: https://code.claude.com/docs/en/hooks y https://code.claude.com/docs/en/settings

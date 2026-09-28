@@ -4,6 +4,7 @@ Este documento cierra las preguntas abiertas del SRS (§9). Cada decisión indic
 
 - **[Real]**: práctica o norma verificada en fuentes del sector (enlaces al final).
 - **[Ficticio]**: dato inventado para una finca de referencia coherente. Sirve para construir, sembrar datos y probar. Debe reemplazarse cuando se valide con la finca real, sin cambiar código: todo lo ficticio vive en configuración o en el seed.
+- **[Validar]**: valor por defecto razonable que debe confirmarse con la finca o el veterinario (introducido en `09-ampliacion-validacion-ganaderos.md`). Vive siempre en configuración, nunca fijo en el código.
 
 Regla para Claude Code: **no inventar reglas de dominio nuevas**. Si algo no está aquí ni en el SRS, preguntar.
 
@@ -66,7 +67,7 @@ Cada vacuna tiene elegibilidad opcional: `eligibleSex`, `minAgeDays`, `maxAgeDay
 La finca de referencia **no tiene** lector ni báscula. Pesa con **cinta bovinométrica** (método `TAPE`). Consecuencia: el MVP no depende de hardware; el modo teclado del lector se prueba con un lector en préstamo o simulando la ráfaga de dígitos.
 
 ### 1.8 Usuarios, correo y dispositivos — [Ficticio]
-El mayordomo y el vaquero **no tienen correo**. Consecuencia: **el inicio de sesión es con nombre de usuario** (el correo es opcional). Ver §2.3.
+El mayordomo y el vaquero **no tienen correo**. Consecuencia: **el inicio de sesión es con nombre de usuario** (el correo es opcional para OPERATOR y VET, y obligatorio para ADMIN). Ver §2.4.
 
 ### 1.9 Conectividad — [Ficticio, coherente con la región]
 Casa de la finca: 4G intermitente (1–2 barras). Manga y potreros lejanos: sin señal. El administrador también consulta desde el pueblo con buena señal.
@@ -76,7 +77,7 @@ Consecuencia: confirma la prioridad de la app móvil sin conexión (fase 2) y de
 Las fincas de doble propósito agrupan el ganado por estado productivo. Lotes semilla: **Paridas** (vacas con cría al pie), **Horras y novillas**, **Levante** (machos destetados), **Toros**.
 
 ### 1.11 Tipo de finca — [Ficticio]
-**Cría y doble propósito** (leche y carne), típica de los Montes de María. El control de producción de leche queda fuera del alcance (SRS §1.2), pero el modelo no lo impide.
+**Cría y doble propósito** (leche y carne), típica de los Montes de María: `productionSystem = DOBLE_PROPOSITO` (CFG-03). El control de leche entra como alcance extendido en M9b (LEC-01 a LEC-05, 09 §4.2); el seed de la finca incluye control lechero (§3.6).
 
 ### 1.12 Gastos que se siguen por animal — [Ficticio]
 - Directos: compra, medicamentos y tratamientos individuales, veterinario por caso, transporte de un animal.
@@ -101,8 +102,9 @@ Las fincas colombianas usan categorías de manejo (ternero, novilla, vaca, levan
 | `YOUNG_MALE` | Levante | Macho, edad ≥ destete y < 24 meses |
 | `ADULT_MALE` | Toro / macho adulto | Macho, edad ≥ 24 meses |
 
-**Etiquetas derivadas** (combinables): `SERVED` Servida · `PREGNANT` Preñada · `CALVED` Parida (n partos) · `DRY` Horra · `WITHDRAWAL` En retiro.
+**Etiquetas derivadas** (combinables): `SERVED` Servida · `PREGNANT` Preñada · `CALVED` Parida (n partos) · `DRY` Horra · `WITHDRAWAL` En retiro. Con el control de leche (M9b, 09 §4.2): `LACTATING` En ordeño · `DRIED_OFF` Seca.
 - **Horra** [Real, término de uso común]: vaca no preñada ni servida cuyo último parto fue hace ≥ edad de destete (sin cría al pie).
+- **Seca** [Real]: vaca a la que se le suspendió el ordeño y que aún no vuelve a parir. **No confundir con Horra:** la constante `DRY` significa Horra y no se renombra (ya está implementada y probada); «seca» es `DRIED_OFF`. La aclaración va también en el glosario del SRS y en un comentario junto a la constante.
 
 **Etiquetas manuales:** `COTERO`, "Disponible para venta" y las que defina la finca.
 
@@ -114,10 +116,14 @@ El ICA agrupa la población bovina por sexo y edad. Se agrega el reporte **"Inve
 ### 2.3 Código de las crías — [Real, práctica común + decisión]
 Es común numerar los animales con el año de nacimiento. **Patrón configurable** `calfCodePattern`, por defecto `{YY}-{NNN}` (por ejemplo, `26-045`: año 2026, consecutivo 45 del año). Tokens: `{YYYY}`, `{YY}`, `{NNN}` (consecutivo del año con ceros), `{N}` (consecutivo sin ceros). El sistema sugiere el siguiente código libre; el usuario puede cambiarlo.
 Los animales existentes conservan el código que ya tienen (en la finca de referencia, números de tres dígitos: `001`–`350`).
+
+**Numeración reutilizable** [Real, 09 §2]: muchas fincas numeran 1, 2, 3… y le dan el número de un animal vendido a uno nuevo. La finca elige en Configuración `codeReuse` (por defecto `false`) y `codeSuggestion` (`PATTERN` o `LOWEST_FREE`) (ANI-10). El historial nunca se mezcla: pertenece al identificador interno del animal, no a su número (RN-33). DIN y RFID son de por vida y nunca se reasignan (RN-32). La finca de referencia sigue con `codeReuse = false` y `PATTERN`; la segunda finca de pruebas usa numeración reutilizable (§3.5).
 Nota: los códigos del prototipo visual (`P-12`, `T-245`) son ilustrativos.
 
 ### 2.4 Inicio de sesión
-`username` obligatorio y único (minúsculas, 3–30 caracteres, `[a-z0-9._-]`); `email` opcional. El login acepta usuario o correo.
+`username` obligatorio y único (minúsculas, 3–30 caracteres, `[a-z0-9._-]`). El `email` es **obligatorio para quien tenga membresía ADMIN** y opcional para OPERATOR y VET (09 §5); se guarda y se compara normalizado (sin espacios, en minúsculas). El login acepta usuario o correo.
+
+Desde M10a el ADMIN invita por correo (AUT-13), los correos se verifican antes de usarse para recuperar la contraseña o entrar con Google (AUT-14), y se puede entrar con Google si el correo coincide con un usuario existente verificado o con una invitación (AUT-15). No hay registro abierto (REG-01, futuro). Quien no tiene correo sigue entrando con usuario y la contraseña temporal que le crea el ADMIN.
 
 ### 2.5 Importación del inventario inicial — nuevo requisito ANI-09
 Las soluciones en uso lo confirman: Control Ganadero (Apptank) promueve el paso de datos desde Excel y Progan ofrece un módulo de importación con mapeo automático de campos y validación en tiempo real (por ejemplo, rechaza partos registrados a machos). Ver SRS ANI-09 y la plantilla `docs/referencia/plantilla-importacion.xlsx`.
@@ -175,6 +181,23 @@ Ciclos oficiales configurados: 2025-2 (27/10/2025–16/12/2025) [Real], 2026-1 (
 ### 3.4 Valores económicos de referencia
 Todos **ficticios**, solo para pruebas: compra de novilla $2.800.000; sal mineralizada $180.000 por bulto repartido en el lote; tratamiento individual $35.000–$120.000; precio de referencia en pie $7.800/kg.
 
+### 3.5 Segunda finca de pruebas: Finca El Retiro — [Ficticio] (M4c)
+Finca pequeña para probar la numeración reutilizable (ANI-10, ANI-11, IDN-06). No cambia ninguna cifra de la finca de referencia.
+- `codeReuse = true`, `codeSuggestion = LOWEST_FREE`, numeración 1–40.
+- Al menos dos números reutilizados: un animal vendido y otro activo con el mismo número, cada uno con su propio historial.
+- Un animal vendido con chapeta liberada (`EXITED`) y DIN y RFID que siguen asociados a él (RN-32).
+- Un ADMIN propio con correo, para las pruebas de aislamiento por finca.
+
+### 3.6 Control lechero del seed — [Ficticio] (M9b)
+La finca de referencia (doble propósito) recibe 90 días de control lechero coherente para sus vacas en ordeño y algunos secados. Producción por vaca entre 4 y 10 litros diarios, consistente con UPRA (2024), que reporta 5,69 a 9,88 litros por vaca al día en doble propósito. Las cifras esperadas (vacas en ordeño, secas, secar pronto, producción de ayer y del mes) se agregan a `expected.ts` en M9b.
+
+### 3.7 Parámetros por sistema productivo — [Validar]
+Valores por defecto de `Farm.settings`, confirmables con la finca o el veterinario (09 §3 y §4):
+- `dryOffBeforeCalvingDays = 60` (la práctica común es secar 45 a 60 días antes del parto) [Real].
+- `weightGainAlertKgPerDay`: 0,30 kg/día para Levante; por categoría de manejo.
+- `weightLossAlertPercent = 5`.
+- `targetSaleWeightKg`: 450 kg en machos de Levante.
+
 ---
 
 ## 4. Alcance núcleo y orden de construcción
@@ -183,11 +206,11 @@ Para asegurar un producto evaluable aunque el semestre se complique:
 
 | Nivel | Hitos | Contenido |
 |---|---|---|
-| **Núcleo** (debe estar para el piloto) | M0–M6, M8 | Autenticación, animales, identificación, **importación**, reproducción y partos, vacunación con alertas y ciclos, pesos, tablero y reportes |
-| **Completo** | M7, M9, M10 | Finanzas con reparto de gastos, jornadas en web, endurecimiento y despliegue |
-| **Fase 2** | M12–M15 | Móvil sin conexión |
+| **Núcleo** (debe estar para el piloto) | M0–M6 (M4a a M4d), M8, M10a | Autenticación con sesión deslizante, animales, identificación, numeración reutilizable, **importación**, reproducción y partos, vacunación con alertas y ciclos, pesos con importación de la báscula, tablero por sistema productivo y reportes, correo, invitación, recuperación de contraseña y acceso con Google |
+| **Completo** | M7, M9, M9b, M10b | Finanzas con reparto de gastos, jornadas en web, control de leche, endurecimiento y despliegue |
+| **Fase 2** | M12–M17 | Móvil sin conexión, lector y báscula Bluetooth, ordeño sin conexión |
 
-M10 (despliegue y respaldos) es obligatorio antes de cargar datos reales, aunque esté en "Completo".
+M10b (despliegue y respaldos) es obligatorio antes de cargar datos reales, aunque esté en "Completo". Si el cronograma no alcanza, M9b pasa a la fase 2 y después AUT-15 (Google); AUT-12 a AUT-14 no se recortan (09 §6).
 
 ## 5. Decisiones de infraestructura — [Ficticio/por defecto]
 - Repositorio privado en GitHub llamado `hato`, rama principal `main`, integración continua con GitHub Actions.
@@ -207,3 +230,5 @@ M10 (despliegue y respaldos) es obligatorio antes de cargar datos reales, aunque
 - Plasse, D., Warnick, A. C., Reese, R. E. y Koger, M. (1968). Gestation length in Brahman cattle. Journal of Animal Science, 27(1), 101–104. https://academic.oup.com/jas/article-abstract/27/1/101/4701303
 - Progan Software Ganadero. Módulo de importación Excel. https://progansoftware.com/importacionexcel/
 - Control Ganadero (Apptank). App Store. https://apps.apple.com/co/app/control-ganadero/id664392203
+- Google (s. f.). OpenID Connect. Google Identity. https://developers.google.com/identity/openid-connect/openid-connect
+- Congreso de Colombia (2012). Ley 1581 de 2012, protección de datos personales. https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=49981

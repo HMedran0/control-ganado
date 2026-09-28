@@ -37,15 +37,40 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
   "unconfirmedServiceAlertDays": 90,
   "calfCodePattern": "{YY}-{NNN}",
   "rabiesRiskZone": true,
-  "pricePerKgByCategory": {}
+  "pricePerKgByCategory": {},
+  "codeReuse": false,
+  "codeSuggestion": "PATTERN",
+  "productionSystem": "DOBLE_PROPOSITO",
+  "salesFocus": null,
+  "dryOffBeforeCalvingDays": 60,
+  "weightGainAlertKgPerDay": { "YOUNG_MALE": 0.3 },
+  "weightLossAlertPercent": 5,
+  "targetSaleWeightKg": { "YOUNG_MALE": 450 }
 }
 ```
+Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo) y `weightLossAlertPercent` de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
 
-**User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), password_hash, must_change_password bool, is_active, created_at, updated_at, last_login_at`
+**User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), email_verified_at timestamptz?, password_hash?, must_change_password bool, is_active, created_at, updated_at, last_login_at`
+- `password_hash` pasa a opcional en M10a: quien acepta una invitación con Google (AUT-13 CA2) puede no tener contraseña. Nunca queda un usuario sin ningún método de acceso: sin contraseña, no se puede desvincular Google (`LAST_LOGIN_METHOD`).
+- `email` se guarda **normalizado** (sin espacios, en minúsculas) y se compara así en invitaciones, verificación, recuperación y Google (AUT-12 a AUT-15). Es obligatorio para quien tenga una membresía ADMIN: la regla se verifica en la aplicación (`EMAIL_REQUIRED_FOR_ADMIN`), porque un CHECK no puede mirar las membresías.
+- `email_verified_at` (M10a, AUT-14): se llena al abrir el enlace de verificación o al aceptar una invitación (el enlace llegó a ese buzón). Cambiar el correo lo vuelve a `null`. Solo un correo verificado sirve para recuperar la contraseña o entrar con Google.
 
 **Membership** — relación usuario–finca con rol. `id, user_id, farm_id, role (ADMIN|OPERATOR|VET), is_active`. Único (`user_id`, `farm_id`).
 
-**RefreshToken** — `id, user_id, farm_id, token_hash, family_id, expires_at, revoked_at, created_at, user_agent`. La rotación usa `family_id` para detectar reutilización y revocar toda la familia. `farm_id` es la finca activa de la sesión: la rotación la conserva, de modo que renovar el token no devuelve al usuario a su finca por defecto (M1, ADR-007).
+**RefreshToken** — `id, user_id, farm_id, token_hash, family_id, family_started_at timestamptz, last_used_at timestamptz, expires_at, revoked_at, created_at, user_agent`. La rotación usa `family_id` para detectar reutilización y revocar toda la familia. `farm_id` es la finca activa de la sesión: la rotación la conserva, de modo que renovar el token no devuelve al usuario a su finca por defecto (M1, ADR-007).
+- Sesión deslizante (M4d, AUT-10): cada rotación recalcula `expires_at = min(ahora + REFRESH_TTL_DAYS, family_started_at + REFRESH_MAX_AGE_DAYS)`. `family_started_at` se copia de token en token y no cambia dentro de la familia: es el inicio de sesión con contraseña (o Google) que la originó.
+- `last_used_at` alimenta la lista de sesiones (AUT-11) y se actualiza como máximo una vez por hora por familia.
+- Una **sesión** de la interfaz es una familia: se lista por `family_id` con el token vigente de cada una.
+
+**EmailToken** (M10a, AUT-14) — enlaces de un solo uso enviados por correo. `id, user_id, purpose enum (VERIFY_EMAIL, RESET_PASSWORD), email, token_hash (único), expires_at, used_at?, created_at`. Solo se guarda el hash (SHA-256 con el pepper, como el refresco). `email` es el correo normalizado al que se envió: si el usuario cambió de correo después, el enlace de verificación ya no sirve. Vencen a las 24 h (verificación) y a 1 h (recuperación). Índice: (`user_id`, `purpose`, `created_at`) para el límite de 3 envíos por hora.
+
+**Invitation** (M10a, AUT-13) — `id, farm_id, email, role, token_hash (único), invited_by (user_id), expires_at, accepted_at?, accepted_by?, revoked_at?, created_at`. `email` normalizado. Vence a los 7 días; reenviar genera un token nuevo y reemplaza el hash (el enlace anterior deja de servir). Único parcial (`farm_id`, `email`) `WHERE accepted_at IS NULL AND revoked_at IS NULL`: una sola invitación pendiente por correo en cada finca. Invitar un correo que ya es de un usuario de **otra** finca es válido; al aceptarla se le agrega la membresía en esta.
+
+**UserIdentity** (M10a, AUT-15) — cuentas vinculadas. `id, user_id, provider enum (GOOGLE), subject, email, linked_at`. Único (`provider`, `subject`). Después del primer ingreso el vínculo se busca por `subject`, no por correo. `email` es el que reportó el proveedor al vincular, normalizado, solo como referencia.
+
+**OAuthIntent** (M10a, AUT-15) — intención de un solo uso para empezar el flujo de Google con un propósito. `id, purpose enum (LINK, ACCEPT_INVITATION), user_id?, invitation_id?, intent_hash (único), expires_at (5 min), used_at?`. Para vincular, `POST /me/identities/google/link` verifica la contraseña y crea una con `LINK`; para aceptar una invitación con Google, `POST /invitations/google` crea una con `ACCEPT_INVITATION`. Así el token de la invitación nunca viaja en la URL del flujo.
+
+**OAuthState** (M10a, AUT-15) — estado del flujo de autorización, del lado del servidor. `id, state_hash (único), nonce, code_verifier, purpose enum (LOGIN, LINK, ACCEPT_INVITATION), user_id?, invitation_id?, expires_at (10 min), used_at?`. `state` viaja a Google y vuelve; `nonce` se compara con el del `id_token`; `code_verifier` completa PKCE. Las filas vencidas se borran al arrancar la API, como los intentos de inicio de sesión.
 
 **LoginAttempt** — intentos de inicio de sesión, para el bloqueo de AUT-01 CA3. `id bigserial, login, ip, succeeded, created_at`. No tiene `farm_id`: el intento ocurre antes de saber quién escribe, e incluso antes de saber si el usuario existe. El bloqueo **no se almacena**, se deduce de estas filas: cinco fallos en los 15 minutos anteriores al último fallo bloquean hasta *último fallo + 15 min*; un ingreso exitoso reinicia el conteo (ADR-007). El bloqueo es solo por `login`; la `ip` queda para trazabilidad, no bloquea (en la finca todos comparten la IP). Guarda direcciones IP, que son dato personal: las filas de más de 30 días se borran al arrancar la API. Índices: (`login`, `created_at`), (`ip`, `created_at`), (`created_at`).
 
@@ -72,7 +97,7 @@ Semilla (08 §3.3): Aftosa (`OFFICIAL_CYCLE`); Brucelosis RB51 (`AGE_WINDOW`, FE
 |---|---|---|
 | id | uuid | |
 | farm_id | uuid FK | |
-| code | text | Código interno. Único (`farm_id`, `code`) entre no archivados → índice único parcial `WHERE deleted_at IS NULL`. |
+| code | text | Código interno. Único (`farm_id`, `code`) entre no archivados → índice único parcial `WHERE deleted_at IS NULL`. Desde M4c (RN-30, RN-31): el índice pasa al código **normalizado** (sin espacios, en mayúsculas y, si es numérico, sin ceros a la izquierda) y a los animales **activos** (`WHERE deleted_at IS NULL AND exit_type IS NULL`); con `codeReuse = false`, la unicidad entre todos los no archivados se verifica en la aplicación dentro de la transacción. |
 | name | text? | |
 | sex | enum `FEMALE`/`MALE` | |
 | breed_id | uuid FK | |
@@ -111,7 +136,7 @@ Restricciones:
 | value | text | Normalizado: sin espacios; RFID solo dígitos (15). |
 | assigned_at | date | |
 | retired_at | date? | Nulo = activo. |
-| retire_reason | enum? `LOST`/`DAMAGED`/`REASSIGNED`/`OTHER` | |
+| retire_reason | enum? `LOST`/`DAMAGED`/`REASSIGNED`/`EXITED`/`OTHER` | `EXITED` (M4c, IDN-06): chapeta liberada al registrar la salida en una finca con numeración reutilizable. Nunca se usa con DIN ni RFID (RN-32). |
 | replaced_by_id | uuid? FK → identifiers | |
 
 Índice único parcial: (`farm_id`, `type`, `value`) `WHERE retired_at IS NULL` (RN-19). Índice no único en (`farm_id`, `value`) para la búsqueda global por cualquier tipo.
@@ -154,6 +179,15 @@ Las crías vivas de un parto se enlazan con `Animal.birth_pregnancy_id`. El tota
 
 **WeightRecord** — `id, farm_id, animal_id, weighed_on date, weight_kg numeric(7,2), method enum SCALE/TAPE/ESTIMATE, is_birth_weight bool, work_session_id?, notes?, voided_*, created_*`.
 Índice: (`animal_id`, `weighed_on` DESC).
+La importación de la báscula (PES-04, M6) crea una `WorkSession` con actividad `WEIGHT` y un `WeightRecord` por animal, método `SCALE`, en una transacción.
+
+**ScaleProfile** (M6, PES-04) — perfil de báscula de la finca: cómo leer el archivo que exporta su indicador. `id, farm_id, name, file_format enum (CSV, XLSX), column_mapping jsonb, created_*, updated_*, version`. `column_mapping` dice qué columna trae el RFID o EID, el número visual, el peso y la fecha y hora (y el separador y el formato de fecha del CSV). Único (`farm_id`, `lower(name)`), como los catálogos.
+
+**MilkRecord** (M9b, LEC-01) — control lechero. `id, farm_id, animal_id, recorded_on date, milking enum (AM, PM, TOTAL), liters numeric(6,2), method enum (METER, ESTIMATE), unfit_for_sale bool, work_session_id?, notes?, voided_at, void_reason, created_*`.
+Índices: (`farm_id`, `recorded_on`), (`animal_id`, `recorded_on` DESC); único parcial (`animal_id`, `recorded_on`, `milking`) `WHERE voided_at IS NULL` (RN-36: un segundo registro del mismo ordeño anula el anterior).
+`unfit_for_sale` se fija al guardar si la vaca tenía retiro de leche vigente (LEC-01 CA4).
+
+**DryOffRecord** (M9b, LEC-03) — secado. `id, farm_id, animal_id, dried_on date, reason enum (END_OF_LACTATION, LOW_PRODUCTION, PRE_CALVING, ILLNESS, OTHER), notes?, voided_at, void_reason, created_*`. Índice: (`animal_id`, `dried_on` DESC).
 
 **LotMovement** — historial de cambios de lote. `id, farm_id, animal_id, from_lot_id?, to_lot_id?, moved_on date, work_session_id?, created_*`.
 
@@ -171,14 +205,15 @@ Invariante (RN-17): suma de asignaciones = `expense.amount`. Se crean en la mism
 
 ### 2.7 Jornadas y auditoría
 
-**WorkSession** — `id, farm_id, name, session_date date, activities jsonb, expected_lot_id?, status enum OPEN/CLOSED, closed_at?, created_*`.
+**WorkSession** — `id, farm_id, name, session_date date, activities jsonb, expected_lot_id?, status enum OPEN/CLOSED, closed_at?, created_*`. Actividades: las de JOR-01 (vacunación, pesaje, palpación, tratamiento, cambio de lote, etiqueta). La actividad de pesaje `WEIGHT` también la crea la importación de la báscula (PES-04), y desde M9b se agrega `MILKING` (jornada de ordeño, LEC-01 CA2).
 `activities` ejemplo: `[{"type":"VACCINATION","vaccineId":"…","dose":"2 ml"},{"type":"WEIGHT"}]`.
 
 **WorkSessionEntry** — `id, work_session_id, animal_id, processed_at timestamptz, created_by_id`. Único (`work_session_id`, `animal_id`). Los eventos creados en la jornada referencian `work_session_id`.
 
 **ImportBatch** — `id, farm_id, file_name, total_rows, created_rows, error_rows, summary jsonb, created_by_id, created_at`. Registro de cada importación confirmada (ANI-09).
 
-**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN, diff jsonb, created_at timestamptz`.
+**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS, diff jsonb, created_at timestamptz`.
+Cuentas y correo (M4d, M10a): invitación creada, reenviada y anulada → entidad `Invitation` con `CREATE`, `UPDATE` y `VOID`; aceptada → `ACCEPT_INVITATION`; correo verificado → `VERIFY_EMAIL`; contraseña restablecida por correo → `RESET_PASSWORD`; Google vinculado y desvinculado → `LINK_IDENTITY` y `UNLINK_IDENTITY`; sesiones cerradas por el ADMIN o por el propio usuario → `REVOKE_SESSIONS`. El `diff` nunca guarda tokens, hashes, contraseñas ni el `code_verifier`.
 Índices: (`farm_id`, `entity`, `entity_id`), (`farm_id`, `created_at` DESC). Solo inserción.
 
 ## 3. Relaciones (resumen)
@@ -233,6 +268,19 @@ ORDER BY animal_id, vaccine_id, applied_on DESC;
 
 **Partos próximos**: preñeces `PENDING`, confirmadas, no anuladas, con `expected_calving_date <= today + calving_alert_days`, ordenadas por fecha.
 
+**Estado de lactancia** (M9b, LEC-02, RN-34 y RN-37), por vaca, con la misma estrategia de ADR-009 (función en shared + equivalente SQL cubierto por la prueba de equivalencia):
+```sql
+last_calving   = MAX(outcome_date) de preñeces CALVED no anuladas
+last_dry_off   = MAX(dried_on) de secados no anulados
+lactating      = last_calving IS NOT NULL AND (last_dry_off IS NULL OR last_dry_off < last_calving)
+dried_off      = last_dry_off IS NOT NULL AND last_dry_off >= last_calving
+days_in_milk   = today - last_calving            -- solo si lactating
+dry_off_soon   = lactating AND pregnant AND expected_calving_date - today < dry_off_before_calving_days
+```
+Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37): por eso basta comparar el último secado con el último parto. `DRIED_OFF` (Seca) no es `DRY` (Horra).
+
+**Ganancia de peso** (M6, PES-05): con los pesajes no anulados de cada animal, ganancia entre los dos últimos (kg/día), en los últimos 90 días (regresión simple o primero y último del periodo, a decidir en M6 con ADR) y desde el nacimiento. Alertas: ganancia de 90 días menor que `weightGainAlertKgPerDay` de su categoría; último pesaje menor que el anterior en más de `weightLossAlertPercent`.
+
 **Inversión por animal**: `SUM(expense_allocations.amount)` uniendo con gastos no anulados.
 
 **Edad legible**: función compartida en `packages/shared` (`formatAge`), usada por web, móvil y reportes.
@@ -248,6 +296,9 @@ ORDER BY animal_id, vaccine_id, applied_on DESC;
 - `vaccination_records (farm_id, animal_id, vaccine_id, applied_on DESC)`, `(farm_id, next_due_on)`.
 - `weight_records (animal_id, weighed_on DESC)`.
 - `expense_allocations (animal_id)`, `(expense_id)`.
+- Desde M4c: único parcial sobre el código normalizado de los animales activos (RN-30, RN-31), en lugar del de `(farm_id, code)` entre no archivados.
+- `milk_records (farm_id, recorded_on)`, `(animal_id, recorded_on DESC)` y único parcial `(animal_id, recorded_on, milking) WHERE voided_at IS NULL`; `dry_off_records (animal_id, dried_on DESC)` (M9b).
+- `refresh_tokens (user_id, family_id)` para listar sesiones; `email_tokens (token_hash)` único y `(user_id, purpose, created_at)`; `invitations (token_hash)` único y único parcial `(farm_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL`; `user_identities (provider, subject)` único; `oauth_intents (intent_hash)` y `oauth_states (state_hash)` únicos (M4d, M10a).
 - Índices parciales y `pg_trgm` se crean con migraciones SQL manuales, porque Prisma no los expresa todos.
 
 ## 6. Datos semilla
@@ -259,4 +310,6 @@ ORDER BY animal_id, vaccine_id, applied_on DESC;
 - 284 animales activos con la distribución de 08 §3.2, historial 2024–2026, 10 vendidos y 3 muertos.
 - El seed es **determinista** (generador con semilla fija y "hoy" fijado en `SEED_TODAY=2026-09-25`) para que las pruebas E2E puedan afirmar cifras exactas del tablero (por ejemplo, 284 activos, 64 + 7 preñadas, 14 terneras pendientes de brucelosis).
 - `pnpm db:seed:load` genera 5.000 animales y 50.000 eventos para pruebas de rendimiento (RNF-01).
+- M4c agrega una segunda finca de pruebas, **Finca El Retiro** [Ficticio], con `codeReuse = true`, `LOWEST_FREE` y numeración 1–40, con al menos dos números reutilizados (08 §3.5). La finca de referencia sigue con `codeReuse = false`.
+- M9b agrega a la finca de referencia 90 días de control lechero y algunos secados (08 §3.6), con sus cifras nuevas en `expected.ts`.
 - La plantilla `docs/referencia/plantilla-importacion.xlsx` contiene 12 filas de ejemplo de esta misma finca para probar ANI-09.

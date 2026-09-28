@@ -1,8 +1,8 @@
 # Especificación de Requisitos de Software (SRS)
 ## Sistema de Gestión y Control de Ganado — "Hato"
 
-Versión 1.1 · Estructura basada en ISO/IEC/IEEE 29148:2018 (sucesora de IEEE 830)
-Estado: preguntas abiertas resueltas en `08-dominio-y-finca-referencia.md` con prácticas reales del sector y una finca de referencia ficticia (§9).
+Versión 1.3 · Estructura basada en ISO/IEC/IEEE 29148:2018 (sucesora de IEEE 830)
+Estado: preguntas abiertas resueltas en `08-dominio-y-finca-referencia.md` con prácticas reales del sector y una finca de referencia ficticia (§9). La versión 1.3 integra los hallazgos de la validación con ganaderos (`09-ampliacion-validacion-ganaderos.md` v1.3, H1 a H4): numeración reutilizable, báscula y peso, sistema productivo y control de leche, y cuentas, sesión y correo.
 
 ---
 
@@ -16,12 +16,13 @@ El sistema reemplaza el registro manual del hato por una plataforma que permite:
 - Registrar cada animal desde su nacimiento o ingreso hasta su salida de la finca.
 - Identificar animales por múltiples medios (número visual, chapeta oficial DIN, RFID ISO 11784, QR del sistema).
 - Clasificar el ganado automáticamente según sexo, edad y estado reproductivo.
-- Llevar el control reproductivo, de nacimientos, sanitario (vacunación y tratamientos) y de pesos.
+- Llevar el control reproductivo, de nacimientos, sanitario (vacunación y tratamientos) y de pesos, incluida la importación de la sesión de pesaje de la báscula.
+- Llevar el control de leche en las fincas de lechería y doble propósito (alcance extendido, §3.16).
 - Llevar una contabilidad básica por animal (inversión, costos, venta, ganancia o pérdida).
 - Responder en segundos las preguntas operativas del administrador mediante un tablero y reportes.
 - Operar en campo mediante "jornadas de manejo" (fase 2: con soporte sin conexión).
 
-Fuera de alcance en la versión 1: integración directa con SINIGAN V6 del ICA (no se ha verificado que exista una API pública), control de producción de leche, nómina, inventario de insumos, georreferenciación de potreros, identificación biométrica (queda como trabajo de investigación futuro).
+Fuera de alcance en la versión 1: integración directa con SINIGAN V6 del ICA (no se ha verificado que exista una API pública), registro abierto de fincas nuevas (REG-01, futuro), nómina, inventario de insumos, georreferenciación de potreros, identificación biométrica (queda como trabajo de investigación futuro). El control de leche, fuera de alcance en la v1.1, entra como alcance extendido (LEC, M9b) por la validación con ganaderos (09 §4).
 
 ### 1.3 Nombre de trabajo
 "Hato" es un nombre provisional. Puede cambiarse sin impacto técnico; en el código el producto se referencia como `hato`.
@@ -52,7 +53,7 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Vaca | categoría derivada `COW` | Hembra con al menos un parto. |
 | Levante | categoría derivada `YOUNG_MALE` | Macho destetado menor de 24 meses. |
 | Toro / macho adulto | categoría derivada `ADULT_MALE` | Macho de 24 meses o más. |
-| Horra | etiqueta derivada `DRY` | Vaca no preñada ni servida sin cría al pie (último parto hace ≥ edad de destete). |
+| Horra | etiqueta derivada `DRY` | Vaca no preñada ni servida sin cría al pie (último parto hace ≥ edad de destete). **No es «seca»:** `DRY` significa Horra y no se renombra; la vaca seca (sin ordeño) es `DRIED_OFF`. |
 | Categoría de manejo | `ManagementCategory` | Clasificación exclusiva de cada animal activo (ternero, ternera, novilla, vaca, levante, toro). |
 | Ciclo oficial de vacunación | `VaccinationCycle` | Periodo definido por el ICA (dos por año) para vacunar contra aftosa, brucelosis y rabia silvestre. |
 | RUV | `VaccinationRecord.ruvNumber` | Registro Único de Vacunación que expide el vacunador de Fedegán. |
@@ -73,6 +74,21 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Gasto | `Expense` | Egreso de dinero, directo a un animal o repartido entre varios. |
 | Asignación | `ExpenseAllocation` | Porción de un gasto cargada a un animal. |
 | Jornada de manejo | `WorkSession` | Sesión de trabajo en la manga donde se registran eventos animal por animal. |
+| Numeración reutilizable | `Farm.settings.codeReuse` | La finca le da el número de un animal que salió a uno nuevo. El historial sigue siendo de cada animal (RN-33). |
+| Número anterior | derivado | El animal que tuvo antes el mismo número; la ficha lo muestra con enlace (ANI-11). |
+| Perfil de báscula | `ScaleProfile` | Mapeo de columnas del archivo que exporta el indicador de pesaje de la finca, guardado para reutilizarlo (PES-04). |
+| Ganancia diaria | derivado | Kilos ganados por día entre dos pesajes (PES-02, PES-05). |
+| Sistema productivo | `Farm.settings.productionSystem` | Cría, levante y ceba, lechería, doble propósito o ciclo completo. Cambia qué se destaca, no los datos (CFG-03). |
+| En ordeño | etiqueta derivada `LACTATING` | Vaca con un parto y sin secado posterior: está produciendo leche. |
+| Seca | etiqueta derivada `DRIED_OFF` | Vaca a la que se le suspendió el ordeño y aún no vuelve a parir. No confundir con Horra (`DRY`). |
+| Secado | `DryOffRecord` | Fin del ordeño de una lactancia. |
+| Lactancia | derivado | Periodo entre un parto y el siguiente secado, el siguiente parto o la salida de la vaca (RN-34, RN-37). |
+| Días en leche (DEL) | derivado | Días transcurridos desde el último parto de una vaca en ordeño. |
+| Control lechero | `MilkRecord` | Litros producidos por una vaca en una fecha y un ordeño. |
+| Sesión (equipo) | `RefreshToken` (familia) | Acceso abierto en un navegador o celular. Se renueva con el uso y tiene un tope absoluto (AUT-10). |
+| Invitación | `Invitation` | Enlace de un solo uso que el ADMIN envía por correo para que alguien entre a la finca con un rol (AUT-13). |
+| Correo verificado | `User.emailVerifiedAt` | Correo cuyo dueño abrió un enlace enviado a ese buzón. Solo un correo verificado sirve para recuperar la contraseña o entrar con Google (AUT-14). |
+| Cuenta vinculada | `UserIdentity` | Acceso con un proveedor externo (Google) asociado a un usuario (AUT-15). |
 | Manga / brete | — | Corral estrecho donde se inmoviliza al animal para trabajarlo. |
 
 ### 1.5 Referencias
@@ -107,13 +123,16 @@ Sistema nuevo compuesto por una API central y clientes por plataforma (web en fa
 | Registrar salida (venta, muerte...) | ✔ | ✗ | ✗ |
 | Registrar servicio, palpación, parto | ✔ | ✔ | ✔ |
 | Registrar vacunación y tratamientos | ✔ | ✔ | ✔ |
-| Registrar pesajes | ✔ | ✔ | ✔ |
+| Registrar pesajes e importar la sesión de la báscula | ✔ | ✔ | ✔ |
+| Registrar control de leche y secados | ✔ | ✔ | ✔ |
 | Jornadas de manejo | ✔ | ✔ | ✔ |
 | Ver y registrar datos económicos | ✔ | ✗ | ✗ |
 | Reportes operativos | ✔ | ✔ | ✔ |
 | Reportes económicos | ✔ | ✗ | ✗ |
 | Configuración y catálogos | ✔ | ✗ | Solo catálogo de vacunas |
-| Gestión de usuarios | ✔ | ✗ | ✗ |
+| Gestión de usuarios e invitaciones por correo | ✔ | ✗ | ✗ |
+| Cerrar las sesiones de otro usuario de la finca | ✔ | ✗ | ✗ |
+| Ver y cerrar sus propias sesiones; vincular su cuenta de Google | ✔ | ✔ | ✔ |
 | Copias de seguridad y exportación completa | ✔ | ✗ | ✗ |
 
 ### 2.4 Restricciones
@@ -135,7 +154,8 @@ Sistema nuevo compuesto por una API central y clientes por plataforma (web en fa
 
 Formato: `ID — Nombre` · Prioridad MoSCoW (M = debe, S = debería, C = podría) · Fase (1 web, 2 móvil, 3 escritorio).
 Cada requisito incluye criterios de aceptación verificables (CA). Las reglas de negocio `RN-xx` están en §4.
-Alcance **núcleo** (debe estar para el piloto): AUT, ANI, IDN-01 a 03, CLS, REP, NAC, SAN, PES-01/02, RPT, CFG, BAK, AUD. **Completo:** ECO, JOR (web). Ver `08-dominio-y-finca-referencia.md` §4.
+Alcance **núcleo** (debe estar para el piloto): AUT-01 a AUT-15, ANI, IDN-01 a 03, IDN-06, CLS, REP, NAC, SAN, PES-01, PES-02, PES-04 a PES-06, RPT, CFG, BAK, AUD. **Completo:** ECO, JOR (web), LEC-01 a LEC-05 (si el cronograma lo permite; si no, fase 2). **Futuro:** REG-01. Ver `08-dominio-y-finca-referencia.md` §4 y `07-plan-desarrollo.md` §2.1.
+Los requisitos que vienen de la validación con ganaderos indican entre paréntesis el hito en que se implementan (por ejemplo, «F1 (M4c)»).
 
 ### 3.1 Autenticación y usuarios (AUT)
 
@@ -144,7 +164,8 @@ El usuario inicia sesión con **nombre de usuario** o correo, y contraseña. El 
 - CA1: Credenciales válidas → acceso al tablero según su rol.
 - CA2: Credenciales inválidas → mensaje "Usuario o contraseña incorrectos" sin revelar cuál falló.
 - CA3: Tras 5 intentos fallidos en 15 minutos, la cuenta se bloquea temporalmente 15 minutos. El bloqueo es **por cuenta**: los fallos de un usuario no bloquean a los demás aunque compartan la misma conexión a internet (en la finca todos salen por la misma IP). Desde una misma IP solo aplica el límite de peticiones (ADR-007).
-- CA4: La sesión persiste con refresh token (30 días) y se renueva sin pedir credenciales.
+- CA4: La sesión persiste con refresh token y se renueva sin pedir credenciales; cada uso la extiende hasta un tope absoluto (AUT-10).
+- CA5: Si la finca tiene configurado Google, la pantalla ofrece «Continuar con Google» (AUT-15).
 
 **AUT-02 — Cierre de sesión** · M · F1
 - CA1: Revoca el refresh token en el servidor.
@@ -156,8 +177,55 @@ El ADMIN crea, edita, desactiva usuarios y asigna rol.
 
 **AUT-04 — Cambio y restablecimiento de contraseña** · M · F1
 - CA1: El usuario cambia su contraseña indicando la actual.
-- CA2: El ADMIN puede generar una contraseña temporal para otro usuario, que debe cambiarse en el siguiente inicio de sesión (no depende de correo electrónico, porque la finca puede no tenerlo configurado).
+- CA2: El ADMIN puede generar una contraseña temporal para otro usuario, que debe cambiarse en el siguiente inicio de sesión (no depende de correo electrónico: es el camino para quien no tiene correo). Quien tiene correo verificado puede además recuperarla por correo (AUT-14).
 - CA3: Cambiar la contraseña revoca todas las sesiones abiertas del usuario (en cualquier dispositivo) y la respuesta entrega una sesión nueva, de modo que quien la cambió sigue trabajando sin volver a iniciar sesión (ADR-007).
+
+#### Cuentas, sesión y correo (validación con ganaderos, 09 §5)
+
+Entrar con usuario y contraseña cada vez que se quiere consultar algo desanima el uso en campo, y los ganaderos piden entrar con Google y verificar por correo a quien entra. Decisión del product owner: el sistema se valida primero con la finca piloto y queda preparado para ofrecerse a otras fincas, así que el ADMIN **invita por correo**; no hay registro abierto (REG-01). El correo es obligatorio para ADMIN y opcional para VET y OPERATOR: quien no tiene correo sigue entrando con usuario y la contraseña temporal que le crea el ADMIN (AUT-04 CA2). Los correos se guardan y se comparan normalizados (sin espacios, en minúsculas) en invitaciones, verificación, recuperación y Google.
+
+**AUT-10 — Sesión deslizante** · M · F1 (M4d)
+- CA1: Cada renovación del token de actualización extiende su vencimiento a 30 días desde ese momento (`REFRESH_TTL_DAYS`). Quien abre la app al menos una vez al mes no vuelve a escribir la contraseña en ese equipo.
+- CA2: Tope absoluto por familia de sesión de `REFRESH_MAX_AGE_DAYS` (por defecto 180 días [Validar]); al cumplirse, se pide la contraseña una vez y empieza una familia nueva.
+- CA3: Cambiar la contraseña, desactivar al usuario o quitarle la membresía revoca todas sus sesiones (lo último ya lo cubre AccessGuard; se agrega la revocación explícita).
+- CA4: Se mantiene todo lo de ADR-007: rotación en cada uso, revocación de la familia si se reutiliza un token rotado, cookie HttpOnly/Secure/SameSite=Strict, token de acceso de 15 minutos solo en memoria.
+
+**AUT-11 — Sesiones activas** · M · F1 (M4d)
+- CA1: En Mi cuenta → Sesiones: lista de equipos con sesión abierta (navegador y sistema resumidos del `userAgent`, fecha de inicio, último uso), marcando "Este equipo".
+- CA2: "Cerrar sesión en este equipo" para cada fila y "Cerrar las demás sesiones".
+- CA3: El ADMIN puede cerrar todas las sesiones de un usuario de su finca desde Usuarios (equipo perdido o prestado).
+- CA4: El último uso se actualiza como máximo una vez por hora por sesión para no escribir en cada petición.
+
+**AUT-12 — Correo saliente** · M · F1 (M10a)
+- CA1: Servicio transaccional detrás de una interfaz `Mailer` (implementación SMTP genérica; proveedor definido en el despliegue). Dominio propio con SPF, DKIM y DMARC.
+- CA2: En desarrollo y pruebas, `Mailer` en memoria o Mailpit en Docker; nunca se envía correo real desde pruebas.
+- CA3: Plantillas en español de Colombia, texto plano + HTML simple, sin imágenes remotas.
+- CA4: Los enlaces de los correos llevan el token en el fragmento de la URL (`#token=…`), nunca en la query string; la página lo lee, lo borra de la barra de direcciones y lo envía en el cuerpo de la petición (ADR-007 decisión 7).
+
+**AUT-13 — Invitación por correo** · M · F1 (M10a)
+- CA1: El ADMIN invita escribiendo correo y rol. Se envía un enlace de un solo uso que vence en 7 días (solo se guarda el hash del token).
+- CA2: Al abrir el enlace, la persona elige su nombre y contraseña, o continúa con Google (AUT-15). Aceptar la invitación **verifica el correo** (el enlace llegó a ese buzón) y deja la sesión abierta (AUT-10).
+- CA3: El ADMIN ve las invitaciones pendientes, puede reenviarlas o anularlas.
+- CA4: Crear usuarios sin correo (operarios) sigue disponible como hoy.
+- CA5: Invitar un correo que ya es de un usuario de otra finca crea la invitación normalmente; al aceptarla, con sesión iniciada como ese usuario o entrando desde el enlace, se le agrega la membresía en esta finca. Solo se rechaza si ya es miembro de esta finca (`INVITATION_EMAIL_TAKEN`).
+
+**AUT-14 — Verificación y recuperación por correo** · M · F1 (M10a)
+- CA1: Todo correo nuevo o cambiado se verifica con un enlace (24 h); hasta entonces no se usa para recuperar la contraseña ni para iniciar con Google.
+- CA2: "¿Olvidaste tu contraseña?": enlace de un solo uso de 1 hora a correos verificados. La respuesta es la misma exista o no la cuenta (no revela qué correos están registrados). Al restablecer, se revocan todas las sesiones.
+- CA3: Límite de envíos: 3 por correo por hora y el límite general por IP.
+- CA4: Los ADMIN existentes (seed y piloto) verifican su correo en el primer inicio de sesión después del despliegue; se muestra un aviso hasta hacerlo.
+
+**AUT-15 — Google como método de acceso** · S · F1 web (M10a), F2 móvil
+- CA1: Flujo OpenID Connect con código de autorización y PKCE, del lado del servidor. `state`, `nonce` y `code_verifier` se guardan en el servidor con vencimiento corto. Se valida el `id_token` (firma, `iss`, `aud`, `exp`, `nonce`) y se exige `email_verified = true`.
+- CA2: **No crea cuentas ni fincas por sí solo.** Entra si el correo de Google coincide con un usuario existente con correo verificado, o si acepta una invitación dirigida a ese correo. En otro caso: "Esta cuenta de Google no tiene acceso a ninguna finca. Pídele al administrador una invitación".
+- CA3: En Mi cuenta se puede vincular y desvincular Google (pide la contraseña actual). Vincular crea una intención de vínculo de un solo uso (5 minutos) y el retorno de Google vincula por proveedor y `subject`. No se puede desvincular el único método de acceso.
+- CA4: Después del primer ingreso, el vínculo se identifica por `subject`, no por correo: cambiar el correo de Google no rompe el acceso.
+- CA5: Requiere proyecto en Google Cloud y pantalla de consentimiento con nombre, logo, política de privacidad y términos publicados en el dominio (se redactan en M10a; la política también sirve al componente académico: Ley 1581 de 2012 de protección de datos personales).
+- CA6: Sin `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET` configurados, el botón no aparece.
+- En la app móvil (fase 2) se usa el inicio nativo de Google y el token de actualización va en el almacenamiento seguro del sistema, no en cookie.
+
+**REG-01 — Registro de fincas nuevas** · C · futuro (fuera de alcance de F1)
+Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificación obligatoria) y su finca con un asistente de configuración inicial. Implica además protección contra cuentas falsas, términos de servicio, planes o cobro, soporte y borrado de cuenta y datos a solicitud. Se documenta para mostrar que la arquitectura multi-finca ya lo permite, pero no se programa: solo se hace si Hato se ofrece como producto.
 
 ### 3.2 Gestión de animales (ANI)
 
@@ -185,7 +253,7 @@ Tipos: venta, muerte, sacrificio, robo, traslado a otra finca, otro.
 - CA2: Si el tipo es venta, exige precio de venta y comprador (opcional), y crea el ingreso económico correspondiente (ECO-04).
 - CA3: Si el animal tiene un período de retiro de medicamento vigente y la salida es venta o sacrificio, se muestra una advertencia que exige confirmación explícita (RN-22).
 - CA4: El animal sale del inventario activo y queda con la etiqueta "Vendido" o "Retirado".
-- CA5: Se puede revertir una salida registrada por error (solo ADMIN, queda en auditoría).
+- CA5: Se puede revertir una salida registrada por error (solo ADMIN, queda en auditoría). Si mientras tanto su código o su chapeta los tomó otro animal activo (numeración reutilizable), hay que asignarle un código nuevo (IDN-06 CA3).
 
 **ANI-05 — Búsqueda rápida** · M · F1
 Un único campo de búsqueda, disponible en toda la aplicación, que acepta: código interno, nombre, número de chapeta visual, DIN, RFID o contenido de un QR del sistema.
@@ -221,6 +289,20 @@ Carga inicial (y actualizaciones posteriores) del hato desde una hoja de cálcul
 - CA7: Máximo 5.000 filas por archivo. Solo ADMIN.
 - CA8: Queda registrado como lote de importación (archivo, usuario, fecha, filas creadas) en auditoría.
 
+**ANI-10 — Modo de numeración de la finca** · M · F1 (M4c)
+Muchas fincas numeran sus animales 1, 2, 3… y le dan el número de un animal vendido a uno nuevo (09 §2). La finca elige en Configuración:
+- `codeReuse` (por defecto `false`): "Reutilizar números de animales que salen de la finca".
+- `codeSuggestion`: `PATTERN` (patrón `calfCodePattern`, comportamiento de la v1.1) o `LOWEST_FREE` (sugiere el número libre más bajo entre los animales activos).
+- CA1: Con `codeReuse = true`, el código solo es único entre animales **activos** (sin salida y no archivados). Con `false`, sigue siendo único entre todos los no archivados (RN-01).
+- CA2: Con `LOWEST_FREE`, `next-code` devuelve el menor entero positivo que no usa ningún animal activo (si se vendió el 5, sugiere 5). Solo aplica a códigos numéricos.
+- CA3: Cambiar de `codeReuse = true` a `false` se rechaza si hoy hay dos animales (uno activo y otro que salió) con el mismo código; el mensaje indica cuáles (`CODE_REUSE_CONFLICT`).
+
+**ANI-11 — Número anterior en la ficha y en la búsqueda** · M · F1 (M4c)
+- CA1: La búsqueda exacta de un código devuelve el animal **activo** que lo tiene. Si ningún activo lo tiene y lo tuvo uno que salió, devuelve ese animal con su estado (Vendido, Retirado).
+- CA2: La ficha de un animal activo muestra, si su código lo usó antes otro animal: "Este número lo tuvo antes 5 · vendido el 12/03/2026", con enlace a la ficha de ese animal.
+- CA3: La ficha de un animal que salió muestra: "Su número 5 lo tiene hoy otro animal", con enlace.
+- CA4: El historial (Timeline) de cada animal nunca incluye eventos de otro animal con el mismo número.
+
 ### 3.3 Identificación (IDN)
 
 **IDN-01 — Múltiples identificadores por animal** · M · F1
@@ -239,12 +321,17 @@ Tipos: `VISUAL_TAG`, `DIN`, `RFID`, `QR`, `BRAND` (hierro/marca), `OTHER`.
 - CA2: El ADMIN puede imprimir etiquetas QR en lote (hoja A4 con cuadrícula configurable, mostrando código y QR) para tarjetas de manejo o fichas de potrero.
 - CA3: El QR no expone datos del animal sin autenticación.
 
-**IDN-04 — Lectura RFID por Bluetooth** · S · F2
+**IDN-04 — Lectura RFID por Bluetooth** · S · F2 (M15)
 - CA1: La app móvil se empareja con lectores RFID Bluetooth compatibles y recibe lecturas FDX-B/HDX.
 - CA2: Cada lectura abre la ficha o avanza la jornada de manejo.
 
-**IDN-05 — Lectura de chapeta por cámara (OCR)** · C · F2
+**IDN-05 — Lectura de chapeta por cámara (OCR)** · C · F2 (M17)
 - CA1: La app móvil reconoce el número impreso de la chapeta y propone coincidencias; el usuario confirma antes de abrir la ficha.
+
+**IDN-06 — Liberación de chapetas al salir** · M · F1 (M4c)
+- CA1: Con `codeReuse = true`, al registrar la salida de un animal, sus identificadores `VISUAL_TAG` se retiran automáticamente con motivo `EXITED` y fecha de salida, y quedan disponibles para otro animal sin confirmación (excepción a RN-19).
+- CA2: Los identificadores `DIN` y `RFID` **nunca** se liberan ni se reutilizan: son únicos de por vida según el ICA. Siguen asociados al animal que salió (RN-32).
+- CA3: Revertir una salida (ANI-04 CA5) cuando su código o su chapeta ya los tiene otro animal activo exige asignarle un código nuevo; error `CODE_REASSIGNED` con el código del animal que lo tiene.
 
 ### 3.4 Clasificación del ganado (CLS)
 
@@ -337,8 +424,34 @@ Campos: animal, fecha, diagnóstico o motivo, medicamento, dosis, días de trata
 **PES-02 — Evolución de peso** · M · F1
 - CA1: Gráfica de peso en el tiempo en la ficha; ganancia diaria promedio (kg/día) entre los dos últimos pesajes y desde el nacimiento.
 
-**PES-03 — Báscula Bluetooth** · C · F3
-- CA1: En la jornada, el peso se captura de la báscula y se asocia al animal leído.
+El pesaje periódico se hace en báscula electrónica, y digitar cada peso es lento y propenso a errores (09 §3). **Hallazgo técnico [Real]:** los indicadores de pesaje ganadero del mercado usan protocolos propios y, en muchos casos, Bluetooth clásico (perfil de puerto serie); un navegador no puede conectarse a Bluetooth clásico (Web Bluetooth solo admite Bluetooth de bajo consumo y no está en iPhone). La conexión directa requiere la app móvil (F2) o la de escritorio (F3). Casi todos los indicadores exportan cada sesión de pesaje (chip, peso, fecha y hora) como CSV, lo que permite resolverlo desde la web.
+
+**PES-03 — Báscula conectada por Bluetooth** · S · F2 (M15) (reclasificado: en la v1.1 era C · F3)
+- CA1: La app móvil se conecta al indicador de pesaje de la finca. Se lee el chip del animal en la báscula; cuando el indicador reporta **peso estable**, el peso se guarda solo en la jornada; se pasa al siguiente animal.
+- CA2: Protección contra duplicados (el mismo animal dos veces seguidas) y aviso de peso atípico (PES-01).
+- CA3: Un adaptador por marca (`ScaleAdapter`): el sistema se lanza con uno o dos modelos concretos, los que use la finca piloto, y los demás se agregan después.
+- CA4: Si el indicador lee el chip por sí mismo (lector conectado a la báscula), el sistema acepta el par chip + peso que envía el indicador.
+- Prerrequisito: identificar marca y modelo del indicador de la finca piloto antes de M15.
+
+**PES-04 — Importar sesión de pesaje desde el archivo de la báscula** · M · F1 (M6)
+- CA1: El usuario sube el archivo CSV o Excel exportado por el indicador. El sistema propone el mapeo de columnas (RFID o EID, número visual, peso, fecha y hora) y lo guarda como **perfil de báscula** de la finca para reutilizarlo.
+- CA2: Simulación primero, como ANI-09: filas asociadas (por RFID y, si no hay, por chapeta visual), filas con chip desconocido, duplicados (mismo animal el mismo día: se conserva el último y se avisa) y pesos atípicos (PES-01, diferencia mayor a 30 %).
+- CA3: Los chips desconocidos se pueden asociar a un animal existente o dejar sin importar.
+- CA4: Al confirmar, se crea una jornada de pesaje (`WorkSession` con actividad `WEIGHT`) con un `WeightRecord` por animal, método `SCALE`, en una transacción.
+
+**PES-05 — Ganancia de peso y alertas** · S · F1 (M6 cálculo y ficha, M8 tablero)
+- CA1: Para cada animal: ganancia diaria promedio (kg/día) entre los dos últimos pesajes, en los últimos 90 días y desde el nacimiento.
+- CA2: Alerta "Ganancia baja" si la ganancia de los últimos 90 días es menor que el umbral de su categoría (`weightGainAlertKgPerDay`, por categoría de manejo; por defecto 0,30 kg/día para Levante [Validar]).
+- CA3: Alerta "Perdió peso" si el último pesaje es menor que el anterior en más de `weightLossAlertPercent` (por defecto 5 % [Validar]).
+- CA4: Listado filtrable por estas alertas y resumen por lote.
+
+**PES-06 — Peso objetivo de venta** · S · F1 (M8)
+- CA1: La finca define un peso objetivo de venta por sexo o categoría (`targetSaleWeightKg`; por defecto 450 kg en machos de Levante [Validar]).
+- CA2: Para cada animal con al menos dos pesajes: fecha estimada en que alcanzará el peso objetivo, según su ganancia de los últimos 90 días.
+- CA3: Pregunta del tablero en fincas de ceba: "¿Cuáles alcanzan el peso de venta este mes?".
+
+**PES-07 — Báscula por puerto serie en escritorio** · C · F3 (M18)
+- CA1: La app de escritorio (Tauri) se conecta por cable o Bluetooth serie al indicador con el mismo `ScaleAdapter`.
 
 ### 3.9 Contabilidad básica (ECO) — solo ADMIN
 
@@ -402,8 +515,27 @@ Inventario (total, por sexo, por categoría de manejo, por raza, por lote); **in
 ### 3.12 Configuración (CFG)
 
 **CFG-01 — Parámetros de la finca** · M · F1
-Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no).
+Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no). Con la validación con ganaderos se agregan: numeración reutilizable y modo de sugerencia de código (ANI-10), sistema productivo y qué vende la finca (CFG-03), días de secado antes del parto (60), umbrales de ganancia y pérdida de peso (PES-05) y peso objetivo de venta (PES-06).
 - CA1: Cambiar un parámetro recalcula las clasificaciones derivadas (son calculadas, no almacenadas).
+
+**CFG-03 — Sistema productivo** · M · F1 (M8)
+Cada finca vende cosas distintas: unas solo machos (ceba), otras hembras o terneros destetados (cría), otras producen leche (09 §4.1).
+- Campo `productionSystem`: `CRIA` (cría), `LEVANTE_CEBA` (levante y ceba), `LECHERIA` (lechería especializada), `DOBLE_PROPOSITO` o `CICLO_COMPLETO`. Por defecto `DOBLE_PROPOSITO` (finca de referencia).
+- Campo opcional `salesFocus`: `MALES`, `FEMALES` o `BOTH`: qué vende principalmente la finca.
+- CA1: No cambia datos ni reglas: cambia **qué se destaca** en el tablero, el orden de los reportes y qué alertas aparecen primero.
+- CA2: El control de leche (§3.16) solo aparece con `LECHERIA` o `DOBLE_PROPOSITO`.
+- CA3: Con `salesFocus`, el listado de "Disponibles para venta" y las sugerencias de venta se centran en ese sexo.
+
+Preguntas del tablero por sistema (se agregan a las comunes de RPT-01: total, preñadas, partos próximos, vacunas):
+
+| Sistema | Preguntas propias |
+|---|---|
+| Cría | ¿Cuántos terneros se destetan este mes y con qué peso? · ¿Cuál es el intervalo entre partos del hato? · ¿Cuántas vacas están horras? |
+| Levante y ceba | ¿Cuáles alcanzan el peso de venta este mes? (PES-06) · ¿Qué lotes ganan menos peso de lo esperado? (PES-05) · ¿Cuántos días faltan en promedio para la venta? |
+| Lechería y doble propósito | ¿Cuántas vacas están en ordeño y cuántas secas? · ¿Cuánta leche se produjo ayer y en el mes? · ¿Cuáles se deben secar pronto? · ¿Cuáles están en retiro de leche? |
+| Ciclo completo | Combinación de cría y ceba. |
+
+Referencias [Real]: en sistemas doble propósito en Colombia, UPRA (2024) reporta de 5,69 a 9,88 litros por vaca al día, destete hacia los 7 meses e intervalo entre partos de 387 a 439 días. Sirven como referencia en los reportes, no como umbrales fijos.
 
 **CFG-02 — Catálogos** · M · F1
 Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vacunación, lotes y etiquetas manuales (M3). Los **tipos de gasto** pasan a M7 (Finanzas), donde se usan; hoy son un enum fijo (`EXPENSE_TYPE`).
@@ -433,13 +565,40 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 - CA2: Los cambios se envían automáticamente al recuperar conexión; se muestra el estado ("3 cambios pendientes de enviar").
 - CA3: Los conflictos se resuelven según RN-24 y se informan al usuario cuando afectan datos que él modificó.
 
+### 3.16 Control de leche (LEC) — alcance extendido (M9b)
+
+Las fincas de lechería y doble propósito necesitan llevar la producción de leche (09 §4.2). Solo aparece con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2). M9b se hace si el cronograma lo permite antes del piloto; si no, pasa a la fase 2.
+
+**LEC-01 — Registro de producción de leche** · M · F1 extendida (M9b)
+- CA1: Registro por vaca y fecha: litros (decimal, NumberField), ordeño (`AM`, `PM` o `TOTAL`), método (`METER` medidor, `ESTIMATE` estimado).
+- CA2: Registro rápido por **jornada de ordeño**: lista de las vacas en ordeño del lote con un campo de litros por vaca y teclado numérico; se guarda todo junto.
+- CA3: Solo se registra leche de hembras con al menos un parto y sin secado posterior; en otro caso, error `NOT_LACTATING` con explicación.
+- CA4: Si la vaca tiene retiro de leche vigente (tratamiento con `withdrawalMilkDays`), el registro se acepta pero queda marcado "Leche no apta para la venta" y la jornada lo destaca.
+
+**LEC-02 — Estado de lactancia** · M · F1 extendida (M9b)
+- CA1: Etiquetas derivadas `LACTATING` (En ordeño) y `DRIED_OFF` (Seca), con días en leche en la ficha y en el listado.
+- CA2: Se calculan con funciones de `packages/shared/src/domain` y con su equivalente SQL, cubiertos por la prueba de equivalencia de ADR-009 (RN-27).
+
+**LEC-03 — Registrar secado** · M · F1 extendida (M9b)
+- CA1: Fecha y motivo (fin de lactancia, baja producción, preparación para el parto, enfermedad, otro).
+- CA2: Alerta "Secar pronto": vaca en ordeño y preñada cuyo parto estimado ocurre en menos de `dryOffBeforeCalvingDays` (por defecto 60 días [Validar]; la práctica común es un periodo seco de 45 a 60 días antes del parto).
+
+**LEC-04 — Producción por lactancia y por vaca** · S · F1 extendida (M9b)
+- CA1: En la ficha, pestaña "Leche": curva de producción de la lactancia actual, producción acumulada, promedio diario, pico y comparación con lactancias anteriores.
+
+**LEC-05 — Reportes de leche** · S · F1 extendida (M9b)
+- CA1: Producción diaria y mensual del hato; producción por lote; ranking de vacas por promedio diario; vacas por debajo de un umbral configurable; exportable a Excel.
+
+**LEC-06 — Ordeño sin conexión** · M · F2 (M16)
+- CA1: La jornada de ordeño funciona en la app móvil sin señal, con la misma sincronización de SYN-01.
+
 ---
 
 ## 4. Reglas de negocio
 
 | ID | Regla |
 |---|---|
-| RN-01 | El código interno es obligatorio y único por finca entre animales no archivados. |
+| RN-01 | El código interno es obligatorio y único por finca entre animales no archivados. Con numeración reutilizable (`codeReuse = true`, ANI-10), es único solo entre animales activos. La comparación usa el código normalizado (RN-30). |
 | RN-02 | Solo hembras pueden tener servicios, preñeces, partos y abortos. Solo machos pueden ser toros padres internos. |
 | RN-03 | Una hembra no puede tener más de una preñez abierta (desenlace `PENDING`). |
 | RN-04 | Fecha estimada de parto = fecha de servicio + días de gestación de la **raza de la madre** (`Breed.gestationDays`) o, si no tiene, de la finca (defecto 285). Se recalcula si cambia la fecha de servicio. |
@@ -457,7 +616,7 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 | RN-16 | La edad y las clasificaciones derivadas se calculan, nunca se almacenan. |
 | RN-17 | La suma de las asignaciones de un gasto compartido es exactamente igual al monto del gasto; el residuo de redondeo se suma a la primera asignación. |
 | RN-18 | Inversión por animal = suma de asignaciones de gastos (incluida la compra). Resultado = valor de venta − inversión. Los gastos anulados no cuentan. |
-| RN-19 | Un valor de identificador activo es único por finca y tipo. Un identificador reemplazado queda inactivo y no se reutiliza para otro animal sin confirmación del ADMIN. |
+| RN-19 | Un valor de identificador activo es único por finca y tipo. Un identificador reemplazado queda inactivo y no se reutiliza para otro animal sin confirmación del ADMIN. Excepción: con numeración reutilizable, las chapetas liberadas al salir (`EXITED`, IDN-06) se reutilizan sin confirmación. DIN y RFID nunca se reutilizan (RN-32). |
 | RN-20 | Los datos económicos (gastos, asignaciones, valores, ventas, inversión) solo son visibles y editables por ADMIN, tanto en la interfaz como en la API. |
 | RN-21 | Todo dato de negocio pertenece a una finca; ningún usuario accede a datos de una finca a la que no pertenece. |
 | RN-22 | Vender o sacrificar un animal en período de retiro exige confirmación explícita y queda registrado en auditoría. |
@@ -466,8 +625,16 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 | RN-25 | Horra: vaca (categoría `COW`) sin preñez abierta y cuyo último parto fue hace ≥ edad de destete. |
 | RN-26 | Una vacuna con `blockIneligibleSex = true` no puede registrarse en animales del sexo no elegible (brucelosis en machos, norma ICA). La elegibilidad por edad solo genera advertencia. |
 | RN-27 | La categoría de manejo y las etiquetas se calculan con las mismas funciones de `packages/shared/src/domain` en tablero, listados, reportes e importación. |
-| RN-28 | Los códigos sugeridos con `calfCodePattern` nunca reutilizan un código existente (activo o archivado) de la finca. |
+| RN-28 | Los códigos sugeridos con `calfCodePattern` nunca reutilizan un código existente (activo o archivado) de la finca. Con `codeSuggestion = LOWEST_FREE` (ANI-10 CA2), se sugiere el menor número libre entre los animales activos. |
 | RN-29 | La importación nunca crea crías a partir de "número de partos previos": crea preñeces históricas cerradas marcadas como importadas. |
+| RN-30 | La unicidad del código compara el código normalizado: sin espacios al inicio ni al final, en mayúsculas y, si es solo numérico, sin ceros a la izquierda ("5", "05" y "005" son el mismo código). Aplica en todas las fincas. |
+| RN-31 | La base garantiza la unicidad entre animales activos con un índice único parcial. La regla más estricta de las fincas con `codeReuse = false` (únicos entre todos los no archivados) se verifica en la aplicación dentro de la transacción. |
+| RN-32 | DIN y RFID son identificadores de por vida: nunca se reasignan a otro animal, sin importar el modo de numeración. Solo `VISUAL_TAG`, `BRAND` y `OTHER` pueden liberarse. |
+| RN-33 | Un número liberado conserva la trazabilidad: cada animal que lo usó mantiene su identificador interno, su historial completo y la fecha en que tuvo ese número. |
+| RN-34 | Una lactancia empieza en la fecha de un parto con desenlace `CALVED` (con o sin cría viva) y termina en el primer secado posterior o en la salida de la vaca. |
+| RN-35 | `MilkRecord.recorded_on` debe estar dentro de una lactancia abierta de la vaca; nunca en el futuro (RN-14). |
+| RN-36 | Solo puede haber un registro de leche por vaca, fecha y ordeño; un segundo registro del mismo ordeño reemplaza al anterior (se anula el anterior con motivo). |
+| RN-37 | Registrar un nuevo parto en una vaca en ordeño cierra implícitamente la lactancia anterior (sin secado registrado) y abre una nueva; la ficha lo muestra como "Lactancia cerrada por nuevo parto". |
 
 ---
 
@@ -480,7 +647,7 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 | RNF-03 | Usabilidad | Un operario nuevo registra una vacunación sin ayuda en menos de 1 minuto tras una demostración de 5 minutos. | Prueba de usabilidad con 3 usuarios reales. |
 | RNF-04 | Usabilidad | Objetivos táctiles ≥ 48 × 48 px; contraste legible a pleno sol (≥ 7:1 en texto principal). | Revisión de diseño + WCAG. |
 | RNF-05 | Accesibilidad | WCAG 2.1 nivel AA en la web. | axe-core en pruebas E2E. |
-| RNF-06 | Seguridad | Contraseñas con Argon2id; HTTPS obligatorio; tokens de acceso de 15 min; refresh tokens rotados y revocables; limitación de intentos en login. | Pruebas de integración. |
+| RNF-06 | Seguridad | Contraseñas con Argon2id; HTTPS obligatorio; tokens de acceso de 15 min; refresh tokens rotados y revocables, con vencimiento deslizante y tope absoluto por familia (AUT-10); limitación de intentos en login; enlaces de correo de un solo uso con el token en el fragmento de la URL, nunca en la query string; acceso con Google por OpenID Connect con PKCE (AUT-15). | Pruebas de integración. |
 | RNF-07 | Seguridad | Autorización verificada en el servidor para cada endpoint (rol + finca). La interfaz ocultando botones no cuenta como control. | Pruebas de autorización por rol. |
 | RNF-08 | Seguridad | Alineado con OWASP ASVS nivel 1. Sin secretos en el repositorio. | Checklist + escaneo de secretos en CI. |
 | RNF-09 | Disponibilidad | 99 % mensual en horario 5:00–21:00. | Monitoreo de salud. |
@@ -497,8 +664,8 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 ## 6. Interfaces externas
 
 - **Usuario:** ver `06-ux-ui.md`.
-- **Hardware:** lector RFID en modo teclado (F1); lector RFID Bluetooth y cámara (F2); báscula Bluetooth (F3).
-- **Software:** PostgreSQL; almacenamiento de objetos compatible con S3 para respaldos y fotos.
+- **Hardware:** lector RFID en modo teclado (F1); archivo CSV o Excel exportado por el indicador de pesaje (F1, PES-04); lector RFID Bluetooth, báscula Bluetooth y cámara (F2); báscula por puerto serie (F3).
+- **Software:** PostgreSQL; almacenamiento de objetos compatible con S3 para respaldos y fotos; servidor de correo SMTP (AUT-12); Google como proveedor de OpenID Connect (AUT-15).
 - **Comunicación:** API REST JSON sobre HTTPS. Ver `05-api.md`.
 
 ---
@@ -551,9 +718,12 @@ Actor: Administrador.
 | 8. Funciones adicionales | AUT-01 a AUT-04, ANI-03, ANI-05, ANI-06, ANI-07, BAK-01, BAK-02 |
 | Situación problema (preguntas) | RPT-01 |
 | Valor agregado (investigación) | IDN-02 a IDN-05, JOR-01 a JOR-03, SAN-05, PES-01 a PES-03, AUD-01, SYN-01 |
+| Validación con ganaderos (09) | H1: ANI-10, ANI-11, IDN-06, RN-30 a RN-33 · H2: PES-03 a PES-07 · H3: CFG-03, LEC-01 a LEC-06, RN-34 a RN-37 · H4: AUT-10 a AUT-15, REG-01 |
 
 ---
 
 ## 9. Preguntas abiertas: resueltas
 
 Las 11 preguntas de la versión 1.0 se resolvieron en `08-dominio-y-finca-referencia.md` §1 con prácticas y normas reales (destete, gestación por raza, plan oficial de vacunación, formato DIN, categorías del ICA) y con una **finca de referencia ficticia** para lo que depende de una finca concreta (usuarios, identificación en uso, conectividad, lotes, gastos). Al validar con la finca real se ajusta la configuración y el seed; el código no cambia.
+
+Las preguntas que dejó la validación con ganaderos (marca y modelo de la báscula, sistema productivo real, numeración, registro de leche, quiénes tienen correo y cuenta de Google) están en `09-ampliacion-validacion-ganaderos.md` §6 y se resuelven con la finca piloto.

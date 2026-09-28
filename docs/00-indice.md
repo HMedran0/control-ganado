@@ -13,6 +13,7 @@
 | `06-ux-ui.md` | Personas, principios, identidad visual, navegación, wireframes, componentes, redacción | Diseño, desarrollo |
 | `07-plan-desarrollo.md` | Hitos, definición de terminado, riesgos, alcance núcleo | Desarrollo con Claude Code |
 | `08-dominio-y-finca-referencia.md` | Decisiones de dominio sustentadas en fuentes reales y finca de referencia ficticia | Todos |
+| `09-ampliacion-validacion-ganaderos.md` | Hallazgos de la validación con ganaderos (H1 a H4) y en qué hito entra cada uno. Integrado en 01 a 08; se conserva como registro del porqué de cada cambio | Todos, evaluación académica |
 | `referencia/plantilla-importacion.xlsx` | Plantilla de importación del inventario con datos de ejemplo | Desarrollo, finca |
 | `../.claude/` | Permisos y hooks de Claude Code | Claude Code |
 

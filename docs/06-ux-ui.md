@@ -73,18 +73,20 @@ Inicio (preguntas del día + alertas)
 Animales
   ├─ Listado con filtros
   ├─ Ficha del animal
-  │    ├─ Resumen · Reproducción · Sanidad · Pesos · Genealogía · Costos(A) · Historial
-  │    └─ Acciones: vacuna, peso, servicio/parto, tratamiento, salida(A)
+  │    ├─ Resumen · Reproducción · Leche(M9b) · Sanidad · Pesos · Genealogía · Costos(A) · Historial
+  │    └─ Acciones: vacuna, peso, servicio/parto, tratamiento, secado(M9b), salida(A)
   └─ Nuevo animal
 Registrar (+)
   ├─ Parto · Servicio · Palpación
   ├─ Vacunación (individual o masiva)
-  ├─ Pesaje · Tratamiento
+  ├─ Pesaje · Importar pesaje de la báscula (M6) · Tratamiento
+  ├─ Control de leche · Jornada de ordeño · Secado (M9b)
   ├─ Gasto (A)
   └─ Jornada de manejo
-Alertas (vacunas, partos, servidas sin diagnóstico, retiros)
+Alertas (vacunas, partos, servidas sin diagnóstico, retiros, ganancia baja, secar pronto)
 Reportes
-Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta · Salir
+Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta (datos, correo, Sesiones, Google) · Salir
+Configuración(A) → Usuarios: crear usuario sin correo · Invitar por correo · invitaciones pendientes · cerrar las sesiones de un usuario
 ```
 
 - **Móvil (< 768 px):** barra inferior fija con 5 destinos: Inicio · Animales · **Registrar** (botón central destacado) · Alertas · Más. Búsqueda fija en la parte superior de Inicio y Animales.
@@ -124,6 +126,10 @@ Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta · Salir
 └──────────────────────────────────┘
 ```
 Cada fila completa es táctil y abre el listado filtrado. Las cifras usan Barlow Condensed 44 px alineadas a la derecha. En escritorio, las preguntas forman dos columnas y a la derecha aparece la lista de alertas más urgentes.
+
+**Preguntas por sistema productivo (CFG-03, M8).** A las comunes se agregan las del sistema de la finca, en el mismo formato de fila: en cría, «¿Cuántos terneros se destetan este mes?» y «¿Cuál es el intervalo entre partos?»; en levante y ceba, «¿Cuáles alcanzan el peso de venta este mes?» y «¿Qué lotes ganan menos peso?»; en lechería y doble propósito, «¿Cuántas vacas están en ordeño y cuántas secas?», «¿Cuánta leche se produjo ayer?» y «¿Cuáles se deben secar pronto?». El sistema productivo cambia qué se destaca y en qué orden, no los datos.
+
+**Aviso de correo sin verificar (AUT-14 CA4, M10a).** Un ADMIN con el correo sin verificar ve arriba de Inicio: «Verifica tu correo para poder recuperar tu contraseña. Te enviamos un enlace a a***@demo.co» con **Reenviar el enlace**. No bloquea el uso.
 
 ### 5.2 Listado de animales
 ```
@@ -167,6 +173,11 @@ La chapeta a la izquierda de cada fila es la ancla visual. Las alertas se muestr
 │ [ Vacuna ] [ Peso ] [ Parto ]    │  ← acciones rápidas fijas
 └──────────────────────────────────┘
 ```
+En móvil la barra de pestañas se desplaza de lado dentro de sí misma, sin desplazar la página; la pestaña activa queda a la vista al entrar y cada pestaña mide al menos 48 px de alto (M4b).
+
+**Número anterior (ANI-11, M4c).** En una finca con numeración reutilizable, bajo el encabezado y en tono informativo: «Este número lo tuvo antes 5 · vendido el 12/03/2026», con enlace a la ficha de ese animal. En la ficha de un animal que salió: «Su número 5 lo tiene hoy otro animal», con enlace. El historial nunca mezcla los eventos de los dos.
+
+**Leche (M9b).** En las vacas de una finca de lechería o doble propósito, la ficha muestra la etiqueta «En ordeño · 84 días en leche» o «Seca», y la pestaña **Leche**: curva de la lactancia actual, acumulado, promedio diario, pico y comparación con lactancias anteriores (LEC-04). «Secar pronto» aparece como aviso cuando el parto está a menos de `dryOffBeforeCalvingDays`.
 
 ### 5.4 Registrar parto (flujo de una pantalla)
 ```
@@ -219,10 +230,71 @@ Paso 1: "Descarga la plantilla" y "Sube tu archivo". Paso 2 (simulación): tres 
 Texto de ayuda: "Puedes importar varias veces. Los códigos que ya existen se omiten."
 
 ### 5.7 Inicio de sesión
-Campos "Usuario" (acepta también correo) y "Contraseña" con opción de mostrarla; botón **Entrar**. Sin "¿Olvidaste tu contraseña?" por correo: el texto dice "Si olvidaste tu contraseña, pídele al administrador de la finca una temporal".
+Campos "Usuario" (acepta también correo) y "Contraseña" con opción de mostrarla; botón **Entrar**.
+- Si la finca tiene correo configurado (`GET /auth/config`, M10a): enlace **¿Olvidaste tu contraseña?** (§5.11). Debajo, siempre: "Si no tienes correo, pídele al administrador de la finca una contraseña temporal".
+- Sin correo configurado, como hasta M10a: solo el texto "Si olvidaste tu contraseña, pídele al administrador de la finca una temporal".
+- Si Google está configurado: separador «o» y botón **Continuar con Google** (con el logo de Google según su guía de marca, texto en español). Sin `GOOGLE_*`, el botón no aparece.
+- Al volver de Google sin acceso: "Esta cuenta de Google no tiene acceso a ninguna finca. Pídele al administrador una invitación." (`GOOGLE_NO_ACCESS`).
+- Al cumplirse el tope de la sesión (AUT-10 CA2): "Por seguridad, vuelve a escribir tu contraseña", con el usuario ya escrito.
 
 ### 5.8 Vacunación masiva
 Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categoría o todos, con conteo y lista para desmarcar. Paso 3: "Vas a registrar Aftosa a 52 animales" → **Registrar 52 vacunaciones**.
+
+### 5.9 Mi cuenta (AUT-11 en M4d; correo y Google en M10a)
+```
+┌──────────────────────────────────┐
+│ Mi cuenta                        │
+│ Álvaro Pérez Castro · alvaro     │
+│ Correo alvaro@demo.co ✓ verificado│
+│ [ Cambiar contraseña ]           │
+│ ─────────────────────────────── │
+│ Sesiones                         │
+│ Chrome · Android       Este equipo│
+│   Desde 02/09 · usada hoy        │
+│ Edge · Windows                   │
+│   Desde 14/08 · usada hace 3 días│
+│   [ Cerrar sesión en este equipo ]│
+│ [ Cerrar las demás sesiones ]    │
+│ ─────────────────────────────── │
+│ Google  No vinculada  [ Vincular ]│
+└──────────────────────────────────┘
+```
+- Cada sesión muestra navegador y sistema (del `userAgent`), inicio y último uso; la actual dice "Este equipo" y no tiene botón propio (para cerrarla está Salir).
+- Cerrar una sesión o las demás pide confirmación corta, porque obliga a volver a entrar en ese equipo: "¿Cerrar la sesión en Edge · Windows? Tendrás que volver a entrar en ese equipo."
+- Correo: sin verificar, "Sin verificar · Reenviar el enlace"; cambiarlo pide la contraseña actual y deja el nuevo sin verificar hasta abrir el enlace.
+- Google: **Vincular** y **Desvincular** piden la contraseña actual. Desvincular el único método de acceso no se ofrece: "Crea una contraseña antes de desvincular Google".
+- En Configuración → Usuarios, el ADMIN tiene en cada usuario **Cerrar todas sus sesiones** ("equipo perdido o prestado"), y en la parte de arriba **Invitar por correo** (correo y rol) con la lista de invitaciones pendientes (correo, rol, vence el…, **Reenviar**, **Anular**).
+
+### 5.10 Aceptar invitación (AUT-13, M10a)
+El enlace del correo abre `/invitacion#token=…`. La página lee el token del fragmento, lo borra de la barra de direcciones (`history.replaceState`) y lo envía en el cuerpo (`POST /invitations/preview`). Se sirve con `Referrer-Policy: no-referrer`.
+```
+┌──────────────────────────────────┐
+│ Te invitaron a                   │
+│ Finca La Esperanza               │
+│ como Veterinaria · vet@demo.co   │
+│ Nombre      [                  ] │
+│ Usuario     [ paola.vet        ] │
+│ Contraseña  [                  ] │
+│ [ Entrar a la finca ]            │
+│ ───────────── o ──────────────── │
+│ [ G  Continuar con Google ]      │
+└──────────────────────────────────┘
+```
+- Si el correo ya es de un usuario (de otra finca), la pantalla dice "Ya tienes una cuenta en Hato" y pide solo su contraseña, o usa la sesión abierta: **Unirme a Finca La Esperanza**.
+- Enlace vencido, usado o anulado: "La invitación no es válida o ya venció. Pídele al administrador una nueva." (`INVITATION_INVALID`).
+- Al terminar, la sesión queda abierta y el correo verificado.
+
+### 5.11 Olvidé mi contraseña y restablecer (AUT-14, M10a)
+- **¿Olvidaste tu contraseña?** pide el correo y responde siempre lo mismo: "Si ese correo está registrado y verificado, te enviamos un enlace. Revisa también la carpeta de spam." Nunca dice si la cuenta existe.
+- El enlace abre `/restablecer#token=…` (mismo manejo del fragmento y `Referrer-Policy: no-referrer` que §5.10): nueva contraseña dos veces y **Guardar contraseña**. Al terminar: "Contraseña guardada. Cerramos tus otras sesiones por seguridad."
+- La verificación de correo abre `/verificar-correo#token=…` y confirma "Correo verificado".
+- Enlace vencido o usado: "El enlace ya no es válido o venció. Pide uno nuevo." con el botón para pedirlo.
+
+### 5.12 Importar pesaje de la báscula (PES-04, M6)
+Mismo patrón de simulación que §5.6. Paso 1: elegir el perfil de báscula o, la primera vez, subir el archivo y confirmar el mapeo propuesto (qué columna es el chip, el número visual, el peso y la fecha), que se guarda con un nombre ("Báscula del corral"). Paso 2 (simulación): contadores **Asociados**, **Chips desconocidos**, **Repetidos** y **Pesos atípicos**; cada chip desconocido tiene **Asociar a un animal** o **No importar**. Paso 3: **Guardar 48 pesajes** → crea la jornada de pesaje y muestra "48 pesajes guardados · 3 chips sin asociar".
+
+### 5.13 Jornada de ordeño (LEC-01, M9b)
+Lista de las vacas en ordeño del lote, una fila por vaca con la chapeta, el nombre, días en leche y un `NumberField` de litros con teclado numérico; Enter pasa a la siguiente. Una vaca con retiro de leche muestra "Leche no apta para la venta" junto al campo. Botón fijo abajo: **Guardar ordeño de 23 vacas**. El ordeño (AM, PM o total del día) y la fecha se eligen una vez arriba con `SegmentedChoice` y `DateQuickPick`.
 
 ## 6. Componentes del sistema de diseño
 
@@ -231,7 +303,7 @@ Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categor�
 | `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños (ancho): s (listas, 56 px), m (ficha, 72 px), l (jornada, 96 px); alto 1,2 veces el ancho. Letra del código ≈ 0,4 del ancho (22, 30 y 40 px); los códigos largos (`26-045`) se achican, pero nunca por debajo de 18, 23 y 31 px respectivamente: en una lista al sol, menos de 18 px no se lee. La silueta también forma el logo (chapeta pequeña con «H» + «Hato»). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
 | `SearchBar` | Acepta texto y lecturas RFID (`useRfidReader`, 04 §6). Resultados agrupados: coincidencia exacta primero ("Chip 170…"). Estado "leyendo" con borde chapeta. Excepción aprobada en M2b a «etiquetas visibles» (§8): su etiqueta («Buscar animal») es solo para lectores de pantalla; se ven el ícono y el placeholder. |
 | `QuestionRow` | Pregunta + resumen + cifra; fila completa enlazada. |
-| `Tag` | Etiquetas de clasificación: fondo claro del color semántico, texto en el tono oscuro del mismo color, siempre con texto (no solo color). |
+| `Tag` | Etiquetas de clasificación: fondo claro del color semántico, texto en el tono oscuro del mismo color, siempre con texto (no solo color). Con leche (M9b): «En ordeño · 84 d» y «Seca». |
 | `AlertBanner` | Alerta accionable dentro de la ficha: texto de lo que pasa + botón de la acción que lo resuelve. |
 | `SegmentedChoice` | Grupo de botones grandes para 2–4 opciones (sexo, tipo de parto, estado). Reemplaza listas desplegables. |
 | `DateQuickPick` | Hoy · Ayer · Otra fecha (abre el selector de fecha nativo del sistema). Por defecto Hoy; «hoy» es el día en America/Bogota (`useToday`), y no admite fechas futuras. |
@@ -252,6 +324,8 @@ Base técnica: primitivas accesibles de Radix UI estilizadas con Tailwind y toke
 - Botones con verbo + objeto: "Guardar parto", "Registrar vacuna", "Terminar jornada". La confirmación repite el verbo: "Parto guardado".
 - Errores que dicen qué pasó y cómo seguir: "Ya existe un animal con el código P-12. Usa otro código o abre la ficha de P-12." Nunca "Error de validación".
 - Vacíos que invitan: "Todavía no hay pesajes. Registra el primero para ver la curva de crecimiento."
+- «Horra» y «Seca» no son lo mismo y nunca se intercambian: Horra es la vaca sin preñez ni cría al pie (`DRY`); Seca, la que dejó de ordeñarse (`DRIED_OFF`).
+- Correos (AUT-12): asunto corto con el nombre de la finca ("Te invitaron a Finca La Esperanza en Hato", "Restablece tu contraseña de Hato"); cuerpo en texto plano y HTML simple, sin imágenes remotas; un solo botón o enlace con el verbo ("Aceptar la invitación", "Crear una contraseña nueva"); cuándo vence ("El enlace vence en 1 hora"); y qué hacer si no lo pidió ("Si no pediste esto, ignora este correo: tu contraseña no cambia").
 - Fechas `21/10/2026`; relativas cuando ayudan ("en 3 días", "hace 6 días"). Dinero `$ 1.250.000`. Peso `452 kg`. Edad "5 a 2 m".
 
 ## 8. Accesibilidad y condiciones de campo
