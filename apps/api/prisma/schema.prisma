@@ -293,35 +293,41 @@ model Tag {
 }
 
 model Animal {
-  id                 String    @id @db.Uuid
-  farmId             String    @map("farm_id") @db.Uuid
-  code               String
-  name               String?
-  sex                Sex
-  breedId            String    @map("breed_id") @db.Uuid
-  birthDate          DateTime  @map("birth_date") @db.Date
-  birthDateEstimated Boolean   @default(false) @map("birth_date_estimated")
-  origin             Origin
-  originDetail       String?   @map("origin_detail")
-  entryDate          DateTime  @map("entry_date") @db.Date
-  damId              String?   @map("dam_id") @db.Uuid
-  sireId             String?   @map("sire_id") @db.Uuid
-  sireExternalRef    String?   @map("sire_external_ref")
-  birthPregnancyId   String?   @map("birth_pregnancy_id") @db.Uuid
-  lotId              String?   @map("lot_id") @db.Uuid
-  forSale            Boolean   @default(false) @map("for_sale")
-  exitType           ExitType? @map("exit_type")
-  exitDate           DateTime? @map("exit_date") @db.Date
-  exitReason         String?   @map("exit_reason")
-  photoUrl           String?   @map("photo_url")
-  notes              String?
-  version            Int       @default(1)
-  createdById        String    @map("created_by_id") @db.Uuid
-  updatedById        String    @map("updated_by_id") @db.Uuid
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz
-  deletedAt          DateTime? @map("deleted_at") @db.Timestamptz
-  deletedReason      String?   @map("deleted_reason")
+  id                    String    @id @db.Uuid
+  farmId                String    @map("farm_id") @db.Uuid
+  code                  String
+  name                  String?
+  sex                   Sex
+  breedId               String    @map("breed_id") @db.Uuid
+  birthDate             DateTime  @map("birth_date") @db.Date
+  birthDateEstimated    Boolean   @default(false) @map("birth_date_estimated")
+  origin                Origin
+  originDetail          String?   @map("origin_detail")
+  entryDate             DateTime  @map("entry_date") @db.Date
+  /// La fecha de ingreso no se conocía y se tomó la de nacimiento (importación, ANI-09). Deja
+  /// de ser estimada cuando alguien la corrige en la ficha.
+  entryDateEstimated    Boolean   @default(false) @map("entry_date_estimated")
+  /// Partos anteriores al sistema que llegaron por importación sin fecha (ANI-09 CA6, RN-29).
+  /// Número de partos = este valor + preñeces `CALVED` registradas. Nunca crea crías ni fechas.
+  importedPriorCalvings Int       @default(0) @map("imported_prior_calvings")
+  damId                 String?   @map("dam_id") @db.Uuid
+  sireId                String?   @map("sire_id") @db.Uuid
+  sireExternalRef       String?   @map("sire_external_ref")
+  birthPregnancyId      String?   @map("birth_pregnancy_id") @db.Uuid
+  lotId                 String?   @map("lot_id") @db.Uuid
+  forSale               Boolean   @default(false) @map("for_sale")
+  exitType              ExitType? @map("exit_type")
+  exitDate              DateTime? @map("exit_date") @db.Date
+  exitReason            String?   @map("exit_reason")
+  photoUrl              String?   @map("photo_url")
+  notes                 String?
+  version               Int       @default(1)
+  createdById           String    @map("created_by_id") @db.Uuid
+  updatedById           String    @map("updated_by_id") @db.Uuid
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz
+  deletedReason         String?   @map("deleted_reason")
 
   farm            Farm       @relation(fields: [farmId], references: [id])
   breed           Breed      @relation(fields: [breedId], references: [id])

@@ -525,6 +525,8 @@ export type OpenPregnancyView = {
 /** Resumen reproductivo; solo en hembras. */
 export type ReproductiveSummary = {
   readonly calvingCount: number;
+  /** Cuántos de esos partos llegaron por importación sin fecha (RN-29). */
+  readonly importedPriorCalvings: number;
   readonly lastCalvingDate: IsoDate | null;
   readonly openPregnancy: OpenPregnancyView | null;
 };
@@ -534,6 +536,8 @@ export type AnimalDetail = AnimalListItem & {
   readonly origin: Origin;
   readonly originDetail: string | null;
   readonly entryDate: IsoDate;
+  /** Se tomó la fecha de nacimiento porque no se conocía (importación, ANI-09). */
+  readonly entryDateEstimated: boolean;
   readonly ageDays: number;
   readonly dam: AnimalRef | null;
   readonly sire: AnimalRef | null;

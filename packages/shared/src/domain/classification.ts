@@ -109,7 +109,10 @@ export type PregnancyFactsInput = {
 
 /** Hechos reproductivos de una hembra, de donde salen la categoría y las etiquetas. */
 export type PregnancyFacts = {
-  /** Preñeces `CALVED` no anuladas (RN-07). */
+  /**
+   * Partos: preñeces `CALVED` no anuladas (RN-07) más los partos anteriores al sistema que
+   * llegaron por importación sin fecha (`imported_prior_calvings`, RN-29).
+   */
   readonly calvingCount: number;
   /** Fecha más reciente de esos partos; `null` si no hay ninguno con fecha. */
   readonly lastCalvingDate: IsoDate | null;
@@ -124,9 +127,15 @@ export type PregnancyFacts = {
 /**
  * Resume las preñeces de una hembra para `managementCategory`, `derivedTags` y las alertas.
  * Si por un error de datos hubiera más de una abierta, cuenta la de servicio más reciente.
+ *
+ * `importedPriorCalvings` son los partos anteriores que trajo la importación sin fecha: suman
+ * al número de partos (Vaca, Parida) pero no a la fecha del último parto (Horra).
  */
-export function summarizePregnancies(pregnancies: readonly PregnancyFactsInput[]): PregnancyFacts {
-  let calvingCount = 0;
+export function summarizePregnancies(
+  pregnancies: readonly PregnancyFactsInput[],
+  importedPriorCalvings = 0,
+): PregnancyFacts {
+  let calvingCount = importedPriorCalvings;
   let lastCalvingDate: IsoDate | null = null;
   let openPregnancy: PregnancyFacts['openPregnancy'] = null;
 

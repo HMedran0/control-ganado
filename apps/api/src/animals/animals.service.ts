@@ -429,6 +429,8 @@ export class AnimalsService {
             origin,
             ...(input.originDetail === undefined ? {} : { originDetail: input.originDetail }),
             entryDate: toPrismaDate(entryDate),
+            // Una fecha de ingreso estimada deja de serlo cuando alguien la corrige (ANI-09).
+            ...(entryDate === before.entryDate ? {} : { entryDateEstimated: false }),
             damId,
             sireId,
             sireExternalRef,

@@ -132,7 +132,7 @@ export class AnimalDetailService {
       expectedCalvingDate: fromPrismaDate(pregnancy.expectedCalvingDate),
       voided: pregnancy.voidedAt !== null,
     }));
-    const facts = summarizePregnancies(pregnancies);
+    const facts = summarizePregnancies(pregnancies, animal.importedPriorCalvings);
     const withdrawalUntil = withdrawalUntilOf(
       animal.treatments.map((treatment) => ({
         withdrawalUntil: fromPrismaDateOrNull(treatment.withdrawalUntil),
@@ -192,6 +192,7 @@ export class AnimalDetailService {
       origin: animal.origin,
       originDetail: animal.originDetail,
       entryDate: fromPrismaDate(animal.entryDate),
+      entryDateEstimated: animal.entryDateEstimated,
       dam: animal.dam,
       sire: animal.sire,
       sireExternalRef: animal.sireExternalRef,
@@ -210,6 +211,7 @@ export class AnimalDetailService {
         animal.sex === SEX.FEMALE
           ? {
               calvingCount: facts.calvingCount,
+              importedPriorCalvings: animal.importedPriorCalvings,
               lastCalvingDate: facts.lastCalvingDate,
               openPregnancy:
                 openPregnancy === undefined

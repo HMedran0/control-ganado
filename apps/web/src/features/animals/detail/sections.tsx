@@ -83,7 +83,7 @@ export function SummaryTab({
             [
               'Procedencia',
               animal.origin === 'PURCHASED'
-                ? `Comprado · ingresó el ${formatDate(animal.entryDate)}${animal.originDetail === null ? '' : ` · ${animal.originDetail}`}`
+                ? `Comprado · ingresó el ${entryDateText(animal)}${animal.originDetail === null ? '' : ` · ${animal.originDetail}`}`
                 : ORIGIN_LABEL[animal.origin],
             ],
             ['Lote', animal.lot?.name ?? 'Sin lote'],
@@ -153,7 +153,12 @@ export function ReproductionTab({ animal, today }: { animal: AnimalDetail; today
       <Section title="Partos">
         <Facts
           items={[
-            ['Partos registrados', String(reproduction.calvingCount)],
+            [
+              'Partos',
+              reproduction.importedPriorCalvings === 0
+                ? String(reproduction.calvingCount)
+                : `${reproduction.calvingCount} (${reproduction.importedPriorCalvings} ${reproduction.importedPriorCalvings === 1 ? 'anterior' : 'anteriores'} al sistema, sin fecha)`,
+            ],
             [
               'Último parto',
               reproduction.lastCalvingDate === null
@@ -260,7 +265,7 @@ export function CostsTab({ animal }: { animal: AnimalDetail }) {
         <Facts
           items={[
             ['Valor de compra', <strong key="valor">{formatCop(price)}</strong>],
-            ['Fecha de ingreso', formatDate(animal.entryDate)],
+            ['Fecha de ingreso', entryDateText(animal)],
           ]}
         />
       )}
@@ -366,4 +371,14 @@ export function ChangesTab({ animal }: { animal: AnimalDetail }) {
       ) : null}
     </div>
   );
+}
+
+/**
+ * Fecha de ingreso; si la importación tomó la de nacimiento porque no se conocía, lo dice hasta
+ * que alguien la corrija (ANI-09).
+ */
+function entryDateText(animal: AnimalDetail): string {
+  return animal.entryDateEstimated
+    ? `${formatDate(animal.entryDate)} (estimada: es la de nacimiento)`
+    : formatDate(animal.entryDate);
 }

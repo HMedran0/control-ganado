@@ -26,6 +26,7 @@ export function animalDetail(patch: Partial<AnimalDetail> = {}): AnimalDetail {
     origin: 'BORN_ON_FARM',
     originDetail: null,
     entryDate: toIsoDate('2021-02-10'),
+    entryDateEstimated: false,
     ageDays: 2000,
     dam: null,
     sire: null,

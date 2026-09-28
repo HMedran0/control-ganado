@@ -120,6 +120,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
           expectedCalvingDate: fromPrismaDate(pregnancy.expectedCalvingDate),
           voided: pregnancy.voidedAt !== null,
         })),
+        animal.importedPriorCalvings,
       );
       const withdrawalUntil = withdrawalUntilOf(
         animal.treatments.map((treatment) => ({
@@ -307,7 +308,12 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       },
     });
 
-    const animal = async (code: string, sex: Sex, birth: string): Promise<string> => {
+    const animal = async (
+      code: string,
+      sex: Sex,
+      birth: string,
+      importedPriorCalvings = 0,
+    ): Promise<string> => {
       const id = uuidv7();
       await prisma.animal.create({
         data: {
@@ -319,6 +325,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
           birthDate: toPrismaDate(toIsoDate(birth)),
           origin: ORIGIN.BORN_ON_FARM,
           entryDate: toPrismaDate(toIsoDate(birth)),
+          importedPriorCalvings,
           createdById: adminId,
           updatedById: adminId,
         },
@@ -371,6 +378,24 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
         },
       });
     };
+
+    // Partos anteriores importados sin fecha (RN-29): vaca y parida, pero no horra sin fecha.
+    const b20 = await animal('B-20', SEX.FEMALE, '2018-05-01', 3);
+    // Tres anteriores más el último importado con fecha: 4 partos, horra por la fecha.
+    const b21 = await animal('B-21', SEX.FEMALE, '2017-05-01', 3);
+    await pregnancy(b21, {
+      outcome: PREGNANCY_OUTCOME.CALVED,
+      service: '2025-01-15',
+      outcomeDate: '2025-11-01',
+    });
+    // Uno importado y preñada: vaca preñada con parto previsto.
+    const b22 = await animal('B-22', SEX.FEMALE, '2019-05-01', 1);
+    await pregnancy(b22, {
+      outcome: PREGNANCY_OUTCOME.PENDING,
+      service: '2026-05-01',
+      confirmedAt: '2026-07-01',
+      expected: '2027-02-18',
+    });
 
     // Destete justo hoy y justo mañana, contando con el recorte a fin de mes.
     await animal('B-01', SEX.FEMALE, '2026-02-25');
@@ -454,6 +479,16 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
 
     setToday(SEED_TODAY);
     expect(await differences(edge, SEED_TODAY)).toEqual([]);
+    // Los partos importados cuentan en los dos lados (no es una coincidencia en cero).
+    const shared = await expectedByShared(edge, SEED_TODAY);
+    expect(shared.get(b20)).toMatchObject({
+      category: 'COW',
+      calvingCount: 3,
+      calved: true,
+      dry: false,
+    });
+    expect(shared.get(b21)).toMatchObject({ calvingCount: 4, dry: true });
+    expect(shared.get(b22)).toMatchObject({ category: 'COW', calvingCount: 1, pregnant: true });
     // Y en un fin de mes corto, donde el recorte decide.
     setToday(toIsoDate('2027-02-28'));
     expect(await differences(edge, toIsoDate('2027-02-28'))).toEqual([]);

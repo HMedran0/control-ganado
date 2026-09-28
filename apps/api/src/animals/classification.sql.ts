@@ -74,7 +74,7 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
       SELECT a.id AS animal_id,
         a.sex,
         hato_months_between(a.birth_date, ${todayDate}) AS age_months,
-        COALESCE(r.calving_count, 0) AS calving_count,
+        COALESCE(r.calving_count, 0) + a.imported_prior_calvings AS calving_count,
         r.last_calving_date,
         r.open_service_date,
         r.open_confirmed_at,

@@ -62,6 +62,7 @@ function detail(patch: Partial<AnimalDetail> = {}): AnimalDetail {
     origin: 'BORN_ON_FARM',
     originDetail: null,
     entryDate: '2020-01-01' as AnimalDetail['entryDate'],
+    entryDateEstimated: false,
     ageDays: 2400,
     dam: null,
     sire: null,

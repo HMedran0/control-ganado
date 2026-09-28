@@ -28,6 +28,7 @@ function animal(patch: Partial<AnimalDetail>): AnimalDetail {
     origin: 'BORN_ON_FARM',
     originDetail: null,
     entryDate: toIsoDate('2020-01-01'),
+    entryDateEstimated: false,
     ageDays: 2000,
     dam: null,
     sire: null,
@@ -89,6 +90,7 @@ describe('avisos de la ficha (06 §5.3)', () => {
         withdrawalUntil: toIsoDate('2026-10-01'),
         reproduction: {
           calvingCount: 2,
+          importedPriorCalvings: 0,
           lastCalvingDate: null,
           openPregnancy: {
             id: 'p',

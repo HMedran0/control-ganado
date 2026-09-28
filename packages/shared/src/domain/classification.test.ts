@@ -208,6 +208,20 @@ describe('summarizePregnancies', () => {
     expect(facts.openPregnancy).toBeNull();
   });
 
+  it('suma los partos anteriores importados sin tocar la fecha del último (RN-29)', () => {
+    expect(summarizePregnancies([], 3)).toEqual({
+      calvingCount: 3,
+      lastCalvingDate: null,
+      openPregnancy: null,
+    });
+    const facts = summarizePregnancies(
+      [pregnancy('CALVED', '2025-01-01', { outcomeDate: '2025-10-10' })],
+      3,
+    );
+    expect(facts.calvingCount).toBe(4);
+    expect(facts.lastCalvingDate).toBe('2025-10-10');
+  });
+
   it('la preñez abierta no anulada, confirmada o no', () => {
     const facts = summarizePregnancies([
       pregnancy('PENDING', '2026-01-01', { voided: true }),
