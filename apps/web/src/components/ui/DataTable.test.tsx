@@ -103,3 +103,54 @@ describe('DataTable', () => {
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
   });
 });
+
+describe('DataTable con selección', () => {
+  function Seleccionable() {
+    const [selected, setSelected] = useState<Set<string>>(new Set());
+    const toggle = (id: string) => {
+      setSelected((current) => {
+        const next = new Set(current);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    };
+    return (
+      <>
+        <DataTable
+          caption="Animales"
+          columns={COLUMNS}
+          rows={ROWS}
+          rowKey={(row) => row.id}
+          selection={{
+            isSelected: (row) => selected.has(row.id),
+            onToggle: (row) => {
+              toggle(row.id);
+            },
+            rowLabel: (row) => `Seleccionar ${row.code}`,
+            allSelected: selected.size === ROWS.length,
+            onToggleAll: () => {
+              setSelected(
+                selected.size === ROWS.length ? new Set() : new Set(ROWS.map((row) => row.id)),
+              );
+            },
+          }}
+        />
+        <p>Seleccionados: {selected.size}</p>
+      </>
+    );
+  }
+
+  it('cada fila tiene su casilla con nombre propio y «Seleccionar todos» marca las cargadas', async () => {
+    const user = userEvent.setup();
+    render(<Seleccionable />);
+
+    const table = screen.getByRole('table', { name: 'Animales' });
+    await user.click(within(table).getByRole('checkbox', { name: 'Seleccionar P-12' }));
+    expect(screen.getByText('Seleccionados: 1')).toBeInTheDocument();
+
+    await user.click(within(table).getByRole('checkbox', { name: 'Seleccionar todos' }));
+    expect(screen.getByText('Seleccionados: 2')).toBeInTheDocument();
+    expect(within(table).getByRole('checkbox', { name: 'Seleccionar P-19' })).toBeChecked();
+  });
+});

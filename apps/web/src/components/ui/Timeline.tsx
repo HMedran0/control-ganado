@@ -13,8 +13,8 @@ export type TimelineItem = {
   readonly author?: string;
   /** Detalle del evento, si tiene pantalla propia. */
   readonly to?: LinkProps['to'];
-  /** Evento anulado (RN-11): se muestra en gris y con su motivo, nunca desaparece. */
-  readonly voided?: { readonly reason: string };
+  /** Evento anulado (RN-11): se muestra en gris y con su motivo si se conoce; nunca desaparece. */
+  readonly voided?: { readonly reason?: string };
 };
 
 /**
@@ -58,7 +58,7 @@ export function Timeline({ items, label }: { items: readonly TimelineItem[]; lab
                 <time dateTime={item.date}>{formatDate(item.date)}</time>
                 {item.author === undefined ? null : ` · ${item.author}`}
               </p>
-              {item.voided === undefined ? null : (
+              {item.voided?.reason === undefined ? null : (
                 <p className="text-aux">Motivo: {item.voided.reason}</p>
               )}
             </div>

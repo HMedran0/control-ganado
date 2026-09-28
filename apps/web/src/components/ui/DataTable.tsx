@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown, Check } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export type SortDirection = 'asc' | 'desc';
@@ -17,6 +17,19 @@ export type DataColumn<T> = {
   readonly mobile?: 'leading' | 'primary' | 'secondary' | 'hidden';
 };
 
+/**
+ * Selección múltiple (operaciones en lote, CLS-02 CA2). La casilla de cada fila lleva un
+ * nombre propio para lectores de pantalla («Seleccionar 26-045»).
+ */
+export type DataTableSelection<T> = {
+  readonly isSelected: (row: T) => boolean;
+  readonly onToggle: (row: T) => void;
+  /** Nombre de la fila en la casilla: «Seleccionar 26-045». */
+  readonly rowLabel: (row: T) => string;
+  readonly allSelected: boolean;
+  readonly onToggleAll: () => void;
+};
+
 export type DataTableProps<T> = {
   /** Describe la tabla para lectores de pantalla («Animales preñados»). */
   readonly caption: string;
@@ -27,6 +40,7 @@ export type DataTableProps<T> = {
   readonly onSortChange?: (sort: SortState) => void;
   /** Qué mostrar si no hay filas (normalmente un EmptyState). */
   readonly empty?: ReactNode;
+  readonly selection?: DataTableSelection<T>;
 };
 
 const ARIA_SORT: Record<SortDirection, 'ascending' | 'descending'> = {
@@ -50,6 +64,7 @@ export function DataTable<T>({
   sort,
   onSortChange,
   empty,
+  selection,
 }: DataTableProps<T>) {
   if (rows.length === 0 && empty !== undefined) return <>{empty}</>;
 
@@ -64,6 +79,15 @@ export function DataTable<T>({
           <caption className="sr-only">{caption}</caption>
           <thead>
             <tr className="border-b border-cerca">
+              {selection === undefined ? null : (
+                <th scope="col" className="w-14 px-2">
+                  <SelectBox
+                    label="Seleccionar todos"
+                    checked={selection.allSelected}
+                    onChange={selection.onToggleAll}
+                  />
+                </th>
+              )}
               {columns.map((column) => {
                 const sorted = sort?.key === column.key ? sort.direction : undefined;
                 return (
@@ -98,6 +122,17 @@ export function DataTable<T>({
           <tbody>
             {rows.map((row) => (
               <tr key={rowKey(row)} className="border-b border-cerca last:border-b-0">
+                {selection === undefined ? null : (
+                  <td className="px-2 align-middle">
+                    <SelectBox
+                      label={selection.rowLabel(row)}
+                      checked={selection.isSelected(row)}
+                      onChange={() => {
+                        selection.onToggle(row);
+                      }}
+                    />
+                  </td>
+                )}
                 {columns.map((column) => (
                   <td
                     key={column.key}
@@ -118,6 +153,15 @@ export function DataTable<T>({
       >
         {rows.map((row) => (
           <li key={rowKey(row)} className="flex items-center gap-3 p-3">
+            {selection === undefined ? null : (
+              <SelectBox
+                label={selection.rowLabel(row)}
+                checked={selection.isSelected(row)}
+                onChange={() => {
+                  selection.onToggle(row);
+                }}
+              />
+            )}
             {leading.map((column) => (
               <div key={column.key} className="shrink-0">
                 {column.cell(row)}
@@ -144,6 +188,34 @@ export function DataTable<T>({
         ))}
       </ul>
     </>
+  );
+}
+
+/** Casilla de selección con objetivo táctil de 48 px; el cuadro se dibuja como en `Checkbox`. */
+function SelectBox({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className="relative inline-flex size-12 shrink-0 cursor-pointer items-center justify-center">
+      <input
+        type="checkbox"
+        aria-label={label}
+        checked={checked}
+        onChange={onChange}
+        className="peer size-6 cursor-pointer appearance-none rounded-[6px] border-2 border-texto-2 bg-superficie checked:border-potrero checked:bg-potrero"
+      />
+      <Check
+        aria-hidden="true"
+        strokeWidth={3}
+        className="pointer-events-none absolute hidden size-5 text-white peer-checked:block"
+      />
+    </label>
   );
 }
 
