@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { PasswordChangeGuard } from './auth/password-change.guard.js';
 import { CatalogsModule } from './catalogs/catalogs.module.js';
 import { AuditInterceptor } from './common/audit/audit.interceptor.js';
+import { EntitlementsModule } from './common/entitlements/entitlements.module.js';
 import { IdempotencyModule } from './common/idempotency/idempotency.module.js';
 import { RolesGuard } from './common/roles/roles.guard.js';
 import { EnvModule } from './config/env.module.js';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module.js';
     EnvModule,
     InfraModule,
     IdempotencyModule,
+    EntitlementsModule,
     AuthModule,
     UsersModule,
     CatalogsModule,

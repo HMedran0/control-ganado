@@ -31,6 +31,7 @@ import {
 import { FarmContextService, type FarmContext } from '../animals/farm-context.service.js';
 import { assertCodeAvailable } from '../animals/code-availability.js';
 import { checkIdentifier } from '../animals/identifier-rules.js';
+import { EntitlementsService, PLAN_LIMIT } from '../common/entitlements/entitlements.service.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import type { Tx } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
@@ -70,6 +71,7 @@ export class AnimalImportService {
     private readonly prisma: PrismaService,
     private readonly farmContext: FarmContextService,
     private readonly clock: Clock,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   /** Simulación (CA3): nada se guarda. */
@@ -145,6 +147,13 @@ export class AnimalImportService {
             content,
             fields.createMissingBreeds,
             fields.skipRows,
+          );
+          // ADR-013: la importación cuenta como alta de las filas que entran (PILOT: sin límite).
+          await this.entitlements.checkLimit(
+            scope.farmId,
+            PLAN_LIMIT.ANIMALS,
+            result.plan.length,
+            tx,
           );
           if (fields.expectedRows !== undefined && result.plan.length !== fields.expectedRows) {
             throw new DomainError('VERSION_CONFLICT', {

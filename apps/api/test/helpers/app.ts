@@ -71,6 +71,8 @@ export async function createTestApp(
 export async function createTestAppWithClock(
   extra: Pick<ModuleMetadata, 'controllers' | 'providers' | 'imports'> = {},
   limits: RateLimits = TEST_RATE_LIMITS,
+  /** Reemplazos de proveedores para una prueba concreta (por ejemplo, un plan con límite). */
+  configure: (builder: TestingModuleBuilder) => TestingModuleBuilder = (builder) => builder,
 ): Promise<TestApp> {
   const env = parseEnv(process.env);
   const logger = getLogger(env);
@@ -84,7 +86,7 @@ export async function createTestAppWithClock(
     .overrideProvider(Clock)
     .useValue(clock);
 
-  const moduleRef = await builder.compile();
+  const moduleRef = await configure(builder).compile();
   const app = moduleRef.createNestApplication<NestFastifyApplication>(
     new FastifyAdapter({ loggerInstance: logger }),
   );

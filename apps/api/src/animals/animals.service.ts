@@ -22,6 +22,7 @@ import {
   type Warning,
 } from '@hato/shared';
 
+import { EntitlementsService, PLAN_LIMIT } from '../common/entitlements/entitlements.service.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import {
   asReplayed,
@@ -153,6 +154,7 @@ export class AnimalsService {
     private readonly farmContext: FarmContextService,
     private readonly details: AnimalDetailService,
     private readonly transactions: TransactionsService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------
@@ -203,6 +205,8 @@ export class AnimalsService {
 
     const warnings = await this.prisma
       .$transaction(async (tx) => {
+        // ADR-013: el único punto de control del alta de animal (PILOT: sin límite).
+        await this.entitlements.checkLimit(scope.farmId, PLAN_LIMIT.ANIMALS, 1, tx);
         await this.assertCatalogRefs(tx, scope, {
           breedId: input.breedId,
           lotId: input.lotId ?? null,
