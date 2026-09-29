@@ -13,7 +13,7 @@ import { isMobile, login, seedPassword, submitLogin } from './helpers';
  * activas (AUT-11).
  *
  * La importación de verdad de la plantilla corre solo en escritorio (06 §5.6 la diseña para
- * escritorio) y en la Finca La Nueva del seed (08 §3.7), que está vacía: sus códigos chocarían
+ * escritorio) y en la Finca La Nueva del seed (08 §3.8), que está vacía: sus códigos chocarían
  * con los de La Esperanza. Como las demás pruebas de la finca de referencia, pide el seed recién
  * cargado (`test:e2e:seed`).
  */

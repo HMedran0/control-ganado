@@ -1,5 +1,5 @@
 /**
- * Tercera finca de pruebas: **Finca La Nueva** [Ficticio] (08 §3.7, M4d).
+ * Tercera finca de pruebas: **Finca La Nueva** [Ficticio] (08 §3.8, M4d).
  *
  * Finca recién creada, sin animales, para probar la importación del inventario (ANI-09) con la
  * plantilla de referencia (`docs/referencia/plantilla-importacion.xlsx`): sus códigos (087, 012,

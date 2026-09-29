@@ -195,7 +195,7 @@ export const EXPECTED_LOTS = {
  * repetidos entre un activo y uno que salió.
  */
 /**
- * Finca La Nueva (08 §3.7, M4d): recién creada, sin animales, con el catálogo de razas y lotes de
+ * Finca La Nueva (08 §3.8, M4d): recién creada, sin animales, con el catálogo de razas y lotes de
  * La Esperanza, para importar la plantilla de referencia (ANI-09).
  */
 export const EXPECTED_NUEVA = {

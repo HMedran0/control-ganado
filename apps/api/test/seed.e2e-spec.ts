@@ -612,7 +612,7 @@ describe('seed de la finca de referencia', () => {
     });
   });
 
-  describe('Finca La Nueva (08 §3.7)', () => {
+  describe('Finca La Nueva (08 §3.8)', () => {
     it('sin animales, con el catálogo de la plantilla y su propio ADMIN', async () => {
       expect(await prisma.animal.count({ where: { farmId: nuevaId } })).toBe(
         EXPECTED_NUEVA.animals,

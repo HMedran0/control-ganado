@@ -46,7 +46,7 @@ export function buildReferenceSeed(today: IsoDate): ReferenceSeed {
 
 /**
  * Escribe la finca de referencia y las fincas de pruebas El Retiro (08 §3.5) y La Nueva
- * (08 §3.7), borrando antes lo que hubiera de ellas.
+ * (08 §3.8), borrando antes lo que hubiera de ellas.
  *
  * El hash de la contraseña se calcula con el generador ya consumido por la construcción,
  * para que la sal siga siendo determinista y distinta de los identificadores.
