@@ -1,4 +1,8 @@
+import { execSync } from 'node:child_process';
+
 import { expect, type Page, type TestInfo } from '@playwright/test';
+
+import { e2eDatabaseUrl } from '../e2e-database.mjs';
 
 /** Finca de referencia del seed (08 §3). */
 export const FARM_NAME = 'Finca La Esperanza';
@@ -54,4 +58,18 @@ export async function logout(page: Page, testInfo: TestInfo): Promise<void> {
     await page.getByRole('button', { name: 'Salir' }).click();
   }
   await expect(page).toHaveURL(/\/login/);
+}
+
+/** Tercera finca del seed, vacía, para importar la plantilla (08 §3.8). */
+export const NUEVA_NAME = 'Finca La Nueva';
+
+/**
+ * Deja La Nueva vacía, como la siembra el seed, para que la importación de la plantilla se pueda
+ * repetir sin volver a sembrar toda la base. Solo contra la base de pruebas: `e2eDatabaseUrl` y el
+ * propio script exigen que el nombre termine en `_test`.
+ */
+export function resetNuevaFarm(): void {
+  const env = { ...process.env, DATABASE_URL: e2eDatabaseUrl(process.env) };
+  // Una sola cadena: en Windows `pnpm` es un .cmd y solo arranca con `shell` (ver e2e-seed.mjs).
+  execSync('pnpm --filter @hato/api run db:seed:nueva:test', { env, stdio: 'pipe' });
 }

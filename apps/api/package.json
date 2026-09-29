@@ -17,6 +17,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:nueva:test": "node --conditions=development --import ./prisma/seed/ts-resolve.mjs prisma/seed/reset-nueva.ts",
     "db:seed:load": "node --conditions=development --import ./prisma/seed/ts-resolve.mjs prisma/seed/seed-load.ts",
     "db:reset": "prisma migrate reset --force && prisma db seed"
   },

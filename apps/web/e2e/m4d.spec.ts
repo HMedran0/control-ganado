@@ -5,7 +5,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import ExcelJS from 'exceljs';
 
-import { isMobile, login, seedPassword, submitLogin } from './helpers';
+import { isMobile, login, NUEVA_NAME, resetNuevaFarm, seedPassword, submitLogin } from './helpers';
 
 /**
  * M4d en móvil y escritorio, con axe en cada pantalla nueva: importar el inventario (ANI-09),
@@ -14,11 +14,10 @@ import { isMobile, login, seedPassword, submitLogin } from './helpers';
  *
  * La importación de verdad de la plantilla corre solo en escritorio (06 §5.6 la diseña para
  * escritorio) y en la Finca La Nueva del seed (08 §3.8), que está vacía: sus códigos chocarían
- * con los de La Esperanza. Como las demás pruebas de la finca de referencia, pide el seed recién
- * cargado (`test:e2e:seed`).
+ * con los de La Esperanza. Antes de importar, `resetNuevaFarm` la deja vacía otra vez, así que la
+ * prueba se puede repetir sin volver a sembrar la base.
  */
 
-const NUEVA_NAME = 'Finca La Nueva';
 const TEMPLATE = fileURLToPath(
   new URL('../../../docs/referencia/plantilla-importacion.xlsx', import.meta.url),
 );
@@ -46,6 +45,11 @@ async function openImport(page: Page): Promise<void> {
 }
 
 test.describe('importar inventario (ANI-09)', () => {
+  // La Nueva vuelve a quedar vacía: la prueba se puede repetir sin volver a sembrar la base.
+  test.beforeAll(() => {
+    resetNuevaFarm();
+  });
+
   test('la plantilla de referencia: 11 filas entran y la 13 muestra su error', async ({
     page,
   }, testInfo) => {

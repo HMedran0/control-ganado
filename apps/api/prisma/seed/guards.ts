@@ -99,3 +99,23 @@ export function resolveSeedToday(env: SeedEnvironment): IsoDate {
   }
   return SEED_TODAY;
 }
+
+/**
+ * Solo para la base de pruebas: el nombre de la base debe terminar en `_test`, como exige la e2e
+ * (`apps/web/e2e-database.mjs`). La usa `reset-nueva.ts`, que vacía una finca entre corridas.
+ *
+ * @throws {SeedRefusedError} si la base no es de pruebas.
+ */
+export function assertTestDatabase(databaseUrl: string): void {
+  let name = '';
+  try {
+    name = new URL(databaseUrl).pathname.replace(/^\//, '');
+  } catch {
+    // Se rechaza abajo.
+  }
+  if (!name.endsWith('_test')) {
+    refuse(
+      `Esto solo se ejecuta contra la base de pruebas (nombre terminado en _test), no «${name}».`,
+    );
+  }
+}
