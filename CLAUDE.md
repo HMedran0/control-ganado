@@ -17,7 +17,7 @@ Plataforma para registrar y controlar el ganado bovino de una finca en Colombia:
 Si algo del código contradice la documentación, detente y pregunta; no "corrijas" la especificación en silencio.
 
 ## Stack
-TypeScript estricto · pnpm + Turborepo · API NestJS (Fastify) + Prisma + PostgreSQL 16 · Web React + Vite + TanStack Router/Query + Tailwind + Radix · zod compartido en `packages/shared` · Móvil (F2) Expo · Escritorio (F3) Tauri.
+TypeScript estricto · pnpm + Turborepo · API NestJS (Fastify) + Prisma + PostgreSQL 16 · Web React + Vite + TanStack Router/Query + Tailwind + Radix · zod compartido en `packages/shared` · Móvil (F2) Expo o Capacitor, pendiente del ADR-014 · Escritorio (F3) Tauri.
 
 ## Comandos
 Requisitos: Node 24 LTS (ver `.nvmrc`), pnpm 12 (`corepack enable pnpm`), Docker y `jq` (para los hooks).
@@ -75,7 +75,7 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 ## Decisiones registradas (docs/adr/)
 - **ADR-001** TypeScript 6.0.3, no 7: `typescript-eslint` aún no soporta TS 7 y se perdería el lint con tipos.
 - **ADR-002** Fechas de negocio como `IsoDate` (`YYYY-MM-DD` con tipo marcado) y meses cumplidos con recorte a fin de mes. Nada de `Date` en el dominio.
-- **ADR-003** `@hato/shared` expone su código fuente con la condición `development`: lint y typecheck no compilan antes. Consecuencia: **shared no puede usar APIs de Node** (también corre en web y en Expo).
+- **ADR-003** `@hato/shared` expone su código fuente con la condición `development`: lint y typecheck no compilan antes. Consecuencia: **shared no puede usar APIs de Node** (también corre en web y en la app móvil).
 - **ADR-004** Elegibilidad en ciclos oficiales: un animal que nació o ingresó a la finca después del cierre del ciclo no queda vencido (RN-13).
 - **ADR-005** `apps/api` es **ESM** porque NestJS 12 se publica solo como módulos ES; Prisma genera el cliente en ESM. El compilador es **SWC** (no esbuild) porque hace falta `emitDecoratorMetadata` para la inyección de dependencias, y por eso las pruebas de la API van con Vitest + `unplugin-swc`.
 - **ADR-006** Los comandos del seed cargan un gancho de resolución `.js` → `.ts` (`prisma/seed/ts-resolve.mjs`), porque el cliente generado por Prisma son archivos `.ts` que se importan con extensión `.js` y el borrado de tipos de Node no reescribe extensiones. Solo afecta al proceso del seed.
@@ -84,6 +84,9 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 - **ADR-009** Clasificación en SQL: la CTE `classificationCtes` filtra y cuenta categorías, etiquetas y alertas con todos los valores como parámetros y los parámetros de la finca leídos de `settings`; lo que se muestra sale de shared. RN-27 se garantiza con una prueba de equivalencia animal por animal sobre el seed. Las alertas de vacunas siguen en shared (`vaccineStatus`), no en SQL.
 - **ADR-010** «Hoy» de la API: el `Clock` usa la fecha real de America/Bogota; `SEED_TODAY` es solo del seed. `CLOCK_FIXED_TODAY` fija la fecha solo en pruebas y con `NODE_ENV=production` la API no arranca si está definida.
 - **ADR-011** Importación: `.xlsx`/`.csv`, 5 MB, 5.000 filas; tipo real por contenido; lector propio del ZIP que descomprime con límite y reempaqueta sin compresión para `exceljs`; fórmulas por su valor guardado; idempotencia por clave del archivo elegido (única por finca) y candado por finca. Nunca el paquete `xlsx` de npm.
+- **ADR-012** Escrituras listas para trabajar sin conexión (desde M5): `id` del cliente en toda creación (mismo contenido → 200; otro → `CLIENT_ID_CONFLICT`), `Idempotency-Key` en las acciones (tabla `idempotency_keys`, 7 días, nunca `/auth`; otra petición con la misma clave → `IDEMPOTENCY_KEY_REUSED`), `version` en lo editable con `VERSION_CONFLICT`, anular dos veces responde 200, y `updated_at` por trigger `set_updated_at()`, no `@updatedAt`. SYN-01 no puede usar `updated_at` solo como cursor.
+- **ADR-013** Límites por plan en un solo punto: `EntitlementsService.can` y `checkLimit`, plan PILOT sin límites y sin columna; `PLAN_LIMIT_REACHED` reservado. Nada de cobro en F1.
+- **ADR-014** (propuesta) Tecnología móvil: Expo o Capacitor, con una prueba de cada una antes de la fase 2.
 
 ## Dominio en una línea por tema (detalle en 08)
 - Categoría de manejo exclusiva: Ternero, Ternera, Novilla, Vaca, Levante, Toro. Etiquetas combinables: Servida, Preñada, Parida (n), Horra, En retiro; con leche (M9b), En ordeño y Seca. Ojo: `DRY` es **Horra**, no «seca»; «Seca» es `DRIED_OFF`. Manuales: Cotero, Disponible para venta.

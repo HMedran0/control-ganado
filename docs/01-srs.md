@@ -422,7 +422,7 @@ Campos: animal, fecha, diagnóstico o motivo, medicamento, dosis, días de trata
 ### 3.8 Pesos (PES)
 
 **PES-01 — Registrar pesaje** · M · F1
-- CA1: Individual o dentro de una jornada. Campos: animal, fecha, peso en kg, método (báscula, cinta, estimado), observaciones.
+- CA1: Individual o dentro de una jornada. Campos: animal, fecha, peso en kg, método (báscula, cinta, estimado), observaciones. Desde M6 cada pesaje registra además cómo se identificó el animal (`identified_by`: lector RFID, QR, búsqueda o importación) y de dónde salió el peso (`weight_source`: digitado, archivo de la báscula o báscula en vivo), para el informe del piloto (PIL-05).
 - CA2: Advierte si el peso difiere más de 30 % del último registro (posible error de digitación), sin bloquear.
 
 **PES-02 — Evolución de peso** · M · F1
@@ -592,6 +592,7 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 - CA1: La app descarga los datos de la finca y permite consultar fichas, registrar eventos y trabajar jornadas sin conexión.
 - CA2: Los cambios se envían automáticamente al recuperar conexión; se muestra el estado ("3 cambios pendientes de enviar").
 - CA3: Los conflictos se resuelven según RN-24 y se informan al usuario cuando afectan datos que él modificó.
+- Base en la fase 1 (ADR-012, desde M5): toda creación acepta el `id` del cliente, las acciones aceptan `Idempotency-Key`, las tablas editables llevan `version`, anular dos veces es inofensivo y `updated_at` lo mantiene un trigger de la base. El cursor de «cambios desde» no puede ser `updated_at` solo (ADR-012, advertencia para SYN-01).
 
 ### 3.16 Control de leche (LEC) — alcance extendido (M9b)
 
@@ -621,6 +622,24 @@ Las fincas de lechería y doble propósito necesitan llevar la producción de le
 - CA1: La jornada de ordeño funciona en la app móvil sin señal, con la misma sincronización de SYN-01.
 
 ---
+
+### 3.17 Validación del piloto (PIL) — criterios de éxito
+
+Decisión del product owner (29/09/2026): se termina la fase 1 tal como está planeada, se hace el piloto y, según sus resultados, se decide la etapa comercial. Estos criterios se fijan **antes** del piloto y se miden **al final** (07 §M11). Son requisitos de validación del producto, no funciones del software, salvo el informe de uso (M10b).
+
+| ID | Criterio | Meta | Cómo se mide |
+|---|---|---|---|
+| PIL-01 | Uso sostenido | ≥ 80 % de los eventos (pesajes, vacunas, partos, salidas) registrados en la app durante 6 semanas | Informe de uso (`pnpm pilot:report`), comparado con el cuaderno de la finca en 2 semanas de muestra |
+| PIL-02 | Usabilidad | SUS ≥ 70; el vaquero completa las tareas principales sin ayuda después de la capacitación | Cuestionario SUS en español (10 preguntas) al final, más observación de 5 tareas cronometradas |
+| PIL-03 | Utilidad | Al menos una decisión tomada con información de la app que antes no tenía | Entrevista final estructurada |
+| PIL-04 | Disposición a pagar | Al menos una finca acepta un precio anual cercano al de la competencia ($150.000–$700.000) | Entrevista final, con precios de referencia |
+
+**Resultado y siguiente paso:** si se cumplen, etapa comercial; si falla la usabilidad pero hay interés, se corrige y se repite un piloto corto; si nadie pagaría, se cierra la fase 1 y la decisión comercial se aplaza.
+
+**PIL-05 — Informe de uso del piloto** · M · F1 (M10b)
+- CA1: Comando `pnpm pilot:report -- --farm <id> --from <fecha> --to <fecha>`, solo lectura y sin pantalla, a partir de la auditoría y de los eventos.
+- CA2: Muestra eventos por tipo y por semana, usuarios activos por semana, días con registros, porcentaje de animales identificados con lector o QR (`identified_by` `RFID_READER` o `QR`) y porcentaje de pesos que no son digitados (`weight_source` distinto de `MANUAL`).
+- CA3: Sale como tabla en la consola y como CSV. No expone datos personales más allá de los nombres de usuario.
 
 ## 4. Reglas de negocio
 

@@ -75,9 +75,12 @@ Verificación: axe sin violaciones en la página de componentes; login funcional
   Resultado: importación con simulación, transacción única de hasta 60 s (5.000 filas en unos 21 s en local), idempotencia por clave y defensa del archivo (ADR-011); exportación con los filtros de la URL; QR del sistema y hoja de etiquetas impresa desde el navegador; sesión deslizante con tope y sesiones activas, con corte inmediato del acceso. Tercera finca de pruebas vacía, La Nueva (08 §3.8). Desviaciones aprobadas: la hoja de etiquetas no genera PDF y reemplaza `GET /animals/:id/qr` y `POST /animals/qr-sheet`; las filas con error se descargan con `POST /imports/animals/errors` (sin lote todavía); un padre más joven que la cría se guarda como referencia externa (08 §3.8); los partos anteriores sin fecha quedan como número en el animal (RN-29) y los partos con servicio estimado no entran en los indicadores de M8 (RN-38).
 
 **M5 Reproducción y nacimientos** — REP-01 a REP-05, NAC-01. Leer RN-02 a RN-08, RN-14, RN-15, RN-23 y CU-01.
+- Primero, dos tareas cortas de base:
+  - **Escrituras sin conexión (ADR-012)** en lo que ya existe: animales, identificadores, lotes y demás catálogos, configuración. `id` del cliente con comparación de contenido (200 o `CLIENT_ID_CONFLICT`), `Idempotency-Key` en salida, reversión, archivo, restauración, operaciones en lote y retiro o reemplazo de identificadores (tabla `idempotency_keys` con purga a 7 días; nunca `/auth`), anulación y archivo idempotentes, `updated_at` con el trigger `set_updated_at()` e índice por finca. Pruebas, entre ellas una que verifica que un `UPDATE` por SQL directo cambia `updated_at`. Todo lo nuevo de M5 (preñeces, partos, crías) nace así.
+  - **`EntitlementsService` (ADR-013)** con el plan PILOT sin límites, llamado desde el alta de animal (y las crías del parto) y la importación. `PLAN_LIMIT_REACHED` entra al catálogo de errores sin uso.
 Verificación: E2E de CU-01 (incluye mellizos y cría muerta al nacer); prueba de que la transacción de parto es atómica (forzar fallo en la segunda cría → nada se guarda).
 
-**M6 Sanidad y pesos** — SAN-01 a SAN-06, PES-01, PES-02, PES-04 (importar la sesión de la báscula) y PES-05 (ganancia de peso y alertas en la ficha y el listado). Leer RN-12, RN-13, RN-22, RN-26, 08 §1.5 y 09 §3.
+**M6 Sanidad y pesos** — SAN-01 a SAN-06, PES-01, PES-02, PES-04 (importar la sesión de la báscula) y PES-05 (ganancia de peso y alertas en la ficha y el listado). `WeightRecord` con `identified_by` y `weight_source` (PIL-05), y las plantillas de báscula del sistema (Tru-Test, provisional). Leer RN-12, RN-13, RN-22, RN-26, 08 §1.5 y 09 §3.
 Verificación: pruebas de alertas con Clock fijado para los cuatro tipos de programación (ciclo en curso y cerrado, ventana de edad de brucelosis y fuera de edad, intervalo vencido y próximo, anulada no cuenta); brucelosis en macho rechazada; el seed reporta 14 terneras pendientes de brucelosis; importar un archivo de báscula de ejemplo asocia las filas por RFID y por chapeta, avisa duplicados y pesos atípicos, y deja los chips desconocidos para asociar o descartar.
 
 **M7 Finanzas** — ECO-01 a ECO-06. Leer RN-17, RN-18, RN-20.
@@ -86,7 +89,7 @@ Verificación: pruebas de que OPERATOR y VET reciben 403 en `/expenses` y no ven
 **M8 Tablero y reportes** — RPT-01 a RPT-03, BAK-02, reporte de grupos de edad ICA, CFG-03 (sistema productivo) con el tablero por sistema, PES-05 en el tablero y PES-06 (peso objetivo de venta). Leer §5.1 de UX, 08 §2.2 y 09 §4.1.
 Verificación: los números del tablero coinciden con los listados filtrados (prueba que compara ambos); tablero < 2 s con seed de carga; cambiar el sistema productivo cambia las preguntas destacadas, no los datos (CFG-03 CA1).
 
-**M9 Jornadas de manejo (web)** — JOR-01 a JOR-03, CU-02. Soporte de lector en modo teclado. Incluye la jornada de pesaje con lector y peso digitado, que reutiliza las alertas de PES-05.
+**M9 Jornadas de manejo (web)** — JOR-01 a JOR-03, CU-02. Soporte de lector en modo teclado. Incluye la jornada de pesaje con lector y peso digitado, que reutiliza las alertas de PES-05. Los eventos de la jornada guardan `identified_by` (lector, QR o búsqueda), para el informe del piloto (PIL-05).
 Verificación: E2E de una jornada de 5 animales con vacuna y peso; lectura simulada de ráfaga de 15 dígitos.
 
 **M9b Control de leche** (nuevo) — LEC-01 a LEC-05, RN-34 a RN-37, etiquetas `LACTATING` y `DRIED_OFF` con su equivalente SQL en la prueba de ADR-009, seed de leche (08 §3.6). Leer 09 §4.2. Se hace si el cronograma lo permite antes del piloto; si no, pasa a la fase 2. La decisión se toma al terminar M9.
@@ -102,12 +105,24 @@ Verificación: una invitación se acepta una sola vez y vence a los 7 días; la 
 - Docker Compose de producción con Caddy, respaldos cifrados, script de restauración, `docs/operacion.md`.
 - Revisión de seguridad (checklist ASVS L1), límites de peticiones, cabeceras, dominio de correo con SPF, DKIM y DMARC.
 - Dependencias: revisar las 3 alertas de `pnpm audit` que llegan por Prisma (`deepmerge-ts` < 8 y `mysql2` < 3.22, vistas en M4d). Si hay versiones corregidas compatibles, forzarlas con `overrides` en `pnpm-workspace.yaml`, como `uuid` bajo `exceljs` (ADR-011); si no las hay, documentar por qué no aplican (por ejemplo, `mysql2` no se usa: la base es PostgreSQL).
-Verificación: simulacro de restauración documentado; Lighthouse ≥ 90 en rendimiento y accesibilidad.
+- Informe de uso del piloto (PIL-05): `pnpm pilot:report -- --farm <id> --from <fecha> --to <fecha>`, solo lectura y sin pantalla. A partir de la auditoría y los eventos: eventos por tipo y por semana, usuarios activos por semana, días con registros, % de animales identificados con lector o QR y % de pesos que no son digitados. Tabla en consola y CSV; solo nombres de usuario como dato personal.
+Verificación: simulacro de restauración documentado; Lighthouse ≥ 90 en rendimiento y accesibilidad; el informe del piloto sobre la finca de referencia coincide con cifras calculadas a mano en una prueba.
 
-**M11 Validación con usuarios** — RNF-03. Prueba con al menos 3 usuarios de la finca; ajustes registrados en `docs/ux-hallazgos.md`.
+**M11 Validación con usuarios (piloto)** — RNF-03 y PIL-01 a PIL-05. Prueba con al menos 3 usuarios de la finca; ajustes registrados en `docs/ux-hallazgos.md`. Los criterios de éxito se fijan antes de empezar y se miden al final:
+
+| Criterio | Meta | Cómo se mide |
+|---|---|---|
+| Uso sostenido (PIL-01) | ≥ 80 % de los eventos (pesajes, vacunas, partos, salidas) registrados en la app durante 6 semanas | Informe de uso (`pnpm pilot:report`), comparado con el cuaderno de la finca en 2 semanas de muestra |
+| Usabilidad (PIL-02) | SUS ≥ 70; el vaquero completa las tareas principales sin ayuda después de la capacitación | Cuestionario SUS en español (10 preguntas) al final, más observación de 5 tareas cronometradas |
+| Utilidad (PIL-03) | Al menos una decisión tomada con información de la app que antes no tenía | Entrevista final estructurada |
+| Disposición a pagar (PIL-04) | Al menos una finca acepta un precio anual cercano al de la competencia ($150.000–$700.000) | Entrevista final, con precios de referencia |
+
+Resultado: si se cumplen, etapa comercial; si falla la usabilidad pero hay interés, corregir y repetir un piloto corto; si nadie pagaría, se cierra la fase 1 y la decisión comercial se aplaza.
 
 ## 5. Fase 2 — App móvil sin conexión
-M12 Endpoints de sincronización (SYN-01) · M13 App Expo: autenticación (con el inicio nativo de Google, AUT-15), base local, pull/push · M14 Ficha, búsqueda y registros sin conexión · M15 Jornada móvil + lector RFID Bluetooth (IDN-04) + pesaje en vivo con indicador Tru-Test XR5000, ID5000 o JR5000 (PES-03, 09 v1.4): `ScaleAdapter`, `TruTestAdapter`, adaptador simulado con sesiones grabadas y la lógica común de guardado en `packages/shared`. Prerrequisitos: modelo y firmware del indicador de la finca piloto (4.7.8 o superior en iPhone), documentación de integración de Datamars pedida con al menos dos meses de anticipación, y un indicador real para desarrollar. Sin la documentación, M15 entrega solo el lector RFID Bluetooth y el peso digitado, y la báscula sigue por archivo (PES-04). Estimación: flujo común 1 a 2 semanas; adaptador Tru-Test 1 a 2 semanas con el equipo disponible · M16 Ordeño sin conexión (LEC-06) · M17 OCR de chapeta (IDN-05, opcional).
+Primera tarea de la fase 2: **decidir la tecnología móvil (ADR-014)** con una prueba de 2 a 3 días de Expo y otra de Capacitor (lector RFID Bluetooth, SQLite sin conexión, sincronización según el ADR-012, tamaño y arranque en un Android de gama baja).
+
+M12 Endpoints de sincronización (SYN-01; el cursor de «cambios desde» no puede ser `updated_at` solo, ver la advertencia del ADR-012) · M13 App móvil (Expo o Capacitor, según el ADR-014): autenticación (con el inicio nativo de Google, AUT-15), base local, pull/push · M14 Ficha, búsqueda y registros sin conexión · M15 Jornada móvil + lector RFID Bluetooth (IDN-04) + pesaje en vivo con indicador Tru-Test XR5000, ID5000 o JR5000 (PES-03, 09 v1.4): `ScaleAdapter`, `TruTestAdapter`, adaptador simulado con sesiones grabadas y la lógica común de guardado en `packages/shared`. Prerrequisitos: modelo y firmware del indicador de la finca piloto (4.7.8 o superior en iPhone), documentación de integración de Datamars pedida con al menos dos meses de anticipación, y un indicador real para desarrollar. Sin la documentación, M15 entrega solo el lector RFID Bluetooth y el peso digitado, y la báscula sigue por archivo (PES-04). Estimación: flujo común 1 a 2 semanas; adaptador Tru-Test 1 a 2 semanas con el equipo disponible · M16 Ordeño sin conexión (LEC-06) · M17 OCR de chapeta (IDN-05, opcional).
 
 ## 6. Fase 3 — Escritorio y extras
 M18 Empaquetado de escritorio (Tauri) y PES-07: indicador Tru-Test por USB o Bluetooth con el mismo `TruTestAdapter` · M19 PDF de ficha individual y reportes avanzados.

@@ -370,7 +370,7 @@ Debajo, la vista previa: hojas blancas del tamaño real (márgenes de 10 mm), co
 ```
 
 ### 5.16 Pesaje en vivo en la manga (PES-03, M15, app móvil)
-Boceto del flujo, no diseño final: el diseño detallado se hace en M15 y depende del ADR de tecnología móvil (ADR-014).
+Boceto del flujo, no diseño final: el diseño detallado se hace en M15 y depende del ADR de tecnología móvil (ADR-014, propuesto: Expo o Capacitor).
 - Pantalla de trabajo como la jornada (§5.5), vertical y con controles grandes para una mano. Arriba, el estado del indicador ("Báscula conectada · XR5000", "Reconectando…") y el conteo de la jornada.
 - Al leer el chip aparece la ficha resumida: Chapeta con el código, categoría, último peso y su fecha.
 - Mientras el peso oscila, la cifra se ve en gris con "Esperando peso estable"; al estabilizarse, se guarda sola, con un sonido y vibración cortos, y muestra el peso, "+32 kg desde el 12/08 (0,58 kg/día)" y las alertas de PES-05.

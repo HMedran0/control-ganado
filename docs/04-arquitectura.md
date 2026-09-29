@@ -26,7 +26,7 @@ Versiones: usar la última estable de cada herramienta al iniciar el proyecto y 
 | ADR-05 | Validación con zod en `packages/shared` | class-validator | Un mismo esquema valida el formulario en web/móvil y la petición en la API (vía `nestjs-zod`). |
 | ADR-06 | Web: React + Vite (SPA) + TanStack Router + TanStack Query | Next.js | Aplicación detrás de login sin necesidad de SEO ni SSR; una SPA es más simple, se empaqueta igual en Tauri (F3) y comparte patrones con React Native (F2). |
 | ADR-07 | Estilos: Tailwind CSS + componentes accesibles propios sobre Radix UI (estilo shadcn/ui, código copiado al repo) | Material UI, Bootstrap | Control total sobre la identidad visual de `06-ux-ui.md` sin pelear con un tema ajeno. |
-| ADR-08 | Móvil (F2): React Native con Expo + SQLite local | Flutter; PWA | Reutiliza TypeScript, `shared` y el cliente de API. Bluetooth y cámara nativos fiables en Android (una PWA no tiene Web Bluetooth en iOS). |
+| ADR-08 | Móvil (F2): app nativa con SQLite local; **Expo (React Native) o Capacitor, pendiente del ADR-014** | Flutter; PWA | Reutiliza TypeScript, `shared` y el cliente de API. Bluetooth y cámara nativos fiables en Android (una PWA no tiene Web Bluetooth en iOS). La elección entre Expo y Capacitor se hace con una prueba de cada una antes de la fase 2 (`docs/adr/014-tecnologia-de-la-app-movil.md`). |
 | ADR-09 | Escritorio (F3): Tauri empaquetando la web | Electron | Binarios mucho más livianos; la web ya es una SPA. |
 | ADR-10 | Autenticación propia con JWT de acceso (15 min) + refresh token rotado, deslizante (30 días desde el último uso) con tope por familia (180 días); Google como método de acceso adicional por OpenID Connect con PKCE (M10a) | Proveedor externo (Auth0, Clerk) | Sin costo por usuario, funciona sin correo electrónico y es un contenido evaluable del proyecto académico. Detalle en `docs/adr/007-autenticacion.md`. |
 | ADR-11 | IDs UUIDv7 generados en la aplicación | Autoincrementales | Permiten crear registros sin conexión en el móvil (F2) sin colisiones; ordenables por tiempo. |
@@ -76,7 +76,7 @@ hato/
 │   │       ├── components/     # sistema de diseño (ui/) y componentes compartidos
 │   │       ├── lib/            # api client, auth, formato
 │   │       └── styles/
-│   ├── mobile/                 # F2 (Expo)
+│   ├── mobile/                 # F2 (Expo o Capacitor, ADR-014)
 │   └── desktop/                # F3 (Tauri)
 ├── packages/
 │   ├── shared/                 # zod schemas, tipos DTO, enums, reglas puras de dominio
@@ -136,6 +136,7 @@ Transversales (`common/`):
 - Borradores de formularios largos guardados en `sessionStorage` para no perder datos si se cae la conexión (RNF-16).
 
 ### Móvil (F2) — diseño anticipado
+La tecnología (Expo o Capacitor) la decide el ADR-014. Lo que sigue vale para las dos. Las escrituras de la API ya se hacen listas para trabajar sin conexión desde M5 (ADR-012): `id` del cliente en toda creación, `Idempotency-Key` en las acciones, `version` en lo editable y `updated_at` mantenido por un trigger. Los límites por plan pasan por un solo servicio (ADR-013).
 - Base local SQLite con las mismas entidades (subconjunto de columnas).
 - Cola de salida: cada mutación local se guarda como operación con UUID propio (idempotencia) y se envía en lote.
 - Endpoints de sincronización: `GET /sync/pull?since=<cursor>` devuelve cambios por entidad desde el cursor (basado en `updated_at`/`created_at` y tombstones); `POST /sync/push` recibe operaciones y responde por operación: aplicada, rechazada (con motivo) o en conflicto.

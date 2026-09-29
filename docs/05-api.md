@@ -4,13 +4,15 @@ Base: `/api/v1`. JSON UTF-8. Autenticación: `Authorization: Bearer <accessToken
 Los esquemas de entrada y salida se definen con zod en `packages/shared/src/schemas` y son la fuente de verdad; esta tabla es el índice.
 
 ## Convenciones
-- IDs: UUIDv7 en string. El cliente puede enviar el `id` al crear (idempotencia: repetir la misma petición con el mismo `id` no duplica).
+- IDs: UUIDv7 en string. **Toda creación** acepta un `id` generado por el cliente (ADR-012, desde M5): si ya existe con el mismo contenido, 200 con el registro, sin duplicar; si existe con otro contenido (o es de otra finca), 409 `CLIENT_ID_CONFLICT`.
+- Acciones que no son creaciones (salida, reversión, archivo, restauración, anulaciones, operaciones en lote…): encabezado opcional `Idempotency-Key` (UUID, ADR-012, desde M5). La misma clave con la misma petición devuelve la respuesta guardada (7 días, por finca); con otra petición, 422 `IDEMPOTENCY_KEY_REUSED`. Los endpoints de `/auth` no lo aceptan. La importación usa su propia clave `importKey` (ADR-011), el primer caso de este patrón.
 - Fechas de negocio: `YYYY-MM-DD`. Marcas de tiempo: ISO 8601 con zona.
 - Dinero: string decimal (`"1250000.00"`). Peso: número con hasta 2 decimales.
 - Listados: paginación por cursor `?limit=50&cursor=<opaco>` → `{ items, nextCursor }`. Máximo `limit` 200.
 - Filtros por query string; múltiples valores separados por coma (`?tags=PREGNANT,CALVED`).
 - Actualizaciones: `PATCH` con `version` obligatoria → 409 `VERSION_CONFLICT` si no coincide.
-- Anulación de eventos: `POST /<recurso>/:id/void` con `{ reason }`.
+- Anulación de eventos: `POST /<recurso>/:id/void` con `{ reason }`. Anular algo que ya está anulado (o archivar lo archivado) responde 200 con el estado actual, no error (ADR-012).
+- Límites por plan (ADR-013): toda finca tiene el plan PILOT, sin límites; `PLAN_LIMIT_REACHED` está reservado.
 - Errores: `application/problem+json` con `code` estable (catálogo en `packages/shared/src/errors.ts`). Algunos traen además `context` con los datos que la interfaz necesita para ofrecer la salida: `IDENTIFIER_TAKEN` e `IDENTIFIER_PREVIOUSLY_USED` envían `{ animalId, animalCode }` del animal que tiene o tuvo el identificador, para enlazar a su ficha.
 - Roles: columna "Rol" (T = todos, A = ADMIN, V = VET, O = OPERATOR; — = público, sin sesión).
 - **Ningún token viaja en la query string** (invitación, verificación, recuperación, intenciones de Google aparte de la del flujo): va en el cuerpo de un `POST`. Los enlaces de los correos lo llevan en el fragmento (`#token=…`), que nunca llega al servidor (ADR-007 decisión 7).
@@ -277,6 +279,9 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `IMPORT_FILE_INVALID` | 422 | El archivo no tiene el formato de la plantilla. |
 | `IMPORT_TOO_MANY_ROWS` | 413 | El archivo supera las 5.000 filas. |
 | `IMPORT_FILE_TOO_LARGE` | 413 | El archivo supera los 5 MB. |
+| `CLIENT_ID_CONFLICT` | 409 | Ya existe un registro con ese identificador y otros datos. (ADR-012, desde M5) |
+| `IDEMPOTENCY_KEY_REUSED` | 422 | Esa clave de reintento ya se usó para otra operación. (ADR-012, desde M5) |
+| `PLAN_LIMIT_REACHED` | 403 | Tu plan no permite más {what}. (ADR-013; **reservado, sin uso en F1**) |
 | `CODE_REASSIGNED` | 409 | El código {code} ya lo tiene el animal activo {holder}. Asígnale un código nuevo para revertir la salida. (IDN-06 CA3, con el animal en `context`) |
 | `CODE_REUSE_CONFLICT` | 409 | Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización. (ANI-10 CA3) |
 | `SCALE_FILE_INVALID` | 422 | No pudimos leer el archivo de la báscula. Revisa el formato o el perfil de báscula. (PES-04) |
