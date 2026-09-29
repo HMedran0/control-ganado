@@ -62,6 +62,8 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Parida | etiqueta derivada `CALVED` | Hembra con uno o más partos registrados. |
 | Preñada | etiqueta derivada `PREGNANT` | Hembra con preñez abierta confirmada. |
 | Servida | etiqueta derivada `SERVED` | Hembra con servicio registrado sin confirmar. |
+| Parto vencido sin registrar | alerta derivada `calving_overdue` | Preñez abierta cuyo parto estimado pasó hace más de `overdueCalvingAlertDays` (15 [Validar]) sin parto ni aborto registrado (RN-39, M5). |
+| Estado al nacer | `Animal.birthCondition` | Sana (`HEALTHY`) o débil (`WEAK`), en las crías registradas con su parto. La muerta al nacer no es animal: suma a `Pregnancy.stillbornCount` (REP-04 CA4). |
 | Cotero | etiqueta manual `COTERO` | Animal destinado a labores o clasificación específica de la finca (decisión en 08 §1.1). |
 | Disponible para venta | `Animal.forSale = true` | Marcado manualmente por el administrador. |
 | Salida | `Animal.exitType` | Venta, muerte, sacrificio, robo, traslado u otro. Un animal con salida no cuenta en el inventario. |
@@ -266,7 +268,7 @@ Un único campo de búsqueda, disponible en toda la aplicación, que acepta: có
 - CA3: Un lector RFID en modo teclado que "escribe" 15 dígitos seguidos de Enter abre la ficha del animal (o ofrece asociar el código si no existe).
 
 **ANI-06 — Listado con filtros** · M · F1
-Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada, servida, parida, cotero, disponible para venta), lote, rango de edad, estado (activo, vendido/retirado, archivado), alertas (vacuna vencida, parto próximo, en retiro).
+Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada, servida, parida, cotero, disponible para venta), lote, rango de edad, estado (activo, vendido/retirado, archivado), alertas (vacuna vencida, parto próximo, parto vencido sin registrar desde M5, en retiro).
 - CA1: Los filtros se reflejan en la URL (se pueden compartir y volver a abrir).
 - CA2: El listado muestra: chapeta con código, nombre, sexo, raza, edad legible ("2 a 4 m"), etiquetas, último peso y alertas.
 - CA3: Paginación por cursor; ordenable por código, edad y último peso.
@@ -361,11 +363,13 @@ Campos: hembra, fecha de servicio, método (monta natural / IA), toro (animal de
 - CA1: Solo hembras activas en edad reproductiva mínima configurable (advertencia, no bloqueo, RN-15).
 - CA2: Calcula y muestra la fecha estimada de parto con la gestación de la raza de la madre (RN-04).
 - CA3: Rechaza el registro si la hembra ya tiene una preñez abierta (RN-03), con opción de ir a cerrarla.
+- CA4 (M5): El servicio debe ser posterior al último parto o aborto de la hembra: esa gestación ya había terminado. Un toro de la finca debe ser macho (RN-02); se indica el toro de la finca o la referencia externa, no ambos.
 
 **REP-02 — Confirmar o descartar preñez (palpación)** · M · F1
-- CA1: Registra fecha de diagnóstico, resultado (positivo/negativo), responsable.
+- CA1: Registra fecha de diagnóstico, resultado (positivo/negativo), responsable. El responsable es texto, porque suele ser un veterinario externo que no es usuario; si lo es, se enlaza también a su usuario (M5).
 - CA2: Positivo → etiqueta Preñada. Negativo → la preñez se cierra con desenlace `FAILED` (vacía).
-- CA3: Permite registrar preñez confirmada sin servicio conocido: el usuario indica meses de gestación estimados y el sistema calcula la fecha de servicio estimada.
+- CA3: Permite registrar preñez confirmada sin servicio conocido: el usuario indica meses de gestación estimados (1 a 9) y el sistema calcula la fecha de servicio estimada (la de la palpación menos esos meses). La preñez queda con `service_date_estimated` (RN-38).
+- CA4 (M5): Una palpación positiva sobre una preñez ya confirmada conserva la primera fecha de confirmación. Ninguna palpación es anterior al servicio.
 
 **REP-03 — Registrar aborto** · M · F1
 - CA1: Cierra la preñez con desenlace `ABORTED`, fecha y observaciones. No crea crías ni cuenta como parto.
@@ -378,9 +382,13 @@ Campos: hembra (con preñez abierta, o sin ella para partos no registrados previ
 - CA4: Una cría muerta al nacer se registra en el parto (cuenta para estadística) pero no crea animal activo.
 - CA5: Todo el registro (cierre de preñez + crías + pesajes) es una única transacción: o se guarda todo o nada.
 - CA6: Al terminar muestra la ficha de la madre con las crías nuevas enlazadas.
+- CA7 (M5): El código de una cría que llega sin él lo asigna la API dentro de la transacción, con la sugerencia de la finca (`PATTERN` o `LOWEST_FREE`, ANI-10); los mellizos reciben códigos distintos. Todo código pasa por la misma verificación que el alta de animal (RN-01, RN-30). Las crías vivas cuentan para el plan de la finca (ADR-013).
+- CA8 (M5): Un parto con crías vivas que siguen en la finca no se anula: primero se archivan sus crías (`PREGNANCY_HAS_CALVES`). Las crías que ya salieron o están archivadas no lo impiden.
 
 **REP-05 — Historial reproductivo de la hembra** · M · F1
 - CA1: En la ficha: número de partos (derivado), fecha del último parto, intervalo entre partos en días (derivado), preñez actual con días de gestación y fecha estimada de parto, lista de todas las preñeces con su desenlace.
+- CA2 (M5): El intervalo entre partos aplica RN-38: la ficha muestra el último y el promedio de los intervalos válidos, o «Sin dato» si no hay dos partos seguidos con servicio real.
+- CA3 (M5): El ADMIN anula una preñez registrada por error (RN-11); corregir el servicio o el parto estimado de una preñez abierta se hace con `version`. Un parto estimado corregido a mano queda marcado y el recálculo de RN-04 no lo mueve.
 
 ### 3.6 Nacimientos (NAC)
 
@@ -543,7 +551,7 @@ Inventario (total, por sexo, por categoría de manejo, por raza, por lote); **in
 ### 3.12 Configuración (CFG)
 
 **CFG-01 — Parámetros de la finca** · M · F1
-Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no). Con la validación con ganaderos se agregan: numeración reutilizable y modo de sugerencia de código (ANI-10), sistema productivo y qué vende la finca (CFG-03), días de secado antes del parto (60), umbrales de ganancia y pérdida de peso (PES-05), peso objetivo de venta (PES-06) y las condiciones de guardado del pesaje en vivo: tolerancia y segundos de peso estable, peso mínimo y umbral de cero de la báscula (PES-03, F2).
+Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), días para «parto vencido sin registrar» (15 [Validar], M5), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no). Con la validación con ganaderos se agregan: numeración reutilizable y modo de sugerencia de código (ANI-10), sistema productivo y qué vende la finca (CFG-03), días de secado antes del parto (60), umbrales de ganancia y pérdida de peso (PES-05), peso objetivo de venta (PES-06) y las condiciones de guardado del pesaje en vivo: tolerancia y segundos de peso estable, peso mínimo y umbral de cero de la báscula (PES-03, F2).
 - CA1: Cambiar un parámetro recalcula las clasificaciones derivadas (son calculadas, no almacenadas).
 
 **CFG-03 — Sistema productivo** · M · F1 (M8)
@@ -648,7 +656,7 @@ Decisión del product owner (29/09/2026): se termina la fase 1 tal como está pl
 | RN-01 | El código interno es obligatorio y único por finca entre animales no archivados. Con numeración reutilizable (`codeReuse = true`, ANI-10), es único solo entre animales activos. La comparación usa el código normalizado (RN-30). |
 | RN-02 | Solo hembras pueden tener servicios, preñeces, partos y abortos. Solo machos pueden ser toros padres internos. |
 | RN-03 | Una hembra no puede tener más de una preñez abierta (desenlace `PENDING`). |
-| RN-04 | Fecha estimada de parto = fecha de servicio + días de gestación de la **raza de la madre** (`Breed.gestationDays`) o, si no tiene, de la finca (defecto 285). Se recalcula si cambia la fecha de servicio. |
+| RN-04 | Fecha estimada de parto = fecha de servicio + días de gestación de la **raza de la madre** (`Breed.gestationDays`) o, si no tiene, de la finca (defecto 285). Se recalcula si cambia la fecha de servicio. Desde M5 también se recalcula en las preñeces abiertas no anuladas cuando cambia la gestación de la raza, la de la finca (para las razas sin gestación propia) o la raza de la madre, salvo las que alguien corrigió a mano; cada recálculo queda en la auditoría y la respuesta lo avisa. |
 | RN-05 | Un parto con cría viva crea un animal: madre = hembra, padre = el de la preñez, fecha de nacimiento = fecha de parto, procedencia = nacido en la finca, lote = el de la madre, peso al nacer = primer pesaje. |
 | RN-06 | Categoría de manejo (exclusiva): edad < destete → Ternero/Ternera según sexo; hembra ≥ destete sin partos → Novilla; hembra con ≥ 1 parto → Vaca; macho ≥ destete y < 24 meses → Levante; macho ≥ 24 meses → Toro / macho adulto. |
 | RN-07 | Parida: hembra con al menos una preñez con desenlace `CALVED`. El número de partos es el conteo de esas preñeces (derivado, no almacenado). |
@@ -682,7 +690,8 @@ Decisión del product owner (29/09/2026): se termina la fase 1 tal como está pl
 | RN-35 | `MilkRecord.recorded_on` debe estar dentro de una lactancia abierta de la vaca; nunca en el futuro (RN-14). |
 | RN-36 | Solo puede haber un registro de leche por vaca, fecha y ordeño; un segundo registro del mismo ordeño reemplaza al anterior (se anula el anterior con motivo). |
 | RN-37 | Registrar un nuevo parto en una vaca en ordeño cierra implícitamente la lactancia anterior (sin secado registrado) y abre una nueva; la ficha lo muestra como "Lactancia cerrada por nuevo parto". |
-| RN-38 | Los indicadores reproductivos (M8), como el intervalo entre partos y el de parto a concepción, solo usan preñeces con fecha de servicio real: las de fecha de servicio estimada (`service_date_estimated`, como el último parto importado, RN-29) y los partos anteriores importados sin fecha no entran en el cálculo. |
+| RN-38 | Los indicadores reproductivos (M8), como el intervalo entre partos y el de parto a concepción, solo usan preñeces con fecha de servicio real: las de fecha de servicio estimada (`service_date_estimated`, como el último parto importado, RN-29) y los partos anteriores importados sin fecha no entran en el cálculo. En el intervalo entre partos (`calvingIntervals` de shared, M5), un par de partos consecutivos cuenta solo si ninguno tiene servicio estimado; no se salta un parto estimado para unir los de sus lados, porque ese intervalo abarcaría dos ciclos. |
+| RN-39 | Parto vencido sin registrar (M5): una preñez abierta (confirmada o no) cuyo parto estimado pasó hace **más** de `overdueCalvingAlertDays` días (15 por defecto [Validar]) genera la alerta «Pasó la fecha de parto: registra el parto o el aborto». Se calcula en shared (`isCalvingOverdue`) y en SQL, con la prueba de equivalencia de ADR-009. |
 
 ---
 

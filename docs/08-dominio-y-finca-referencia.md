@@ -156,7 +156,7 @@ Todos los nombres, cifras y valores de esta sección son **ficticios**.
 ### 3.2 Hato activo (284 animales)
 | Categoría | Cantidad | Detalle |
 |---|---:|---|
-| Vacas | 118 | 64 preñadas confirmadas, 11 servidas sin diagnóstico (3 con más de 90 días), 72 con cría al pie, 29 horras; partos por vaca entre 1 y 7 |
+| Vacas | 118 | 64 preñadas confirmadas (2 con el parto vencido sin registrar, M5), 11 servidas sin diagnóstico (3 con más de 90 días), 72 con cría al pie, 29 horras; partos por vaca entre 1 y 7 |
 | Novillas | 34 | 12 servidas, de ellas 7 preñadas |
 | Terneros | 38 | < 7 meses |
 | Terneras | 36 | < 7 meses; 14 entre 3 y 9 meses sin brucelosis (pendientes) |
@@ -197,6 +197,7 @@ Valores por defecto de `Farm.settings`, confirmables con la finca o el veterinar
 - `weightGainAlertKgPerDay`: 0,30 kg/día para Levante; por categoría de manejo.
 - `weightLossAlertPercent = 5`.
 - `targetSaleWeightKg`: 450 kg en machos de Levante.
+- `overdueCalvingAlertDays = 15` (M5): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar» (RN-39). Decisión de la sesión de M5; confirmar con la finca y el veterinario.
 
 ---
 

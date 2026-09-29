@@ -54,6 +54,10 @@ TypeScript.
    activos de la finca y le pasa al SQL la lista de animales que cumplen. Medido con el seed
    de carga: p95 de 0,5 s, dentro de RNF-01. Si el tablero de M8 lo necesita más rápido, se
    traduce entonces, con su propia prueba de equivalencia.
+7. **Parto vencido sin registrar (M5, RN-39).** La CTE calcula `calving_overdue` con
+   `overdueCalvingAlertDays` leído de la finca, igual que las demás alertas reproductivas, y la
+   prueba de equivalencia la compara con `isCalvingOverdue`, sobre el seed (que trae 2 casos) y
+   sobre casos creados por la API.
 
 ## Consecuencias
 

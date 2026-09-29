@@ -12,7 +12,8 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 - Filtros por query string; múltiples valores separados por coma (`?tags=PREGNANT,CALVED`).
 - Actualizaciones: `PATCH` con `version` obligatoria → 409 `VERSION_CONFLICT` si no coincide.
 - Anulación de eventos: `POST /<recurso>/:id/void` con `{ reason }`. Anular algo que ya está anulado (o archivar lo archivado) responde 200 con el estado actual, no error (ADR-012).
-- Límites por plan (ADR-013): toda finca tiene el plan PILOT, sin límites; `PLAN_LIMIT_REACHED` está reservado.
+- Límites por plan (ADR-013): toda finca tiene el plan PILOT, sin límites; `PLAN_LIMIT_REACHED` está reservado. `EntitlementsService` se llama desde el alta de animal, las crías del parto y la importación.
+- **Implementación de ADR-012 (M5).** El `id` del cliente es un UUIDv7 (`clientIdSchema` de shared). Una creación repetida con el mismo contenido responde **200** (la primera, 201); «mismo contenido» compara los campos de la petición como quedarían guardados (lo omitido, con su valor por defecto) y, en el animal, también las etiquetas e identificadores vigentes y el peso inicial. `Idempotency-Key` se acepta en las rutas marcadas con `@Idempotent()`: salida, reversión, archivo, restauración, operaciones en lote, retiro y reemplazo de identificadores, palpación, aborto, anulación de preñez y parto. La respuesta guardada se repite con **su mismo estado** (201 si la acción respondió 201). La acción y la respuesta se guardan en la misma transacción, con un candado consultivo por (finca, clave): dos reintentos simultáneos se esperan entre sí; dos acciones con claves distintas de la misma finca, no. Si la acción falla, no queda nada guardado y el reintento vuelve a intentarlo. Una clave que no es UUID responde `VALIDATION_FAILED`.
 - Errores: `application/problem+json` con `code` estable (catálogo en `packages/shared/src/errors.ts`). Algunos traen además `context` con los datos que la interfaz necesita para ofrecer la salida: `IDENTIFIER_TAKEN` e `IDENTIFIER_PREVIOUSLY_USED` envían `{ animalId, animalCode }` del animal que tiene o tuvo el identificador, para enlazar a su ficha.
 - Roles: columna "Rol" (T = todos, A = ADMIN, V = VET, O = OPERATOR; — = público, sin sesión).
 - **Ningún token viaja en la query string** (invitación, verificación, recuperación, intenciones de Google aparte de la del flujo): va en el cuerpo de un `POST`. Los enlaces de los correos lo llevan en el fragmento (`#token=…`), que nunca llega al servidor (ADR-007 decisión 7).
@@ -88,7 +89,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /animals/bulk/lot | T | `{ animalIds, lotId, date }` crea `LotMovement` |
 | GET | /animals/export.xlsx | T | El listado en Excel con los mismos filtros que `GET /animals`, sin paginar (ANI-06 CA4, M4d). Valor de compra solo para A |
 | GET | /animals/labels | A | Hoja de etiquetas con QR (IDN-03 CA2, M4d): `?ids=` (selección, hasta 200) o los filtros del listado → `{ items: [{ id, code, name, sex, visualTag, din, rfid, qrUrl }], truncated }` (hasta 1.000) |
-| GET | /animals/next-code?birthDate= | T | Siguiente código sugerido según `codeSuggestion`: `calfCodePattern` o el menor número libre (ANI-10) |
+| GET | /animals/next-code?birthDate=&count= | T | Siguiente código sugerido según `codeSuggestion`: `calfCodePattern` o el menor número libre (ANI-10) → `{ code, codes }`. `count` (1 a 3, M5) pide varios distintos entre sí, para las crías de un parto gemelar |
 
 **Detalles de M4a.**
 - Cada fila trae `expectedCalvingDate`: el parto estimado de la preñez abierta confirmada, o `null` (columna «Parto estimado» de 06 §5.2).
@@ -120,6 +121,8 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
   - La ficha trae `codeHistory`: `previousHolder` (quién tuvo antes este número y cuándo salió) o, si el animal salió, `currentHolder` (quién lo tiene hoy), con `{ animalId, code, status, exitDate }` para enlazar.
   - `POST /animals/:id/exit` en una finca con `codeReuse` retira las chapetas con motivo `EXITED`; DIN y RFID siguen del animal (RN-32).
   - `POST /animals/:id/revert-exit` responde `CODE_REASSIGNED` (con el animal que lo tiene en `context`) si su código ya lo tiene otro animal activo; se reintenta con `{ newCode }`. Una chapeta ocupada no bloquea: queda retirada con `IDENTIFIER_NOT_RESTORED`.
+- M5, reproducción (RN-39): el filtro `alerts` acepta `calving_overdue` (parto vencido sin registrar). La ficha trae en `reproduction` la preñez abierta completa (`openPregnancy`, con días de gestación, toro, quién palpó y si el parto estimado se corrigió a mano), `calvingInterval: { lastDays, averageDays }` (RN-38) e `history` con todas las preñeces, anuladas incluidas.
+- M5: `PATCH /breeds/:id`, `PATCH /farm` y `PATCH /animals/:id` pueden traer la advertencia `EXPECTED_CALVING_RECALCULATED` cuando el cambio recalculó el parto estimado de preñeces abiertas (RN-04).
 - M6, pesos (PES-05): el filtro `alerts` de `GET /animals` acepta además `low_gain` (ganancia baja) y `weight_loss` (perdió peso).
 - M9b, leche (LEC-02, LEC-03): `tags` acepta `LACTATING` y `DRIED_OFF`, y `alerts` acepta `dry_off_soon` (secar pronto). La ficha trae `lactation: { daysInMilk, startedOn } | null` en las vacas.
 
@@ -133,13 +136,23 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 ## Reproducción
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | /pregnancies | T | Filtros: `outcome, confirmed, expectedFrom, expectedTo, damId` |
-| POST | /pregnancies | T | Servicio (REP-01) o preñez confirmada sin servicio (`gestationMonths`) |
-| POST | /pregnancies/:id/diagnosis | T | `{ date, result: POSITIVE|NEGATIVE, responsible? }` |
-| POST | /pregnancies/:id/abortion | T | `{ date, notes? }` |
-| POST | /calvings | T | REP-04: `{ damId, pregnancyId?, date, calvingType, notes?, calves: [{ id?, code, sex, birthWeightKg?, health: ALIVE|WEAK|STILLBORN, breedId?, identifiers? }] }` → `{ pregnancy, calves }` |
-| PATCH | /pregnancies/:id | T | Corregir fechas (recalcula fecha estimada) |
-| POST | /pregnancies/:id/void | A | Anular |
+| GET | /pregnancies | T | Filtros: `outcome, confirmed, expectedFrom, expectedTo, damId`; paginado, de la más reciente a la más antigua. No trae anuladas |
+| GET | /pregnancies/:id | T | Una preñez (`PregnancyView`) |
+| POST | /pregnancies | T | Servicio (REP-01): `{ id?, damId, serviceDate, method, sireId? | sireExternalRef?, responsible?, notes? }`, o preñez confirmada sin servicio (REP-02 CA3): `{ id?, damId, gestationMonths, diagnosisDate, diagnosisResponsible?, diagnosisResponsibleUserId? }` → `PregnancyView` con `warnings` |
+| POST | /pregnancies/:id/diagnosis | T | `{ date, result: POSITIVE|NEGATIVE, responsible?, responsibleUserId? }`. `Idempotency-Key` |
+| POST | /pregnancies/:id/abortion | T | `{ date, notes? }`. `Idempotency-Key` |
+| POST | /calvings | T | REP-04: `{ id?, damId, pregnancyId?, date, calvingType, notes?, calves: [{ id?, code?, sex, birthWeightKg?, health: ALIVE|WEAK|STILLBORN, breedId?, identifiers? }] }` → `{ pregnancy, calves, warnings }`. `Idempotency-Key` |
+| PATCH | /pregnancies/:id | T | `{ version, serviceDate?, method?, sireId?, sireExternalRef?, expectedCalvingDate?, responsible?, notes? }` |
+| POST | /pregnancies/:id/void | A | `{ reason }`. `Idempotency-Key` |
+
+**Detalles de M5.**
+- Todas las acciones exigen una hembra de la finca (`SEX_NOT_ALLOWED`), activa (`ANIMAL_EXITED`, `ANIMAL_ARCHIVED`) y fechas que no sean futuras (`DATE_IN_FUTURE`) ni anteriores al nacimiento (`DATE_BEFORE_BIRTH`). Una hembra de otra finca en el cuerpo responde `VALIDATION_FAILED` en `damId`; una preñez de otra finca, 404.
+- Servicio: con una preñez abierta, `PREGNANCY_ALREADY_OPEN` (409) con `context.pregnancyId`; debe ser posterior al último parto o aborto; el toro de la finca debe ser macho; advertencia `BREEDING_AGE_LOW` (RN-15).
+- Palpación, aborto y parto: la preñez debe estar abierta (`PREGNANCY_NOT_OPEN`) y la fecha no puede ser anterior al servicio. Positiva conserva la primera confirmación; negativa cierra con `FAILED`.
+- Parto: sin `pregnancyId` cierra la preñez abierta de la hembra o, si no hay, crea una ya cerrada con servicio estimado (parto − gestación, `method = UNKNOWN`). Las crías sin `code` reciben el de la sugerencia de la finca dentro de la transacción, bajo un candado por finca; todos los códigos pasan por `assertCodeAvailable` y los identificadores por `checkIdentifier`, con el error en el campo de la cría (`calves.1.code`, `calves.0.identifiers.0.value`). Una cría `STILLBORN` no lleva `id`, `code`, `breedId` ni identificadores: suma a `stillbornCount`. Las crías vivas: madre, padre de la preñez, raza de la madre salvo `breedId`, lote de la madre, `birthCondition` (`HEALTHY` o `WEAK`) y el peso como primer pesaje. `DAM_AGE_LOW` si la madre era menor que la edad mínima (RN-23). Todo o nada.
+- Sin `Idempotency-Key`, un parto repetido con los mismos `id` (de la preñez creada o de las crías) responde 200 con el mismo parto; si esos `id` son de otra hembra, otra fecha u otra preñez, `CLIENT_ID_CONFLICT`.
+- `PATCH`: las fechas solo mientras la preñez está abierta. Cambiar `serviceDate` recalcula el parto estimado y quita la marca de corrección a mano; enviar `expectedCalvingDate` lo deja marcado (`expectedCalvingManual`).
+- Anular: lo ya anulado responde 200 con el estado actual. Un parto con crías vivas que siguen en la finca responde `PREGNANCY_HAS_CALVES` (409) con sus códigos en el mensaje; las que salieron o están archivadas no bloquean.
 
 ## Sanidad
 | Método | Ruta | Rol | Descripción |
@@ -202,7 +215,7 @@ Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); 
 | GET | /dashboard | T | Indicadores RPT-01 (económicos solo A). Desde M8 agrega las preguntas del sistema productivo de la finca (CFG-03): destete e intervalo entre partos en cría, peso de venta y ganancia en ceba (PES-05, PES-06), vacas en ordeño, secas, leche de ayer y del mes, secar pronto y retiro de leche en lechería y doble propósito |
 | GET | /reports/inventory | T | Por sexo, categoría de manejo, raza, lote |
 | GET | /reports/inventory-ica | T | Grupos de edad y sexo en formato ICA |
-| GET | /reports/births?from&to | T | NAC-01 |
+| GET | /reports/births?from&to | T | NAC-01 (M5): `{ from, to, totals: { live, males, females, weak, stillborn }, items: [{ calf, birthDate, dam, sire, sireExternalRef, breed, birthWeightKg, birthCondition }], stillbirths: [{ pregnancyId, date, dam, count }] }`. Sin fechas, del 1.º de enero a hoy. Cuenta los nacidos en la finca en el período aunque ya hayan salido; no los archivados |
 | GET | /reports/vaccinations?from&to&vaccineId | T | Vacunados |
 | GET | /reports/calvings-upcoming | T | Partos próximos |
 | GET | /reports/exits?from&to&type | T | Vendidos o retirados |
@@ -267,6 +280,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `SEX_NOT_ALLOWED` | 422 | Esta acción solo aplica a hembras. / El padre debe ser macho. |
 | `PREGNANCY_ALREADY_OPEN` | 409 | La hembra ya tiene una preñez abierta. |
 | `PREGNANCY_NOT_OPEN` | 409 | La hembra no tiene una preñez abierta. |
+| `PREGNANCY_HAS_CALVES` | 409 | Archiva primero las crías de este parto. (M5, al anular un parto con crías activas) |
 | `DATE_IN_FUTURE` | 422 | La fecha no puede ser posterior a hoy. |
 | `DATE_BEFORE_BIRTH` | 422 | La fecha es anterior al nacimiento del animal. |
 | `CALVES_COUNT_INVALID` | 422 | Un parto puede registrar de 1 a 3 crías. |
@@ -281,7 +295,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `IMPORT_FILE_TOO_LARGE` | 413 | El archivo supera los 5 MB. |
 | `CLIENT_ID_CONFLICT` | 409 | Ya existe un registro con ese identificador y otros datos. (ADR-012, desde M5) |
 | `IDEMPOTENCY_KEY_REUSED` | 422 | Esa clave de reintento ya se usó para otra operación. (ADR-012, desde M5) |
-| `PLAN_LIMIT_REACHED` | 403 | Tu plan no permite más {what}. (ADR-013; **reservado, sin uso en F1**) |
+| `PLAN_LIMIT_REACHED` | 403 | Tu plan no permite más {what}. (ADR-013; **reservado, sin uso en F1**: con el plan PILOT nada lo lanza) |
 | `CODE_REASSIGNED` | 409 | El código {code} ya lo tiene el animal activo {holder}. Asígnale un código nuevo para revertir la salida. (IDN-06 CA3, con el animal en `context`) |
 | `CODE_REUSE_CONFLICT` | 409 | Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización. (ANI-10 CA3) |
 | `SCALE_FILE_INVALID` | 422 | No pudimos leer el archivo de la báscula. Revisa el formato o el perfil de báscula. (PES-04) |
@@ -299,4 +313,4 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `RATE_LIMITED` | 429 | Demasiadas solicitudes. Espera un momento. |
 | `INTERNAL_ERROR` | 500 | Ocurrió un error inesperado. Ya quedó registrado. |
 
-Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `DAM_AGE_LOW` (la madre era menor que la edad mínima reproductiva al nacer la cría, RN-23), `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro), `IDENTIFIER_NOT_RESTORED` (al revertir una salida o restaurar un archivado, un identificador que ya tiene otro animal activo quedó retirado; M4c), `SCALE_DUPLICATE_READING` (el mismo animal dos veces el mismo día en el archivo de la báscula: se conserva el último, PES-04), `MILK_UNFIT_FOR_SALE` (leche de una vaca con retiro de leche vigente, LEC-01 CA4).
+Las advertencias (no bloqueantes) viajan en la respuesta exitosa como `warnings: [{ code, message }]`: `WEIGHT_OUTLIER`, `RFID_FOREIGN_COUNTRY`, `BREEDING_AGE_LOW`, `DAM_AGE_LOW` (la madre era menor que la edad mínima reproductiva al nacer la cría, RN-23), `VACCINE_AGE_OUTSIDE_WINDOW`, `ALREADY_IN_SESSION`, `CYCLE_OVERLAP` (el ciclo se cruza con otro), `LOT_HAS_ACTIVE_ANIMALS` («12 animales siguen en este lote», al desactivar un lote), `VACCINE_IN_ACTIVE_CYCLE` (al desactivar una vacuna de un ciclo en curso o futuro), `IDENTIFIER_NOT_RESTORED` (al revertir una salida o restaurar un archivado, un identificador que ya tiene otro animal activo quedó retirado; M4c), `SCALE_DUPLICATE_READING` (el mismo animal dos veces el mismo día en el archivo de la báscula: se conserva el último, PES-04), `MILK_UNFIT_FOR_SALE` (leche de una vaca con retiro de leche vigente, LEC-01 CA4), `EXPECTED_CALVING_RECALCULATED` (M5: «Se recalculó el parto estimado de N preñeces abiertas», con las omitidas por estar corregidas a mano).

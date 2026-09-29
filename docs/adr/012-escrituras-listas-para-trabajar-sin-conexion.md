@@ -92,6 +92,14 @@ Llevar los puntos 1 a 5 a las tablas de las fases ya hechas, con pruebas:
 - `idempotency_keys` con su purga, y una prueba de que `/auth` no la usa.
 - Lo que se construya de M5 en adelante nace así.
 
+## Cómo quedó en M5
+
+- **`updated_at`**: `set_updated_at()` pone `now()` en todo `UPDATE` de 19 tablas (lista en 03 §2.7); los `INSERT` pueden traer su valor. La API y el seed trabajan con la sesión en UTC: sin eso, el adaptador de Prisma guardaba las marcas cinco horas corridas y el `now()` del trigger se leía cinco horas antes.
+- **`Idempotency-Key`**: `@Idempotent()` agrega `IdempotencyInterceptor`, que valida la clave, calcula la huella (método, ruta con la query y cuerpo con las claves ordenadas) y devuelve la respuesta guardada sin ejecutar nada. El servicio escribe con `TransactionsService.run`, que dentro de su transacción toma `pg_advisory_xact_lock` por (finca, clave), vuelve a buscar la clave y guarda la respuesta junto con la acción; por eso lo que devuelve la transacción es la respuesta completa del endpoint. La respuesta repetida conserva su estado (201). Una clave de más de 7 días ya no cuenta aunque la purga (al arrancar y cada 6 horas) no la haya borrado.
+- **`id` del cliente**: `ownRecordOrConflict` + `assertSameContent`; el 200 lo pone `ClientIdReplayInterceptor` a partir de una marca no enumerable en la respuesta.
+- **`animal_tags`**: quitar una etiqueta marca `removed_at`; única vigente por animal y etiqueta.
+- **Pendiente para M12**: `vaccination_cycle_vaccines` se reemplaza con borrado al editar un ciclo, y `work_session_entries` no tiene `farm_id`.
+
 ## Alternativas descartadas
 
 - **Hacerlo en la fase 2, junto con la sincronización.** Obligaría a cambiar todos los contratos de

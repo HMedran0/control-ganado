@@ -180,6 +180,10 @@ En móvil la barra de pestañas se desplaza de lado dentro de sí misma, sin des
 
 **QR del sistema (IDN-03, M4d).** Al final del Resumen, bajo los identificadores: el QR de la ficha (unos 3 cm), con "Escanéalo con el celular para abrir esta ficha. Pide iniciar sesión y no muestra datos del animal a nadie de fuera de la finca." y, para el ADMIN, el enlace **Imprimir etiqueta**. Todos los roles ven el QR.
 
+**Reproducción (M5, REP-05).** La pestaña tiene tres secciones: **Preñez actual** (servicio, con «aprox.» si la fecha es estimada, método, toro o pajilla, diagnóstico con quién palpó, días de gestación y parto estimado, con «(corregido a mano)» si lo es), **Partos** (número, último parto e intervalo entre partos: «405 días el último · promedio 394 días», o «Sin dato: hacen falta dos partos seguidos con fecha de servicio real», RN-38) y **Historial reproductivo** (cada preñez con su desenlace, fecha y tipo de parto, crías enlazadas y muertas al nacer; las anuladas con borde punteado y su motivo). Acciones de una hembra activa: «Registrar servicio» (sin preñez abierta), «Registrar palpación», «Registrar parto», «Registrar aborto» y «Corregir fechas» (con preñez abierta). El ADMIN ve «Anular» en cada preñez; un parto con crías que siguen en la finca responde «Archiva primero las crías de este parto: 26-045».
+
+**Avisos reproductivos con acción (M5).** «Parto estimado en 3 días» y «Pasó la fecha de parto: registra el parto o el aborto» (alerta, RN-39) llevan el botón **Registrar parto**; «Servida hace 96 días sin diagnóstico», **Registrar palpación**. En el listado, la fila muestra «Parto vencido sin registrar» y el filtro de alertas lo incluye.
+
 **Importados (ANI-09, M4d).** Una fecha de ingreso que la importación tomó del nacimiento se muestra como "12/03/2020 (estimada: es la de nacimiento)" hasta que alguien la corrige. En Reproducción, "Partos: 4 (3 anteriores al sistema, sin fecha)".
 
 **Número anterior (ANI-11, M4c).** En una finca con numeración reutilizable, bajo el encabezado y en tono informativo: «Este número lo tuvo antes 5 · vendido el 12/03/2026», con enlace a la ficha de ese animal. En la ficha de un animal que salió: «Su número 5 lo tiene hoy otro animal», con enlace. El historial nunca mezcla los eventos de los dos.
@@ -209,6 +213,17 @@ En móvil la barra de pestañas se desplaza de lado dentro de sí misma, sin des
 └──────────────────────────────────┘
 ```
 El código de la cría se sugiere con el patrón de la finca (por defecto año-consecutivo, `26-045`). Al guardar: "Parto guardado · 26-045 creado" y se abre la ficha de la madre. Nota: los códigos del prototipo visual (`P-12`, `T-245`) son ilustrativos.
+
+**Implementado en M5.** La madre y su preñez van arriba («Preñez: servicio del 12/01/2026 · Inseminación · parto estimado 01/11/2026», o «Sin preñez registrada: el parto quedará con fecha de servicio estimada»). El orden de cada cría es **Estado** (Sana · Débil · Muerta), **Sexo**, **Código**, **Peso al nacer** y **Chapeta**: con «Muerta» desaparecen código, peso y chapeta y aparece «Una cría muerta al nacer queda en el parto, pero no se registra como animal». Con el `Stepper` en 2 o 3, los códigos sugeridos son distintos entre sí (consecutivos con el patrón, o los menores libres con numeración reutilizable) y llenan solo los campos que la persona no escribió. Un código tomado aparece junto al código de esa cría. Mensajes: «Parto guardado · 26-045 y 26-046 creados»; sin crías vivas, «Parto guardado.».
+
+**Servicio, palpación y aborto (M5).** Pantallas cortas desde la ficha o desde **Registrar**:
+- Servicio: fecha (`DateQuickPick`), método (Monta natural · Inseminación), toro de la finca (buscador de machos) o «Pajilla o toro de fuera», responsable y observaciones; debajo, «Parto estimado: 01/11/2026» con la gestación de la raza. Si la hembra ya tiene una preñez abierta, un aviso lo dice antes de guardar y el error ofrece «Ver la preñez abierta» (REP-01 CA3).
+- Palpación: con preñez abierta, fecha, resultado (Preñada · Vacía) y «Quién palpó»; sin preñez abierta, «Meses de gestación» (1 a 9) para registrar una preñez confirmada sin servicio conocido.
+- Aborto: fecha y observaciones; sin preñez abierta, lo explica y ofrece registrar el servicio.
+
+**Registrar (M5).** Primero la hembra (código, nombre o chip) y luego tres botones grandes: Parto · Servicio · Palpación. Vacunas, pesajes y tratamientos llegan con M6.
+
+**Reportes → Nacimientos (NAC-01, M5).** Desde y hasta (por defecto el año en curso), cinco totales (nacidos vivos, machos, hembras, débiles, muertos al nacer), la tabla de crías con madre enlazada, padre, raza, peso y estado, y la lista de partos con muertos al nacer. La página de Alertas se llena en M6.
 
 ### 5.5 Jornada de manejo (pantalla de trabajo)
 ```

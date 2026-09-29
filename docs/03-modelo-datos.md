@@ -35,6 +35,7 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
   "calvingAlertDays": 30,
   "vaccineAlertDays": 15,
   "unconfirmedServiceAlertDays": 90,
+  "overdueCalvingAlertDays": 15,
   "calfCodePattern": "{YY}-{NNN}",
   "rabiesRiskZone": true,
   "pricePerKgByCategory": {},
@@ -52,7 +53,7 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
   "scaleZeroThresholdKg": 10
 }
 ```
-Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo) y `weightLossAlertPercent` de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8); `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg` y `scaleZeroThresholdKg`, las condiciones de guardado del pesaje en vivo (PES-03 CA2 y CA3, F2, M15; 09 v1.4). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
+`overdueCalvingAlertDays` (M5, RN-39): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar»; 15 por defecto [Validar]. Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo) y `weightLossAlertPercent` de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8); `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg` y `scaleZeroThresholdKg`, las condiciones de guardado del pesaje en vivo (PES-03 CA2 y CA3, F2, M15; 09 v1.4). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
 
 **User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), email_verified_at timestamptz?, password_hash?, must_change_password bool, is_active, created_at, updated_at, last_login_at`
 - `password_hash` pasa a opcional en M10a: quien acepta una invitación con Google (AUT-13 CA2) puede no tener contraseña. Nunca queda un usuario sin ningún método de acceso: sin contraseña, no se puede desvincular Google (`LAST_LOGIN_METHOD`).
@@ -119,6 +120,7 @@ Semilla (08 §3.3): Aftosa (`OFFICIAL_CYCLE`); Brucelosis RB51 (`AGE_WINDOW`, FE
 | sire_id | uuid? FK → animals | Padre si es toro de la finca. |
 | sire_external_ref | text? | Pajilla, toro prestado. |
 | birth_pregnancy_id | uuid? FK → pregnancies | Preñez de la que nació. |
+| birth_condition | enum? `HEALTHY`/`WEAK` | Estado al nacer de una cría registrada con su parto (REP-04, NAC-01 CA2; M5). CHECK: solo con `birth_pregnancy_id`. Las muertas al nacer no son animales. |
 | lot_id | uuid? FK | Lote actual. |
 | for_sale | bool | Disponible para venta. |
 | exit_type | enum? `SALE`/`DEATH`/`SLAUGHTER`/`THEFT`/`TRANSFER`/`OTHER` | Nulo = activo. |
@@ -133,7 +135,7 @@ Restricciones:
 - CHECK `dam_id <> id` y `sire_id <> id`.
 - El sexo de la madre (FEMALE) y del padre (MALE) se valida en la capa de dominio (Postgres no valida columnas de otra fila con CHECK).
 
-**AnimalTag** — N:M animal–etiqueta manual. `animal_id, tag_id, created_at, created_by_id`. PK compuesta.
+**AnimalTag** — N:M animal–etiqueta manual. `id, farm_id, animal_id, tag_id, created_at, created_by_id, removed_at?, removed_by_id?, updated_at`. Desde M5 (ADR-012) quitar una etiqueta no borra la fila: marca `removed_at` y `removed_by_id` (CHECK: los dos o ninguno), para que la sincronización lleve el cambio y la pestaña Cambios diga «Quitó la etiqueta X». Único parcial (`animal_id`, `tag_id`) `WHERE removed_at IS NULL`: volver a poner una etiqueta quitada crea otra fila. Las consultas de etiquetas filtran las quitadas.
 
 **Identifier**
 | Campo | Tipo | Notas |
@@ -162,8 +164,11 @@ Restricciones:
 | method | enum `NATURAL`/`AI`/`UNKNOWN` | |
 | sire_id | uuid? FK → animals | |
 | sire_external_ref | text? | |
-| confirmed_at | date? | Palpación positiva. |
-| expected_calving_date | date | Almacenada (se congela con el parámetro vigente al registrar; se recalcula si cambia `service_date`). |
+| confirmed_at | date? | Palpación positiva. Una segunda palpación positiva conserva la primera fecha. |
+| diagnosis_responsible | text? | Quién palpó (REP-02 CA1, M5): texto, porque suele ser un veterinario externo que no es usuario. |
+| diagnosis_responsible_user_id | uuid? FK → users | Si quien palpó es usuario de la finca (M5). |
+| expected_calving_date | date | Almacenada. Se recalcula si cambia `service_date` y, desde M5, si cambia la gestación que le aplica (ver la decisión de abajo). |
+| expected_calving_manual | bool default false | Alguien corrigió a mano el parto estimado (`PATCH` con `expectedCalvingDate`, M5): el recálculo por gestación no lo toca. Cambiar después el servicio vuelve a calcularlo y quita la marca. |
 | outcome | enum `PENDING`/`CALVED`/`ABORTED`/`FAILED` | |
 | outcome_date | date? | Fecha de parto, aborto o diagnóstico negativo. |
 | calving_type | enum? `NORMAL`/`ASSISTED`/`CESAREAN` | |
@@ -175,7 +180,11 @@ Restricciones:
 
 Índice único parcial: (`dam_id`) `WHERE outcome = 'PENDING' AND voided_at IS NULL` (RN-03).
 
-Decisión: `expected_calving_date` es la excepción a "no almacenar derivados" porque el parámetro de días de gestación puede cambiar y la fecha comunicada a la finca no debe moverse sola; además permite indexar la consulta de partos próximos.
+Decisión: `expected_calving_date` es la excepción a "no almacenar derivados": permite indexar la consulta de partos próximos y conservar una corrección hecha a mano.
+
+Decisión de M5 (reemplaza la de «se congela con el parámetro vigente al registrar»): cuando cambia la gestación que aplica a una preñez **abierta y no anulada**, su parto estimado se recalcula en la misma transacción del cambio, en tres casos: la gestación de la raza (`PATCH /breeds/:id`), la gestación de la finca para las razas sin gestación propia (`PATCH /farm`) y la raza de la madre (`PATCH /animals/:id`). Las preñeces con `expected_calving_manual` no se tocan. Cada recálculo queda en la auditoría de la preñez (`UPDATE`, con el motivo) y la respuesta trae la advertencia `EXPECTED_CALVING_RECALCULATED` («Se recalculó el parto estimado de N preñeces abiertas», con cuántas se omitieron por estar corregidas a mano). Las cerradas nunca cambian.
+
+Reglas de M5 en la API: una sola preñez abierta por hembra (candado de la fila de la hembra + el índice único parcial); el servicio es posterior al último parto o aborto; ninguna palpación, aborto ni parto es anterior al servicio. El parto sin preñez abierta crea una preñez ya cerrada con `service_date` = parto − gestación, `service_date_estimated = true` y `method = UNKNOWN` (no entra en los indicadores, RN-38).
 
 Las crías vivas de un parto se enlazan con `Animal.birth_pregnancy_id`. El total de nacidos de un parto = crías con ese `birth_pregnancy_id` + `stillborn_count`.
 
@@ -226,7 +235,9 @@ Invariante (RN-17): suma de asignaciones = `expense.amount`. Se crean en la mism
 
 **IdempotencyKey** (M5, ADR-012) — `id, farm_id, key uuid, method text, path text, request_hash text, response_status int, response_body jsonb, created_at timestamptz`. Único (`farm_id`, `key`). Guarda la respuesta de una acción (salida, reversión, archivo, anulación, operación en lote…) para devolverla igual si se repite con el mismo encabezado `Idempotency-Key`; otra petición con la misma clave responde `IDEMPOTENCY_KEY_REUSED`. Se purga a los 7 días. Nunca guarda respuestas de `/auth`. La importación no la usa: su clave vive en `import_batches.idempotency_key` (ADR-011).
 
-**Escrituras sin conexión (ADR-012, desde M5).** Toda tabla editable tiene `version`. Toda tabla que se sincronizará (animales, identificadores, catálogos, configuración, eventos, jornadas) tiene `updated_at timestamptz` con índice (`farm_id`, `updated_at`), mantenido por un **trigger** de la base (función `set_updated_at()`, `BEFORE UPDATE`) y no por `@updatedAt` de Prisma, porque hay escrituras con SQL directo. Hoy tienen `updated_at` solo `farms`, `users`, `animals` y `pregnancies`; la tarea de M5 lo lleva a las demás.
+**Escrituras sin conexión (ADR-012, desde M5).** Toda tabla editable tiene `version`. Toda tabla que se sincronizará (animales, identificadores, catálogos, configuración, eventos, jornadas) tiene `updated_at timestamptz` con índice (`farm_id`, `updated_at`), mantenido por un **trigger** de la base (función `set_updated_at()`, `BEFORE UPDATE`) y no por `@updatedAt` de Prisma, porque hay escrituras con SQL directo. Hecho en M5 (migración `offline_ready_writes`): `farms`, `animals`, `animal_tags`, `identifiers`, los catálogos (`breeds`, `vaccines`, `vaccination_cycles`, `lots`, `tags`), `pregnancies`, los eventos (`vaccination_records`, `treatment_records`, `weight_records`, `lot_movements`), `work_sessions` y los económicos (`expenses`, `expense_allocations`, `sales`, `valuations`). El trigger pone `now()` (inicio de la transacción) en **cada** `UPDATE`, también si la sentencia intentó fijar otro valor: la marca la decide la base. Los `INSERT` sí pueden traer su `updated_at` (el seed lo escribe explícito para ser determinista, y ya no hace `UPDATE` después de sembrar). Quedan sin `updated_at` `users` y `memberships` (no se sincronizan; `users` conserva `@updatedAt`), `vaccination_cycle_vaccines` y `work_session_entries` (sin `farm_id`; se revisan en M9 y M12).
+
+**Sesión en UTC.** El adaptador de Prisma (`@prisma/adapter-pg`) envía y lee `timestamptz` sin desfase; con la sesión de PostgreSQL en otra zona (`PGTZ=America/Bogota` en el contenedor) las marcas se guardaban cinco horas corridas y lo que genera la base (`now()`) se leía cinco horas antes. La API y el seed abren sus conexiones con `TimeZone=UTC` (`src/infra/db-session.ts`). Las fechas de negocio son `date` y no dependen de esto (ADR-002).
 
 **AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/IMPORT/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS, diff jsonb, created_at timestamptz`.
 Cuentas y correo (M4d, M10a): invitación creada, reenviada y anulada → entidad `Invitation` con `CREATE`, `UPDATE` y `VOID`; aceptada → `ACCEPT_INVITATION`; correo verificado → `VERIFY_EMAIL`; contraseña restablecida por correo → `RESET_PASSWORD`; Google vinculado y desvinculado → `LINK_IDENTITY` y `UNLINK_IDENTITY`; sesiones cerradas por el ADMIN o por el propio usuario → `REVOKE_SESSIONS`. El `diff` nunca guarda tokens, hashes, contraseñas ni el `code_verifier`.
@@ -284,6 +295,10 @@ ORDER BY animal_id, vaccine_id, applied_on DESC;
 
 **Partos próximos**: preñeces `PENDING`, confirmadas, no anuladas, con `expected_calving_date <= today + calving_alert_days`, ordenadas por fecha.
 
+**Parto vencido sin registrar** (M5, RN-39): preñez `PENDING` no anulada (confirmada o no) con `today - expected_calving_date > overdue_calving_alert_days`. Es la columna `calving_overdue` de `classificationCtes` y el filtro `alerts=calving_overdue`; shared la calcula con `isCalvingOverdue`, y la prueba de equivalencia de ADR-009 compara los dos caminos, también con casos creados por la API (mellizos, aborto, servicio estimado, anuladas, horra que vuelve a servicio).
+
+**Intervalo entre partos** (REP-05, RN-38): `calvingIntervals` de shared sobre las preñeces `CALVED` no anuladas de la hembra, por pares consecutivos con servicio real.
+
 **Estado de lactancia** (M9b, LEC-02, RN-34 y RN-37), por vaca, con la misma estrategia de ADR-009 (función en shared + equivalente SQL cubierto por la prueba de equivalencia):
 ```sql
 last_calving   = MAX(outcome_date) de preñeces CALVED no anuladas
@@ -315,6 +330,7 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 - Desde M4c: único parcial `animals_farm_code_norm_active_uq` sobre `(farm_id, hato_normalize_code(code))` de los animales activos (RN-30, RN-31), en lugar del de `(farm_id, code)` entre no archivados, y un índice no único `animals_farm_code_norm_idx` sobre la misma expresión para la búsqueda exacta, el número anterior (ANI-11) y la verificación de las fincas sin reutilización. `hato_normalize_code` es la traducción literal de `normalizeAnimalCode` de shared (NFC; sin espacio, tabulador, salto de línea ni U+00A0 en los extremos; mayúsculas con una lista cerrada de letras; sin ceros a la izquierda si es numérico) y una prueba de integración las compara. La migración falla, nombrando los códigos, si encuentra duplicados normalizados.
 - `milk_records (farm_id, recorded_on)`, `(animal_id, recorded_on DESC)` y único parcial `(animal_id, recorded_on, milking) WHERE voided_at IS NULL`; `dry_off_records (animal_id, dried_on DESC)` (M9b).
 - `refresh_tokens (user_id, family_id)` para listar sesiones; `email_tokens (token_hash)` único y `(user_id, purpose, created_at)`; `invitations (token_hash)` único y único parcial `(farm_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL`; `user_identities (provider, subject)` único; `oauth_intents (intent_hash)` y `oauth_states (state_hash)` únicos (M4d, M10a).
+- Desde M5: `animal_tags (animal_id, tag_id)` único parcial `WHERE removed_at IS NULL`; `(farm_id, updated_at)` en todas las tablas que se sincronizarán; `idempotency_keys (farm_id, key)` único y `(created_at)` para la purga.
 - Índices parciales y `pg_trgm` se crean con migraciones SQL manuales, porque Prisma no los expresa todos.
 
 ## 6. Datos semilla
@@ -325,6 +341,7 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 - Catálogos semilla (razas con grupo y gestación, vacunas con programación, etiqueta COTERO, lotes Paridas, Horras y novillas, Levante, Toros).
 - 284 animales activos con la distribución de 08 §3.2, historial 2024–2026, 10 vendidos y 3 muertos.
 - El seed es **determinista** (generador con semilla fija y "hoy" fijado en `SEED_TODAY=2026-09-25`) para que las pruebas E2E puedan afirmar cifras exactas del tablero (por ejemplo, 284 activos, 64 + 7 preñadas, 14 terneras pendientes de brucelosis).
+- M5 agrega a la finca de referencia 2 partos vencidos sin registrar (RN-39): dos de los 9 partos próximos con el servicio más atrás, de modo que su parto estimado pasó hace 16 a 41 días. Siguen siendo preñadas y partos próximos, así que ninguna otra cifra cambia; `expected.ts` suma solo `calvingsOverdue: 2`.
 - `pnpm db:seed:load` genera 5.000 animales y 50.000 eventos para pruebas de rendimiento (RNF-01).
 - M4c agrega una segunda finca de pruebas, **Finca El Retiro** [Ficticio], con `codeReuse = true`, `LOWEST_FREE` y numeración 1–40, con al menos dos números reutilizados (08 §3.5). La finca de referencia sigue con `codeReuse = false`.
 - M9b agrega a la finca de referencia 90 días de control lechero y algunos secados (08 §3.6), con sus cifras nuevas en `expected.ts`.
