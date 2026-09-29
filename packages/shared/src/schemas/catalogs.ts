@@ -12,6 +12,7 @@ import { DEFAULT_GESTATION_DAYS_BY_GROUP } from '../domain/pregnancy.js';
 import type { BreedGroup, Role, Sex, VaccineScheduleType } from '../enums.js';
 import type { Warning } from '../errors.js';
 import { farmSettingsPatchSchema, type FarmSettings } from './farm-settings.js';
+import { clientIdSchema } from './offline.js';
 
 // ---------------------------------------------------------------------------------------------
 // Nombres
@@ -86,6 +87,8 @@ export const gestationDaysSchema = z
   .max(330, { message: 'La gestación debe estar entre 240 y 330 días.' });
 
 export const createBreedSchema = z.object({
+  /** `id` del cliente (ADR-012 §1): repetir la creación con el mismo `id` no duplica. */
+  id: clientIdSchema.optional(),
   name: catalogName('Escribe el nombre de la raza.'),
   group: breedGroupSchema,
   /** Sin valor, la API propone la del grupo (`DEFAULT_GESTATION_DAYS_BY_GROUP`). */
@@ -220,7 +223,9 @@ function refineVaccine(value: Partial<Record<keyof VaccineRules, unknown>>, ctx:
   }
 }
 
-export const createVaccineSchema = z.object(vaccineFields).superRefine(refineVaccine);
+export const createVaccineSchema = z
+  .object({ ...vaccineFields, id: clientIdSchema.optional() })
+  .superRefine(refineVaccine);
 export type CreateVaccineInput = z.infer<typeof createVaccineSchema>;
 
 /**
@@ -277,10 +282,12 @@ export function cycleDatesError(startsOn: IsoDate, endsOn: IsoDate): string | nu
     : null;
 }
 
-export const createCycleSchema = z.object(cycleFields).superRefine((value, ctx) => {
-  const error = cycleDatesError(value.startsOn, value.endsOn);
-  if (error !== null) ctx.addIssue({ code: 'custom', path: ['endsOn'], message: error });
-});
+export const createCycleSchema = z
+  .object({ ...cycleFields, id: clientIdSchema.optional() })
+  .superRefine((value, ctx) => {
+    const error = cycleDatesError(value.startsOn, value.endsOn);
+    if (error !== null) ctx.addIssue({ code: 'custom', path: ['endsOn'], message: error });
+  });
 export type CreateCycleInput = z.infer<typeof createCycleSchema>;
 
 export const updateCycleSchema = z
@@ -320,6 +327,8 @@ export type CycleView = {
 // ---------------------------------------------------------------------------------------------
 
 export const createLotSchema = z.object({
+  /** `id` del cliente (ADR-012 §1): repetir la creación con el mismo `id` no duplica. */
+  id: clientIdSchema.optional(),
   name: catalogName('Escribe el nombre del lote.'),
   description: optionalText(200),
 });
@@ -344,6 +353,8 @@ export type LotView = {
 };
 
 export const createTagSchema = z.object({
+  /** `id` del cliente (ADR-012 §1): repetir la creación con el mismo `id` no duplica. */
+  id: clientIdSchema.optional(),
   label: catalogName('Escribe el nombre de la etiqueta.'),
   description: optionalText(200),
 });

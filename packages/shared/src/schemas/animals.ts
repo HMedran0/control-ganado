@@ -37,6 +37,7 @@ import {
 import type { Warning } from '../errors.js';
 import type { MoneyString } from '../money.js';
 import { isoDateSchema, versionSchema } from './catalogs.js';
+import { clientIdSchema } from './offline.js';
 
 // ---------------------------------------------------------------------------------------------
 // Piezas
@@ -115,6 +116,8 @@ const identifierValueSchema = z
   .max(64, { message: 'El identificador es demasiado largo (máximo 64 caracteres).' });
 
 export const addIdentifierSchema = z.object({
+  /** `id` del cliente (ADR-012 §1): repetir la creación con el mismo `id` no duplica. */
+  id: clientIdSchema.optional(),
   type: identifierTypeSchema,
   value: identifierValueSchema,
   /** Sin valor, hoy. */
@@ -176,8 +179,11 @@ export const initialWeightSchema = z.object({
 
 export const createAnimalSchema = z
   .object({
-    /** El cliente puede enviarlo: repetir la petición con el mismo `id` no duplica (05). */
-    id: uuidSchema.optional(),
+    /**
+     * `id` del cliente (ADR-012 §1): con el mismo contenido, 200 con el animal ya creado; con
+     * otro, `CLIENT_ID_CONFLICT`.
+     */
+    id: clientIdSchema.optional(),
     code: animalCodeSchema,
     name: optionalText(80),
     sex: sexSchema,
@@ -197,7 +203,7 @@ export const createAnimalSchema = z
     forSale: z.boolean().optional(),
     tagIds: z.array(uuidSchema).max(20).optional(),
     identifiers: z
-      .array(addIdentifierSchema.omit({ assignedAt: true }))
+      .array(addIdentifierSchema.omit({ assignedAt: true, id: true }))
       .max(10, { message: 'Máximo 10 identificadores.' })
       .optional(),
     initialWeight: initialWeightSchema.optional(),

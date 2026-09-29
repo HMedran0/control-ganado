@@ -88,6 +88,18 @@ export const ERROR_CATALOG = {
   IMPORT_FILE_INVALID: { status: 422, detail: 'El archivo no tiene el formato de la plantilla.' },
   IMPORT_TOO_MANY_ROWS: { status: 413, detail: 'El archivo supera las 5.000 filas.' },
   IMPORT_FILE_TOO_LARGE: { status: 413, detail: 'El archivo supera los 5 MB.' },
+  /** ADR-012 §1: el `id` que envió el cliente ya existe con otros datos o en otra finca. */
+  CLIENT_ID_CONFLICT: {
+    status: 409,
+    detail: 'Ya existe un registro con ese identificador y otros datos.',
+  },
+  /** ADR-012 §2: la misma `Idempotency-Key` llegó con otra ruta u otro cuerpo. */
+  IDEMPOTENCY_KEY_REUSED: {
+    status: 422,
+    detail: 'Esa clave de reintento ya se usó para otra operación.',
+  },
+  /** ADR-013: reservado; con el plan PILOT nada lo lanza en la fase 1. */
+  PLAN_LIMIT_REACHED: { status: 403, detail: 'Tu plan no permite más {what}.' },
   CODE_REASSIGNED: {
     status: 409,
     detail:
