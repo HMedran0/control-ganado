@@ -78,6 +78,8 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Número anterior | derivado | El animal que tuvo antes el mismo número; la ficha lo muestra con enlace (ANI-11). |
 | Perfil de báscula | `ScaleProfile` | Mapeo de columnas del archivo que exporta el indicador de pesaje de la finca, guardado para reutilizarlo (PES-04). |
 | Ganancia diaria | derivado | Kilos ganados por día entre dos pesajes (PES-02, PES-05). |
+| Indicador de pesaje | `ScaleAdapter` | Equipo electrónico conectado a las celdas de carga de la báscula que muestra y transmite el peso, y a veces el chip leído (Tru-Test XR5000, ID5000…; PES-03). |
+| Peso estable | derivado | Lectura que el indicador marca como estable o que varía menos de `scaleStableToleranceKg` durante `scaleStableSeconds`; solo esa se guarda en el pesaje en vivo (PES-03 CA2). |
 | Sistema productivo | `Farm.settings.productionSystem` | Cría, levante y ceba, lechería, doble propósito o ciclo completo. Cambia qué se destaca, no los datos (CFG-03). |
 | En ordeño | etiqueta derivada `LACTATING` | Vaca con un parto y sin secado posterior: está produciendo leche. |
 | Seca | etiqueta derivada `DRIED_OFF` | Vaca a la que se le suspendió el ordeño y aún no vuelve a parir. No confundir con Horra (`DRY`). |
@@ -285,7 +287,7 @@ Carga inicial (y actualizaciones posteriores) del hato desde una hoja de cálcul
 - CA1: El sistema ofrece una **plantilla descargable** (`.xlsx`) con una hoja de instrucciones, una hoja de datos y listas válidas (sexo, raza, lote, procedencia). Referencia: `docs/referencia/plantilla-importacion.xlsx`.
 - CA2: Columnas: código (obligatorio), nombre, sexo (obligatorio), raza (obligatoria, debe existir en el catálogo o crearse al confirmar con «Crear las razas que no existen», en el grupo Cruce con su gestación por defecto), fecha de nacimiento (obligatoria; acepta `dd/mm/aaaa`), fecha aproximada (sí/no), procedencia, **fecha de ingreso** (opcional, M4d), código de la madre, código o referencia del padre, lote, chapeta visual, DIN, RFID, número de partos previos, fecha del último parto, preñada (sí/no), fecha de servicio, último peso (kg), fecha del último peso, observaciones. Las columnas se reconocen por su nombre, en cualquier orden. Fechas y decimales en formato es-CO («452,5»). Un comprado sin fecha de ingreso toma la de nacimiento, marcada como estimada, con la advertencia «Se tomó la fecha de nacimiento como fecha de ingreso; corrígela en la ficha si la conoces»; la ficha la muestra como estimada hasta que alguien la corrige (no se usa hoy: lo dejaría fuera de los ciclos pasados, ADR-004, y ocultaría vacunas pendientes).
 - CA3: **Simulación primero:** el archivo se valida sin guardar y se muestra un resumen: filas válidas, filas con advertencias y filas con errores, con el número de fila, la columna y el mensaje (por ejemplo, "Fila 14: la madre 087 es macho").
-- CA4: Validaciones: todas las del registro individual (ANI-01, IDN-01), con las mismas funciones (código con `assertCodeAvailable`, identificadores con `checkIdentifier`), más: códigos duplicados dentro del archivo (normalizados, RN-30) e identificadores duplicados dentro del archivo, madre que debe ser hembra y existir en el archivo o en la finca (se resuelve en dos pasadas; si la madre del archivo tiene errores, la cría tampoco entra), fechas no futuras, madre mayor que la cría, RFID de 15 dígitos, preñada solo si es hembra y con fecha de servicio («Indica la fecha de servicio»). Un padre del archivo o de la finca que nació después que la cría no puede serlo: lo escrito se guarda como referencia externa, con advertencia (M4d; la plantilla de referencia lo trae en la fila 2).
+- CA4: Validaciones: todas las del registro individual (ANI-01, IDN-01), con las mismas funciones (código con `assertCodeAvailable`, identificadores con `checkIdentifier`), más: códigos duplicados dentro del archivo (normalizados, RN-30) e identificadores duplicados dentro del archivo, madre que debe ser hembra y existir en el archivo o en la finca (se resuelve en dos pasadas; si la madre del archivo tiene errores, la cría tampoco entra), fechas no futuras, madre mayor que la cría, RFID de 15 dígitos, preñada solo si es hembra y con fecha de servicio («Indica la fecha de servicio»). Un padre del archivo o de la finca que nació después que la cría no puede serlo: lo escrito se guarda como referencia externa, con advertencia (M4d, 08 §3.8; la plantilla de referencia lo trae en la fila 2).
 - CA5: Al confirmar, se importan las filas válidas elegidas (las que tienen advertencias se pueden desmarcar) en **una** transacción: entran todas o ninguna. Las filas con error se descargan en un Excel con una columna "Error" para corregirlas y volver a importar. Un doble clic o un reintento no importa dos veces: la confirmación lleva una clave que la web genera al elegir el archivo (ADR-011). Si al confirmar el resultado ya no es el de la simulación, no se importa nada.
 - CA6: "Número de partos previos" y "fecha del último parto" dejan la clasificación (Vaca, Parida, Horra) correcta sin inventar crías ni fechas (RN-29): el último parto se importa como preñez cerrada `CALVED` con su fecha real, marcada como importada y con la fecha de servicio estimada (el parto menos la gestación de la raza); los anteriores quedan como un número en el animal (`imported_prior_calvings`). Número de partos = partos anteriores importados + partos registrados. "Preñada = sí" crea una preñez abierta confirmada con la fecha de servicio indicada (obligatoria).
 - CA7: Máximo 5.000 filas y 5 MB por archivo, solo `.xlsx` o `.csv` (UTF-8 o Windows-1252); los libros con macros (`.xlsm`) se rechazan. Se comprueba el tipo real del archivo, no solo la extensión, y de las fórmulas se lee el valor guardado, nunca se evalúan (ADR-011). Solo ADMIN. 5.000 filas válidas se confirman en menos de 60 s.
@@ -426,17 +428,38 @@ Campos: animal, fecha, diagnóstico o motivo, medicamento, dosis, días de trata
 **PES-02 — Evolución de peso** · M · F1
 - CA1: Gráfica de peso en el tiempo en la ficha; ganancia diaria promedio (kg/día) entre los dos últimos pesajes y desde el nacimiento.
 
-El pesaje periódico se hace en báscula electrónica, y digitar cada peso es lento y propenso a errores (09 §3). **Hallazgo técnico [Real]:** los indicadores de pesaje ganadero del mercado usan protocolos propios y, en muchos casos, Bluetooth clásico (perfil de puerto serie); un navegador no puede conectarse a Bluetooth clásico (Web Bluetooth solo admite Bluetooth de bajo consumo y no está en iPhone). La conexión directa requiere la app móvil (F2) o la de escritorio (F3). Casi todos los indicadores exportan cada sesión de pesaje (chip, peso, fecha y hora) como CSV, lo que permite resolverlo desde la web.
+El pesaje periódico se hace en báscula electrónica, y digitar cada peso es lento y propenso a errores (09 §3). **Hallazgo técnico [Real]:** los indicadores de pesaje ganadero del mercado usan protocolos propios y, en muchos casos, Bluetooth clásico (perfil de puerto serie); un navegador no puede conectarse a Bluetooth clásico (Web Bluetooth solo admite Bluetooth de bajo consumo y no está en iPhone). La conexión directa requiere la app móvil (F2) o la de escritorio (F3). En Colombia, Tru-Test (Datamars) tiene distribuidor oficial y ofrece los indicadores S3, EziWeigh7i y XR5000 con Bluetooth; XR5000 e ID5000 ya se integran con apps de terceros en Android e iPhone enviando el par chip + peso. Casi todos los indicadores exportan cada sesión de pesaje (chip, peso, fecha y hora) como CSV, lo que permite resolverlo desde la web.
 
-**PES-03 — Báscula conectada por Bluetooth** · S · F2 (M15) (reclasificado: en la v1.1 era C · F3)
-- CA1: La app móvil se conecta al indicador de pesaje de la finca. Se lee el chip del animal en la báscula; cuando el indicador reporta **peso estable**, el peso se guarda solo en la jornada; se pasa al siguiente animal.
-- CA2: Protección contra duplicados (el mismo animal dos veces seguidas) y aviso de peso atípico (PES-01).
-- CA3: Un adaptador por marca (`ScaleAdapter`): el sistema se lanza con uno o dos modelos concretos, los que use la finca piloto, y los demás se agregan después.
-- CA4: Si el indicador lee el chip por sí mismo (lector conectado a la báscula), el sistema acepta el par chip + peso que envía el indicador.
-- Prerrequisito: identificar marca y modelo del indicador de la finca piloto antes de M15.
+**PES-03 — Pesaje en vivo con indicador Tru-Test (Datamars)** · S · F2 (M15) (reclasificado: en la v1.1 era C · F3; marca fijada en la v1.4 del 09)
+**Decisión del product owner (28/09/2026):** la integración en vivo se hace primero con **Tru-Test (Datamars)**, la marca con distribuidor oficial y mayor presencia en Colombia. Se empieza por los indicadores XR5000 e ID5000 (y JR5000, de la misma familia), que ya se conectan por Bluetooth a apps de terceros en Android y en iPhone y envían el par chip + peso. S3 y EziWeigh7i se agregan al mismo adaptador si la documentación del fabricante los cubre. Otras marcas quedan en PES-08.
+
+*Flujo en la manga:* (1) el animal entra al cajón de la báscula; (2) se lee su chip, con el lector conectado al indicador (bastón XRS2 o lector de panel) o con un lector Bluetooth conectado al celular (IDN-04); (3) la app muestra la ficha resumida: código en Chapeta, categoría, último peso y fecha; (4) cuando el peso es estable, se guarda solo y se asigna a ese animal, y la pantalla muestra el peso, la ganancia desde el último pesaje y las alertas de PES-05; (5) el animal sale, y el siguiente registro no ocurre hasta que la báscula vuelve cerca de cero.
+
+*Modos de conexión:*
+- **Modo A, el indicador asocia (preferido):** el lector está conectado al indicador y este se configura para enviar "EID y peso cuando se registra el peso", con grabación automática al estabilizarse. La app recibe el par, busca el animal por RFID y guarda. La asociación la hace la báscula, que es lo más confiable.
+- **Modo B, la app asocia:** el lector va conectado al celular y el indicador solo envía el peso. La app aplica las condiciones de guardado.
+
+*Condiciones de guardado (modo B; en el modo A se verifican como protección adicional):*
+- CA1: Hay un animal identificado en la jornada y ningún peso registrado todavía para esa lectura.
+- CA2: El peso es estable: lo indica el propio indicador o, si no lo informa, la variación es menor o igual a `scaleStableToleranceKg` (por defecto 1 kg [Validar]) durante `scaleStableSeconds` (2 s [Validar]); y es mayor que `scaleMinWeightKg` (20 kg [Validar]).
+- CA3: Desde el último registro, la báscula volvió por debajo de `scaleZeroThresholdKg` (10 kg [Validar]). Así el peso de un animal nunca queda en el siguiente.
+
+*Criterios adicionales:*
+- CA4: Chip desconocido: la app pregunta si se asocia a un animal existente, se registra como animal nuevo o se omite; el peso queda retenido mientras tanto.
+- CA5: El mismo animal dos veces seguidas en la jornada: aviso y opción de reemplazar el peso anterior o conservar ambos. Peso atípico: aviso de PES-01 (diferencia mayor a 30 %).
+- CA6: Cada pesaje guarda método `SCALE` y el número de serie del indicador (`WeightRecord.scale_serial`), para trazabilidad.
+- CA7: Si se pierde la conexión, la app avisa, intenta reconectar y no pierde lo ya pesado: cada registro se guarda en el celular antes de enviarse (misma sincronización de SYN-01).
+- CA8: Corrección manual: el operario puede anular el último registro (con motivo) o digitar el peso si la báscula falla.
+
+*Arquitectura:* interfaz `ScaleAdapter` con una implementación `TruTestAdapter` y un adaptador simulado para pruebas, que reproduce sesiones grabadas de una báscula real. La lógica de CA1 a CA5 vive en `packages/shared` y es independiente de la marca (04 §6).
+
+*Prerrequisitos (antes de M15):*
+1. Confirmar marca y modelo del indicador de la finca piloto y su versión de firmware (en iPhone se requiere 4.7.8 o superior para XR5000, ID5000 y JR5000 [Real, según la documentación de integraciones de terceros]).
+2. Solicitar a Datamars (Datamars Colombia o su distribuidor) la documentación de integración Bluetooth para desarrolladores, con al menos dos meses de anticipación. Si no se obtiene, M15 incluye solo el lector RFID Bluetooth y el peso digitado en la jornada, y la báscula sigue integrada por archivo (PES-04) hasta tener la documentación.
+3. Tener acceso a un indicador real para desarrollo y pruebas (el de la finca piloto o uno prestado por el distribuidor), y grabar sesiones reales para el adaptador simulado.
 
 **PES-04 — Importar sesión de pesaje desde el archivo de la báscula** · M · F1 (M6)
-- CA1: El usuario sube el archivo CSV o Excel exportado por el indicador. El sistema propone el mapeo de columnas (RFID o EID, número visual, peso, fecha y hora) y lo guarda como **perfil de báscula** de la finca para reutilizarlo.
+- CA1: El usuario sube el archivo CSV o Excel exportado por el indicador. El sistema propone el mapeo de columnas (RFID o EID, número visual, peso, fecha y hora) y lo guarda como **perfil de báscula** de la finca para reutilizarlo. El sistema trae además una plantilla predefinida "Tru-Test" para los archivos que exportan XR5000, ID5000 y S3 (por USB o por la app del fabricante): es del sistema, igual para todas las fincas y versionada; la finca puede duplicarla para ajustarla. Queda **provisional** hasta definir sus columnas exactas con un archivo real exportado por la finca piloto.
 - CA2: Simulación primero, como ANI-09: filas asociadas (por RFID y, si no hay, por chapeta visual), filas con chip desconocido, duplicados (mismo animal el mismo día: se conserva el último y se avisa) y pesos atípicos (PES-01, diferencia mayor a 30 %).
 - CA3: Los chips desconocidos se pueden asociar a un animal existente o dejar sin importar.
 - CA4: Al confirmar, se crea una jornada de pesaje (`WorkSession` con actividad `WEIGHT`) con un `WeightRecord` por animal, método `SCALE`, en una transacción.
@@ -452,8 +475,11 @@ El pesaje periódico se hace en báscula electrónica, y digitar cada peso es le
 - CA2: Para cada animal con al menos dos pesajes: fecha estimada en que alcanzará el peso objetivo, según su ganancia de los últimos 90 días.
 - CA3: Pregunta del tablero en fincas de ceba: "¿Cuáles alcanzan el peso de venta este mes?".
 
-**PES-07 — Báscula por puerto serie en escritorio** · C · F3 (M18)
-- CA1: La app de escritorio (Tauri) se conecta por cable o Bluetooth serie al indicador con el mismo `ScaleAdapter`.
+**PES-07 — Báscula por cable en escritorio** · C · F3 (M18)
+- CA1: La app de escritorio (Tauri) se conecta al indicador Tru-Test por USB o Bluetooth con el mismo `TruTestAdapter` y la lógica compartida de PES-03.
+
+**PES-08 — Otras marcas de báscula** · C · futuro
+- Gallagher (TW-3, TWR-5) e indicadores genéricos que transmiten el peso continuamente por puerto serie o adaptador Bluetooth, con perfil configurable. Se implementan sobre el mismo `ScaleAdapter` cuando haya fincas que los usen.
 
 ### 3.9 Contabilidad básica (ECO) — solo ADMIN
 
@@ -517,7 +543,7 @@ Inventario (total, por sexo, por categoría de manejo, por raza, por lote); **in
 ### 3.12 Configuración (CFG)
 
 **CFG-01 — Parámetros de la finca** · M · F1
-Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no). Con la validación con ganaderos se agregan: numeración reutilizable y modo de sugerencia de código (ANI-10), sistema productivo y qué vende la finca (CFG-03), días de secado antes del parto (60), umbrales de ganancia y pérdida de peso (PES-05) y peso objetivo de venta (PES-06).
+Nombre, ubicación (municipio, departamento), código de predio ICA (opcional), días de gestación por defecto de la finca (285; la raza puede tener su propio valor), edad de destete en meses (7), edad mínima reproductiva en meses (15), ventana de alerta de parto (30 días), ventana de alerta de vacunas (15 días), patrón del código de crías (`{YY}-{NNN}`), zona de riesgo de rabia silvestre (sí/no). Con la validación con ganaderos se agregan: numeración reutilizable y modo de sugerencia de código (ANI-10), sistema productivo y qué vende la finca (CFG-03), días de secado antes del parto (60), umbrales de ganancia y pérdida de peso (PES-05), peso objetivo de venta (PES-06) y las condiciones de guardado del pesaje en vivo: tolerancia y segundos de peso estable, peso mínimo y umbral de cero de la báscula (PES-03, F2).
 - CA1: Cambiar un parámetro recalcula las clasificaciones derivadas (son calculadas, no almacenadas).
 
 **CFG-03 — Sistema productivo** · M · F1 (M8)
@@ -667,7 +693,7 @@ Las fincas de lechería y doble propósito necesitan llevar la producción de le
 ## 6. Interfaces externas
 
 - **Usuario:** ver `06-ux-ui.md`.
-- **Hardware:** lector RFID en modo teclado (F1); archivo CSV o Excel exportado por el indicador de pesaje (F1, PES-04); lector RFID Bluetooth, báscula Bluetooth y cámara (F2); báscula por puerto serie (F3).
+- **Hardware:** lector RFID en modo teclado (F1); archivo CSV o Excel exportado por el indicador de pesaje (F1, PES-04); lector RFID Bluetooth, indicador de pesaje Tru-Test por Bluetooth y cámara (F2, PES-03); indicador Tru-Test por USB o Bluetooth en escritorio (F3, PES-07); otras marcas en el futuro (PES-08).
 - **Software:** PostgreSQL; almacenamiento de objetos compatible con S3 para respaldos y fotos; servidor de correo SMTP (AUT-12); Google como proveedor de OpenID Connect (AUT-15).
 - **Comunicación:** API REST JSON sobre HTTPS. Ver `05-api.md`.
 
@@ -721,7 +747,7 @@ Actor: Administrador.
 | 8. Funciones adicionales | AUT-01 a AUT-04, ANI-03, ANI-05, ANI-06, ANI-07, BAK-01, BAK-02 |
 | Situación problema (preguntas) | RPT-01 |
 | Valor agregado (investigación) | IDN-02 a IDN-05, JOR-01 a JOR-03, SAN-05, PES-01 a PES-03, AUD-01, SYN-01 |
-| Validación con ganaderos (09) | H1: ANI-10, ANI-11, IDN-06, RN-30 a RN-33 · H2: PES-03 a PES-07 · H3: CFG-03, LEC-01 a LEC-06, RN-34 a RN-37 · H4: AUT-10 a AUT-15, REG-01 |
+| Validación con ganaderos (09) | H1: ANI-10, ANI-11, IDN-06, RN-30 a RN-33 · H2: PES-03 a PES-08 · H3: CFG-03, LEC-01 a LEC-06, RN-34 a RN-37 · H4: AUT-10 a AUT-15, REG-01 |
 
 ---
 

@@ -40,8 +40,11 @@ audit queda limpio para las dependencias nuevas.
   pruebas) rechaza entradas cifradas, ZIP64, métodos distintos de guardado y deflate, nombres
   repetidos y nombres que intentan salir de la carpeta (`../`, absolutos, `\`, unidades, NUL), y
   **descomprime cada entrada de verdad** con `inflateRawSync({ maxOutputLength })` contra un
-  presupuesto total de 50 MB. No se cuenta con el tamaño que declara el archivo, que puede mentir,
-  ni con que dos entradas no compartan datos.
+  presupuesto total de 50 MB. El presupuesto se descuenta con los **bytes reales** que produce
+  la descompresión de cada entrada (y `maxOutputLength` es el presupuesto que queda, así que la
+  descompresión se corta en cuanto lo pasa); el tamaño que declara el ZIP ni siquiera se lee.
+  No se cuenta con ese tamaño, que puede mentir, ni con que dos entradas no compartan datos: la
+  prueba de la bomba declara 10 bytes y se corta igual.
 - Lo ya medido se sanea para `exceljs` (`imports/xlsx-sanitize.ts`: rutas relativas, sin comentarios
   ni dibujos VML, que la importación no necesita) y se **vuelve a empaquetar sin compresión**. Eso
   es lo único que recibe `exceljs`: no tiene nada que inflar y abre exactamente lo que se midió.

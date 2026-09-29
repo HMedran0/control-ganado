@@ -154,10 +154,12 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | /animals/:id/weights | T | Serie y ganancia diaria: entre los dos últimos pesajes, en los últimos 90 días y desde el nacimiento (PES-02, PES-05), y fecha estimada para el peso objetivo de venta (PES-06, M8) |
-| POST | /weights | T | `{ animalId, date, weightKg, method }` (respuesta incluye `warning` si difiere >30 %) |
+| POST | /weights | T | `{ animalId, date, weightKg, method, scaleSerial? }` (respuesta incluye `warning` si difiere >30 %). `scaleSerial` es el número de serie del indicador en el pesaje en vivo (PES-03 CA6, M15), que llega por la sincronización con el mismo campo |
 | POST | /weights/:id/void | T (propio, 24 h) / A | Anular |
-| GET/POST/PATCH | /scale-profiles, /scale-profiles/:id | T lee, A escribe | Perfiles de báscula de la finca: formato y mapeo de columnas del archivo del indicador (PES-04, M6) |
-| POST | /weights/import?dryRun=true | T | `multipart/form-data` con el archivo y `scaleProfileId` (o el mapeo propuesto) → `{ rows, matched, unknownChips: [...], duplicates: [...], warnings: [...] }`. No guarda nada. Asocia por RFID y, si no hay, por chapeta visual |
+| GET | /scale-profiles | T | Plantillas del sistema y perfiles de la finca, juntos: `{ items: [{ id, name, system, templateKey?, version, provisional, fileFormat, columnMapping }] }`. `system: true` marca las plantillas del sistema (la primera, **Tru-Test**, provisional), que viven en `packages/shared` y no se editan (PES-04, M6; 09 v1.4) |
+| POST/PATCH | /scale-profiles, /scale-profiles/:id | A | Crear o editar un perfil de la finca. Una plantilla del sistema no se edita: `SYSTEM_TEMPLATE_READONLY` (409) |
+| POST | /scale-profiles/:templateKey/duplicate | A | Duplica una plantilla del sistema como perfil propio de la finca, editable, con `sourceTemplateKey` y `sourceTemplateVersion`. Quien no duplica recibe las correcciones de la plantilla (nueva `version`) sin hacer nada |
+| POST | /weights/import?dryRun=true | T | `multipart/form-data` con el archivo y `scaleProfileId` (el id de un perfil de la finca o la `key` de una plantilla del sistema, como `tru-test`) o el mapeo propuesto → `{ rows, matched, unknownChips: [...], duplicates: [...], warnings: [...] }`. No guarda nada. Asocia por RFID y, si no hay, por chapeta visual |
 | POST | /weights/import | T | El mismo archivo + `{ associations?: [{ chip, animalId }], skip?: [chip] }` → crea la jornada de pesaje (`WorkSession` con `WEIGHT`) y un pesaje por animal, en una transacción. Responde `{ workSessionId, created, skipped }` |
 
 ## Leche (M9b, alcance extendido)
@@ -278,6 +280,7 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `CODE_REASSIGNED` | 409 | El código {code} ya lo tiene el animal activo {holder}. Asígnale un código nuevo para revertir la salida. (IDN-06 CA3, con el animal en `context`) |
 | `CODE_REUSE_CONFLICT` | 409 | Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización. (ANI-10 CA3) |
 | `SCALE_FILE_INVALID` | 422 | No pudimos leer el archivo de la báscula. Revisa el formato o el perfil de báscula. (PES-04) |
+| `SYSTEM_TEMPLATE_READONLY` | 409 | Esta plantilla es del sistema y no se edita. Duplícala para ajustarla a tu báscula. (PES-04) |
 | `NOT_LACTATING` | 422 | La vaca {code} no está en ordeño: no tiene un parto sin secado posterior. (LEC-01 CA3) |
 | `INVITATION_INVALID` | 410 | La invitación no es válida o ya venció. Pídele al administrador una nueva. |
 | `INVITATION_EMAIL_TAKEN` | 409 | {email} ya es usuario de esta finca. |

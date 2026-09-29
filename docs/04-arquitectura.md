@@ -141,11 +141,18 @@ Transversales (`common/`):
 - Endpoints de sincronización: `GET /sync/pull?since=<cursor>` devuelve cambios por entidad desde el cursor (basado en `updated_at`/`created_at` y tombstones); `POST /sync/push` recibe operaciones y responde por operación: aplicada, rechazada (con motivo) o en conflicto.
 - Resolución (RN-24): eventos de solo adición sin conflicto; entidades editables con última escritura por registro y versión perdida en auditoría.
 - Por qué se diseña ya: IDs UUIDv7 del cliente, `version`, `updated_at`, anulación en lugar de borrado y eventos de solo adición son prerrequisitos que en F1 no cuestan casi nada y evitan migraciones dolorosas después.
-- Báscula (PES-03, M15): los indicadores de pesaje usan protocolos propios y, a menudo, Bluetooth clásico, que un navegador no alcanza; por eso la conexión directa es de la app móvil. Un `ScaleAdapter` por marca traduce cada protocolo a lecturas de «chip + peso estable»; se empieza con el modelo de la finca piloto. Mientras tanto, la web importa el archivo que exporta el indicador (PES-04).
+- Báscula (PES-03, M15; 09 v1.4): los indicadores de pesaje usan protocolos propios y, a menudo, Bluetooth clásico, que un navegador no alcanza; por eso la conexión directa es de la app móvil. La primera marca es **Tru-Test (Datamars)**: XR5000, ID5000 y JR5000, y S3 y EziWeigh7i si la documentación del fabricante los cubre. Mientras tanto, y siempre como respaldo, la web importa el archivo que exporta el indicador (PES-04).
+  - **`ScaleAdapter`**: la interfaz de cualquier indicador. `connect()`, `status` (desconectado, conectando, conectado, error), un flujo de lecturas `{ weightKg, stable, eid?, at }` y `disconnect()`. `stable` es lo que diga el indicador; `eid` llega solo si el lector está conectado a él (modo A).
+  - **`TruTestAdapter`**: implementa la interfaz para los indicadores Tru-Test por Bluetooth, según la documentación de integración que se pida a Datamars (09 §3, prerrequisitos). En iPhone exige firmware 4.7.8 o superior en XR5000, ID5000 y JR5000.
+  - **Adaptador simulado**: reproduce sesiones grabadas de una báscula real, con sus tiempos; con él se prueban la jornada y las condiciones de guardado sin hardware.
+  - **Lógica común en `packages/shared/src/domain`**, independiente de la marca y con pruebas: las condiciones de guardado de PES-03 (animal identificado, peso estable por el indicador o por `scaleStableToleranceKg` durante `scaleStableSeconds`, mayor que `scaleMinWeightKg`, y vuelta por debajo de `scaleZeroThresholdKg` antes del siguiente), el aviso de duplicado y el de peso atípico. El modo A (el indicador asocia chip y peso) las usa como protección adicional; el modo B (lector en el celular) las necesita.
+  - Cada pesaje se guarda primero en la base local del celular, con método `SCALE` y `scale_serial`, y se envía con la sincronización (SYN-01): una desconexión no pierde lo pesado; la app avisa e intenta reconectar.
+  - Otras marcas (PES-08: Gallagher, indicadores genéricos por puerto serie) son otras implementaciones de la misma interfaz, sin tocar la lógica común.
+  - Qué tecnología móvil implementa esto (Expo o Capacitor) lo decide el ADR-014, que evalúa entre otras cosas el Bluetooth clásico en Android y el BLE en iPhone.
 - Google (AUT-15): inicio de sesión nativo de Google en la app y refresco en el almacenamiento seguro del sistema, no en cookie.
 
 ### Escritorio (F3)
-- Tauri envolviendo el build de la web. Sin lógica propia salvo el acceso a puertos serie/USB para la báscula (PES-07, M18), con el mismo `ScaleAdapter` de la app móvil.
+- Tauri envolviendo el build de la web. Sin lógica propia salvo la conexión al indicador Tru-Test por USB o Bluetooth (PES-07, M18), con el mismo `TruTestAdapter` y la lógica común de `packages/shared` de la app móvil.
 
 ## 7. Reportes y exportación
 - Consultas agregadas en SQL (vistas o `$queryRaw` tipado) dentro del módulo `reports`.

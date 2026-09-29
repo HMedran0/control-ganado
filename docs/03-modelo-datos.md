@@ -45,10 +45,14 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
   "dryOffBeforeCalvingDays": 60,
   "weightGainAlertKgPerDay": { "YOUNG_MALE": 0.3 },
   "weightLossAlertPercent": 5,
-  "targetSaleWeightKg": { "YOUNG_MALE": 450 }
+  "targetSaleWeightKg": { "YOUNG_MALE": 450 },
+  "scaleStableToleranceKg": 1,
+  "scaleStableSeconds": 2,
+  "scaleMinWeightKg": 20,
+  "scaleZeroThresholdKg": 10
 }
 ```
-Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo) y `weightLossAlertPercent` de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
+Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo) y `weightLossAlertPercent` de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8); `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg` y `scaleZeroThresholdKg`, las condiciones de guardado del pesaje en vivo (PES-03 CA2 y CA3, F2, M15; 09 v1.4). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
 
 **User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), email_verified_at timestamptz?, password_hash?, must_change_password bool, is_active, created_at, updated_at, last_login_at`
 - `password_hash` pasa a opcional en M10a: quien acepta una invitación con Google (AUT-13 CA2) puede no tener contraseña. Nunca queda un usuario sin ningún método de acceso: sin contraseña, no se puede desvincular Google (`LAST_LOGIN_METHOD`).
@@ -182,11 +186,13 @@ Las crías vivas de un parto se enlazan con `Animal.birth_pregnancy_id`. El tota
 
 **TreatmentRecord** — `id, farm_id, animal_id, started_on date, reason, medication, dose, duration_days, withdrawal_meat_days, withdrawal_milk_days, withdrawal_until date (calculada al guardar = started_on + duration_days + max(retiros)), responsible, work_session_id?, notes?, voided_*, created_*`.
 
-**WeightRecord** — `id, farm_id, animal_id, weighed_on date, weight_kg numeric(7,2), method enum SCALE/TAPE/ESTIMATE, is_birth_weight bool, work_session_id?, notes?, voided_*, created_*`.
+**WeightRecord** — `id, farm_id, animal_id, weighed_on date, weight_kg numeric(7,2), method enum SCALE/TAPE/ESTIMATE, is_birth_weight bool, scale_serial text?, work_session_id?, notes?, voided_*, created_*`. `scale_serial` es el número de serie del indicador que envió el peso en el pesaje en vivo (PES-03 CA6, M15), para trazabilidad; nulo en los pesajes digitados o importados.
 Índice: (`animal_id`, `weighed_on` DESC).
 La importación de la báscula (PES-04, M6) crea una `WorkSession` con actividad `WEIGHT` y un `WeightRecord` por animal, método `SCALE`, en una transacción.
 
-**ScaleProfile** (M6, PES-04) — perfil de báscula de la finca: cómo leer el archivo que exporta su indicador. `id, farm_id, name, file_format enum (CSV, XLSX), column_mapping jsonb, created_*, updated_*, version`. `column_mapping` dice qué columna trae el RFID o EID, el número visual, el peso y la fecha y hora (y el separador y el formato de fecha del CSV). Único (`farm_id`, `lower(name)`), como los catálogos.
+**ScaleProfile** (M6, PES-04) — perfil de báscula de la finca: cómo leer el archivo que exporta su indicador. `id, farm_id, name, file_format enum (CSV, XLSX), column_mapping jsonb, created_*, updated_*, version`. `column_mapping` dice qué columna trae el RFID o EID, el número visual, el peso y la fecha y hora (y el separador y el formato de fecha del CSV). Único (`farm_id`, `lower(name)`), como los catálogos. Agrega `source_template_key text?` y `source_template_version int?` cuando el perfil nació de duplicar una plantilla del sistema.
+
+**Plantillas de báscula del sistema** (PES-04, 09 v1.4) — no son filas: se definen en código en `packages/shared` (`key`, `name`, `version`, `fileFormat`, `columnMapping`, `provisional`), iguales para todas las fincas. La primera es **Tru-Test** (XR5000, ID5000 y S3, archivo por USB o por la app del fabricante), **provisional** hasta definir sus columnas con un archivo real de la finca piloto. Una corrección del mapeo sube su `version` y llega de inmediato a todas las fincas que usan la plantilla; una finca que la **duplicó** tiene su propio `ScaleProfile`, editable, que no cambia solo.
 
 **MilkRecord** (M9b, LEC-01) — control lechero. `id, farm_id, animal_id, recorded_on date, milking enum (AM, PM, TOTAL), liters numeric(6,2), method enum (METER, ESTIMATE), unfit_for_sale bool, work_session_id?, notes?, voided_at, void_reason, created_*`.
 Índices: (`farm_id`, `recorded_on`), (`animal_id`, `recorded_on` DESC); único parcial (`animal_id`, `recorded_on`, `milking`) `WHERE voided_at IS NULL` (RN-36: un segundo registro del mismo ordeño anula el anterior).
@@ -318,4 +324,4 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 - M4c agrega una segunda finca de pruebas, **Finca El Retiro** [Ficticio], con `codeReuse = true`, `LOWEST_FREE` y numeración 1–40, con al menos dos números reutilizados (08 §3.5). La finca de referencia sigue con `codeReuse = false`.
 - M9b agrega a la finca de referencia 90 días de control lechero y algunos secados (08 §3.6), con sus cifras nuevas en `expected.ts`.
 - La plantilla `docs/referencia/plantilla-importacion.xlsx` contiene 12 filas de ejemplo de esta misma finca para probar ANI-09 (11 entran; la 13 tiene un error a propósito).
-- M4d agrega una tercera finca de pruebas, **Finca La Nueva** [Ficticio] (08 §3.7): sin animales, con las razas y los lotes de La Esperanza y el ADMIN `nueva.admin`, para importar la plantilla (sus códigos chocarían con los de La Esperanza). Las cifras de las otras dos fincas no cambian.
+- M4d agrega una tercera finca de pruebas, **Finca La Nueva** [Ficticio] (08 §3.8): sin animales, con las razas y los lotes de La Esperanza y el ADMIN `nueva.admin`, para importar la plantilla (sus códigos chocarían con los de La Esperanza). Las cifras de las otras dos fincas no cambian.

@@ -264,7 +264,7 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 - `refresh_tokens`: `family_started_at`, `last_used_at`; `expires_at` se recalcula en cada rotación con el tope de CA2.
 - Nuevas: `email_tokens (id, user_id, purpose enum VERIFY_EMAIL | RESET_PASSWORD, email, token_hash, expires_at, used_at)`, `invitations (id, farm_id, email, role, token_hash, invited_by, expires_at, accepted_at, revoked_at)`, `user_identities`.
 - Auditoría: invitación creada, aceptada y anulada; correo verificado; contraseña restablecida; Google vinculado y desvinculado; sesiones cerradas por el ADMIN.
-- Variables: `REFRESH_TTL_DAYS`, `REFRESH_MAX_AGE_DAYS`, `SMTP_*`, `MAIL_FROM`, `PUBLIC_WEB_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Sin `GOOGLE_*`, el botón de Google no aparece.
+- Variables: `REFRESH_TTL_DAYS`, `REFRESH_MAX_AGE_DAYS`, `SMTP_*`, `MAIL_FROM`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. Los enlaces de los correos usan `PUBLIC_WEB_URL`, que ya existe (la misma URL pública de los QR). Sin `GOOGLE_*`, el botón de Google no aparece.
 
 ---
 

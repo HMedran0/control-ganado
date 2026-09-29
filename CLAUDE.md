@@ -109,6 +109,7 @@ se desactiva). No existe forma de fabricarse un ámbito con una cabecera.
 - Código, nombres de archivos, tablas y commits en inglés; interfaz y mensajes al usuario en español de Colombia (ver glosario del SRS).
 - Tablas y columnas snake_case vía `@@map`/`@map`; modelos PascalCase.
 - Conventional Commits. Commits pequeños por unidad lógica.
+- Nunca usar `git add -A` ni `git add .`: agregar los archivos por nombre y revisar `git status` antes de cada commit.
 - Cada endpoint nuevo: prueba de integración con rol autorizado, rol no autorizado y usuario de otra finca.
 - Formularios web: react-hook-form + esquema zod de `shared`. Textos según `06-ux-ui.md` §7.
 - Nuevas decisiones de arquitectura → `docs/adr/NNN-titulo.md`.
