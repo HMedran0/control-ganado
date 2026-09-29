@@ -14,6 +14,7 @@ import type {
 } from '@hato/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { useRetryKey } from '../../lib/api/retry-key';
 import { useAuth } from '../../lib/auth/context';
 
 /**
@@ -72,9 +73,15 @@ export function useCatalogMutations<K extends CatalogKey>(catalog: K) {
   const queryClient = useQueryClient();
   const invalidate = () => queryClient.invalidateQueries({ queryKey: catalogKey(catalog) });
 
+  // `id` del cliente (ADR-012 §1): un doble clic en «Guardar» no crea dos elementos.
+  const clientId = useRetryKey();
   const create = useMutation({
-    mutationFn: (body: unknown) => api.post<Saved<CatalogItem[K]>>(CATALOGS[catalog], body),
-    onSuccess: invalidate,
+    mutationFn: (body: object) =>
+      api.post<Saved<CatalogItem[K]>>(CATALOGS[catalog], { id: clientId.current(), ...body }),
+    onSuccess: () => {
+      clientId.reset();
+      return invalidate();
+    },
   });
   const update = useMutation({
     mutationFn: ({

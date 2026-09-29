@@ -1,4 +1,9 @@
-import type { ChangePasswordInput, LoginInput, SessionResponse } from '@hato/shared';
+import {
+  IDEMPOTENCY_KEY_HEADER,
+  type ChangePasswordInput,
+  type LoginInput,
+  type SessionResponse,
+} from '@hato/shared';
 
 import type { SessionStore } from '../auth/session-store';
 import { isApiError, networkError, toApiError } from './errors';
@@ -37,6 +42,11 @@ export type RequestOptions = {
   readonly timeoutMs?: number;
   /** `file`: la respuesta es un archivo para descargar (`DownloadedFile`), no JSON. */
   readonly responseType?: 'json' | 'file';
+  /**
+   * Encabezado `Idempotency-Key` de una acción (ADR-012 §2). Se repite igual si la petición se
+   * reintenta después de refrescar el token.
+   */
+  readonly idempotencyKey?: string;
 };
 
 /** Archivo que devolvió la API (exportación, plantilla), listo para `saveFile`. */
@@ -250,6 +260,9 @@ export class ApiClient {
     const headers: Record<string, string> = { accept: isFile ? '*/*' : 'application/json' };
     if (options.body !== undefined && !isForm) headers['content-type'] = 'application/json';
     if (token !== undefined) headers.authorization = `Bearer ${token}`;
+    if (options.idempotencyKey !== undefined) {
+      headers[IDEMPOTENCY_KEY_HEADER] = options.idempotencyKey;
+    }
 
     let response: Response;
     try {

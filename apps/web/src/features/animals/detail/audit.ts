@@ -115,9 +115,30 @@ export function valueText(field: string, value: AuditValue): string {
 export function changeText(change: AuditChangeView): string {
   const label = fieldLabel(change.field);
   if (change.field === 'password') return 'Cambió la contraseña';
+  if (change.field === 'tagIds') {
+    const tags = tagChanges(change);
+    if (tags !== null) return tags;
+  }
   const after = valueText(change.field, change.after);
   if (change.before === null) return `${label}: ${after}`;
   return `${label}: ${valueText(change.field, change.before)} → ${after}`;
+}
+
+/**
+ * Etiquetas manuales: «Agregó la etiqueta Cotero · Quitó la etiqueta Descarte». La API ya cambió
+ * los ids por los nombres. Quitar una etiqueta no borra nada (ADR-012): queda aquí.
+ */
+function tagChanges(change: AuditChangeView): string | null {
+  const list = (value: AuditValue): readonly string[] | null =>
+    value === null ? [] : Array.isArray(value) ? (value as readonly string[]) : null;
+  const before = list(change.before);
+  const after = list(change.after);
+  if (before === null || after === null) return null;
+  const parts = [
+    ...after.filter((tag) => !before.includes(tag)).map((tag) => `Agregó la etiqueta ${tag}`),
+    ...before.filter((tag) => !after.includes(tag)).map((tag) => `Quitó la etiqueta ${tag}`),
+  ];
+  return parts.length === 0 ? null : parts.join(' · ');
 }
 
 /** «Salida · animal 5», «Cambio · chapeta 5». */

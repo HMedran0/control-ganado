@@ -73,6 +73,8 @@ describe('BreedForm', () => {
       expect(fetchMock).toHaveBeenCalled();
     });
     expect(sentBody(fetchMock, 0)).toEqual({
+      // `id` del cliente (ADR-012 §1): un doble clic no crea dos razas.
+      id: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-7/),
       name: 'Gyr lechero',
       group: 'CROSS',
       gestationDays: 290,

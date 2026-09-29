@@ -39,6 +39,18 @@ describe('Cambios en lenguaje de finca (AUD-01 CA2)', () => {
     );
   });
 
+  it('etiquetas: qué se agregó y qué se quitó, con su nombre (ADR-012)', () => {
+    expect(changeText({ field: 'tagIds', before: ['Cotero'], after: ['Descarte'] })).toBe(
+      'Agregó la etiqueta Descarte · Quitó la etiqueta Cotero',
+    );
+    expect(changeText({ field: 'tagIds', before: ['Cotero', 'Descarte'], after: ['Cotero'] })).toBe(
+      'Quitó la etiqueta Descarte',
+    );
+    expect(changeText({ field: 'tagIds', before: null, after: ['Cotero'] })).toBe(
+      'Agregó la etiqueta Cotero',
+    );
+  });
+
   it('valores traducidos: sí/no, fechas, enumeraciones e identificadores', () => {
     expect(valueText('forSale', true)).toBe('Sí');
     expect(valueText('exitDate', '2026-09-20')).toBe('20/09/2026');

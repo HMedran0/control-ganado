@@ -32,6 +32,7 @@ import {
   type QueryClient,
 } from '@tanstack/react-query';
 
+import { useRetryKey } from '../../lib/api/retry-key';
 import { useAuth } from '../../lib/auth/context';
 import { saveFile } from '../../lib/files/save-file';
 
@@ -185,9 +186,16 @@ function withoutWarnings(saved: AnimalDetailWithWarnings): {
 export function useCreateAnimal() {
   const { api } = useAuth();
   const queryClient = useQueryClient();
+  const clientId = useRetryKey();
   return useMutation({
-    mutationFn: (body: CreateAnimalInput) => api.post<AnimalDetailWithWarnings>('/animals', body),
+    // `id` del cliente (ADR-012 §1): un doble clic o un reintento no duplica el animal.
+    mutationFn: (body: CreateAnimalInput) =>
+      api.post<AnimalDetailWithWarnings>('/animals', {
+        ...body,
+        id: body.id ?? clientId.current(),
+      }),
     onSuccess: async (saved) => {
+      clientId.reset();
       const { detail } = withoutWarnings(saved);
       queryClient.setQueryData(animalKeys.detail(detail.id), detail);
       await Promise.all([
@@ -220,18 +228,30 @@ export function useUpdateAnimal(id: string) {
 export function useBulkTags() {
   const { api } = useAuth();
   const queryClient = useQueryClient();
+  const retryKey = useRetryKey();
   return useMutation({
-    mutationFn: (body: BulkTagsInput) => api.post<BulkTagsResult>('/animals/bulk/tags', body),
-    onSuccess: (_result, body) => refreshAnimals(queryClient, body.animalIds),
+    mutationFn: (body: BulkTagsInput) =>
+      api.post<BulkTagsResult>('/animals/bulk/tags', body, {
+        idempotencyKey: retryKey.current(),
+      }),
+    onSuccess: (_result, body) => {
+      retryKey.reset();
+      return refreshAnimals(queryClient, body.animalIds);
+    },
   });
 }
 
 export function useBulkLot() {
   const { api } = useAuth();
   const queryClient = useQueryClient();
+  const retryKey = useRetryKey();
   return useMutation({
-    mutationFn: (body: BulkLotInput) => api.post<BulkLotResult>('/animals/bulk/lot', body),
-    onSuccess: (_result, body) => refreshAnimals(queryClient, body.animalIds),
+    mutationFn: (body: BulkLotInput) =>
+      api.post<BulkLotResult>('/animals/bulk/lot', body, { idempotencyKey: retryKey.current() }),
+    onSuccess: (_result, body) => {
+      retryKey.reset();
+      return refreshAnimals(queryClient, body.animalIds);
+    },
   });
 }
 
@@ -239,24 +259,40 @@ export function useIdentifierMutations(animalId: string) {
   const { api } = useAuth();
   const queryClient = useQueryClient();
   const refresh = () => refreshAnimals(queryClient, [animalId]);
+  const addKey = useRetryKey();
+  const replaceKey = useRetryKey();
+  const retireKey = useRetryKey();
 
   const add = useMutation({
     mutationFn: (body: AddIdentifierInput) =>
       api.post<IdentifierView & { warnings: readonly Warning[] }>(
         `/animals/${animalId}/identifiers`,
-        body,
+        { ...body, id: body.id ?? addKey.current() },
       ),
-    onSuccess: refresh,
+    onSuccess: () => {
+      addKey.reset();
+      return refresh();
+    },
   });
   const replace = useMutation({
     mutationFn: ({ id, body }: { id: string; body: ReplaceIdentifierInput }) =>
-      api.post<ReplaceIdentifierResult>(`/identifiers/${id}/replace`, body),
-    onSuccess: refresh,
+      api.post<ReplaceIdentifierResult>(`/identifiers/${id}/replace`, body, {
+        idempotencyKey: replaceKey.current(),
+      }),
+    onSuccess: () => {
+      replaceKey.reset();
+      return refresh();
+    },
   });
   const retire = useMutation({
     mutationFn: ({ id, body }: { id: string; body: RetireIdentifierInput }) =>
-      api.post<IdentifierView>(`/identifiers/${id}/retire`, body),
-    onSuccess: refresh,
+      api.post<IdentifierView>(`/identifiers/${id}/retire`, body, {
+        idempotencyKey: retireKey.current(),
+      }),
+    onSuccess: () => {
+      retireKey.reset();
+      return refresh();
+    },
   });
   return { add, replace, retire };
 }
@@ -293,24 +329,28 @@ export function useAnimalLifecycle(id: string) {
       }),
     ]);
   };
-  const post = (action: string) => (body: object) =>
-    api.post<AnimalDetailWithWarnings>(`/animals/${id}/${action}`, body);
+  // Una clave de reintento por acción (ADR-012 §2): repetir la salida después de perder la
+  // señal devuelve la misma respuesta en lugar de «El animal ya salió de la finca».
+  const keys = {
+    exit: useRetryKey(),
+    'revert-exit': useRetryKey(),
+    archive: useRetryKey(),
+    restore: useRetryKey(),
+  };
+  const action = <Body extends object>(name: keyof typeof keys) => ({
+    mutationFn: (body: Body) =>
+      api.post<AnimalDetailWithWarnings>(`/animals/${id}/${name}`, body, {
+        idempotencyKey: keys[name].current(),
+      }),
+    onSuccess: (saved: AnimalDetailWithWarnings) => {
+      keys[name].reset();
+      return onSuccess(saved);
+    },
+  });
   return {
-    exit: useMutation({
-      mutationFn: (body: ExitAnimalInput) => post('exit')(body),
-      onSuccess,
-    }),
-    revertExit: useMutation({
-      mutationFn: (body: RevertExitInput) => post('revert-exit')(body),
-      onSuccess,
-    }),
-    archive: useMutation({
-      mutationFn: (body: ArchiveAnimalInput) => post('archive')(body),
-      onSuccess,
-    }),
-    restore: useMutation({
-      mutationFn: (body: RestoreAnimalInput) => post('restore')(body),
-      onSuccess,
-    }),
+    exit: useMutation(action<ExitAnimalInput>('exit')),
+    revertExit: useMutation(action<RevertExitInput>('revert-exit')),
+    archive: useMutation(action<ArchiveAnimalInput>('archive')),
+    restore: useMutation(action<RestoreAnimalInput>('restore')),
   };
 }
