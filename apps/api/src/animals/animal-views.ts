@@ -80,6 +80,7 @@ export function deriveView(
           vaccineStatuses: vaccineStatuses.map((vaccine) => vaccine.status),
           calvingAlertDays: settings.calvingAlertDays,
           unconfirmedServiceAlertDays: settings.unconfirmedServiceAlertDays,
+          overdueCalvingAlertDays: settings.overdueCalvingAlertDays,
           today,
         })
       : [];

@@ -88,7 +88,7 @@ export async function resetFarmData(
   // Primero se sueltan las referencias cruzadas entre animales y preñeces.
   await prisma.animal.updateMany({
     where: { farmId },
-    data: { birthPregnancyId: null, damId: null, sireId: null },
+    data: { birthPregnancyId: null, birthCondition: null, damId: null, sireId: null },
   });
   await prisma.pregnancy.deleteMany({ where: { farmId } });
   await prisma.animal.deleteMany({ where: { farmId } });

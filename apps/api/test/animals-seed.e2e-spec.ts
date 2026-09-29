@@ -424,12 +424,12 @@ describe('animales sobre la finca de referencia', () => {
   describe('GET /animals/next-code (RN-28)', () => {
     it('sigue el patrón {YY}-{NNN} y el año de la fecha de nacimiento', async () => {
       const next = await http().get('/api/v1/animals/next-code').set(operator).expect(200);
-      expect(next.body).toEqual({ code: '26-091' });
+      expect(next.body).toEqual({ code: '26-091', codes: ['26-091'] });
       const other = await http()
         .get('/api/v1/animals/next-code?birthDate=2027-01-05')
         .set(operator)
         .expect(200);
-      expect(other.body).toEqual({ code: '27-001' });
+      expect(other.body).toEqual({ code: '27-001', codes: ['27-001'] });
     });
 
     it('no reutiliza el código de un animal archivado', async () => {
@@ -445,7 +445,7 @@ describe('animales sobre la finca de referencia', () => {
         },
       });
       const next = await http().get('/api/v1/animals/next-code').set(operator).expect(200);
-      expect(next.body).toEqual({ code: '26-092' });
+      expect(next.body).toEqual({ code: '26-092', codes: ['26-092'] });
     });
   });
 });

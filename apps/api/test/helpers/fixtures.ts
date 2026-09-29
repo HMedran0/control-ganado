@@ -112,7 +112,9 @@ export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.animalTag.deleteMany();
   await prisma.workSession.deleteMany();
   // Las referencias cruzadas entre animales y preñeces se sueltan antes de borrar.
-  await prisma.animal.updateMany({ data: { birthPregnancyId: null, damId: null, sireId: null } });
+  await prisma.animal.updateMany({
+    data: { birthPregnancyId: null, birthCondition: null, damId: null, sireId: null },
+  });
   await prisma.pregnancy.deleteMany();
   await prisma.animal.deleteMany();
   await prisma.vaccinationCycleVaccine.deleteMany();

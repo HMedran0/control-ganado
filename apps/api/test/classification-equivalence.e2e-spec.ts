@@ -10,6 +10,7 @@ import {
   SERVICE_METHOD,
   SEX,
   derivedTags,
+  isCalvingOverdue,
   isCalvingSoon,
   isServiceUnconfirmedOverdue,
   managementCategory,
@@ -33,8 +34,10 @@ import type { FarmScope } from '../src/common/farm-scope/farm-scope.types.js';
 import { Prisma } from '../src/generated/prisma/client.js';
 import { fromPrismaDate, fromPrismaDateOrNull, toPrismaDate } from '../src/infra/date-mapper.js';
 import { PrismaService } from '../src/infra/prisma.service.js';
-import { createTestAppWithClock, type FakeClock } from './helpers/app.js';
-import { cleanDatabase } from './helpers/fixtures.js';
+import request from 'supertest';
+
+import { bearer, createTestAppWithClock, signTestToken, type FakeClock } from './helpers/app.js';
+import { cleanDatabase, createAnimal, createFarm } from './helpers/fixtures.js';
 
 /**
  * RN-27: la clasificación en SQL (`classification.sql.ts`) da **exactamente** lo mismo que
@@ -64,6 +67,7 @@ type Expected = {
   withdrawal: boolean;
   calvingSoon: boolean;
   unconfirmedService: boolean;
+  calvingOverdue: boolean;
 };
 
 describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
@@ -173,6 +177,13 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
             alertDays: settings.unconfirmedServiceAlertDays,
             today,
           }),
+        calvingOverdue:
+          open !== null &&
+          isCalvingOverdue({
+            expectedCalvingDate: open.expectedCalvingDate,
+            overdueCalvingAlertDays: settings.overdueCalvingAlertDays,
+            today,
+          }),
       });
     }
     return result;
@@ -200,6 +211,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
           withdrawal: row.withdrawal,
           calvingSoon: row.calving_soon,
           unconfirmedService: row.unconfirmed_service,
+          calvingOverdue: row.calving_overdue,
         },
       ]),
     );
@@ -273,6 +285,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       weaningAgeMonths: 8,
       calvingAlertDays: 45,
       unconfirmedServiceAlertDays: 60,
+      overdueCalvingAlertDays: 5,
     };
     await prisma.farm.update({ where: { id: farmId }, data: { settings: changed } });
     try {
@@ -281,7 +294,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       const categories = [...sql.values()].map((row) => row.category);
       // Con el destete a 8 meses hay más crías que con 7: el SQL leyó el parámetro de la finca.
       const withDefault = await prisma.$queryRaw<{ calves: number }[]>(Prisma.sql`
-        WITH ${classificationCtes({ farmId, today: SEED_TODAY, weaningAgeMonths: 7, calvingAlertDays: 30, unconfirmedServiceAlertDays: 90 })}
+        WITH ${classificationCtes({ farmId, today: SEED_TODAY, weaningAgeMonths: 7, calvingAlertDays: 30, unconfirmedServiceAlertDays: 90, overdueCalvingAlertDays: 15 })}
         SELECT count(*) FILTER (WHERE category IN ('CALF_MALE', 'CALF_FEMALE'))::int AS calves FROM classified`);
       const calvesAt8 = categories.filter((category) => category.startsWith('CALF')).length;
       expect(calvesAt8).toBeGreaterThan(withDefault[0]?.calves ?? Infinity);
@@ -493,5 +506,81 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
     setToday(toIsoDate('2027-02-28'));
     expect(await differences(edge, toIsoDate('2027-02-28'))).toEqual([]);
     setToday(SEED_TODAY);
+  });
+
+  it('casos de M5 creados por la API: mellizos, aborto, servicio estimado, anulados, horra que vuelve a servicio', async () => {
+    setToday(SEED_TODAY);
+    const farm = await createFarm(prisma, 'Finca de M5');
+    const admin = bearer(await signTestToken(app, { userId: farm.userId, farmId: farm.farmId }));
+    const http = () => request(app.getHttpServer());
+    const post = async (path: string, body: object): Promise<{ id: string }> =>
+      (await http().post(`/api/v1${path}`).set(admin).send(body).expect(201)).body as {
+        id: string;
+      };
+    const cow = (code: string) =>
+      createAnimal(prisma, farm, { code, birthDate: toIsoDate('2020-01-01') });
+
+    // Mellizos con una muerta al nacer, sobre una preñez confirmada.
+    const twins = await cow('M-1');
+    const service = await post('/pregnancies', {
+      damId: twins,
+      serviceDate: '2025-11-01',
+      method: 'AI',
+    });
+    await post(`/pregnancies/${service.id}/diagnosis`, { date: '2026-01-10', result: 'POSITIVE' });
+    await post('/calvings', {
+      damId: twins,
+      date: '2026-08-15',
+      calvingType: 'ASSISTED',
+      calves: [
+        { sex: 'MALE', health: 'ALIVE' },
+        { sex: 'FEMALE', health: 'WEAK' },
+        { sex: 'FEMALE', health: 'STILLBORN' },
+      ],
+    });
+
+    // Aborto y otra preñez confirmada después.
+    const aborted = await cow('M-2');
+    const lost = await post('/pregnancies', {
+      damId: aborted,
+      serviceDate: '2025-10-01',
+      method: 'NATURAL',
+    });
+    await post(`/pregnancies/${lost.id}/abortion`, { date: '2026-01-20' });
+
+    // Parto sin preñez registrada (servicio estimado) y hoy horra: vuelve a servicio.
+    const dry = await cow('M-3');
+    await post('/calvings', {
+      damId: dry,
+      date: '2025-12-01',
+      calvingType: 'NORMAL',
+      calves: [{ sex: 'MALE', health: 'ALIVE' }],
+    });
+    const before = (await expectedByShared(farm.farmId, SEED_TODAY)).get(dry);
+    expect(before).toMatchObject({ dry: true, calvingCount: 1 });
+    await post('/pregnancies', { damId: dry, serviceDate: '2026-09-01', method: 'NATURAL' });
+
+    // Preñez confirmada sin servicio (estimado) y una anulada.
+    const estimated = await cow('M-4');
+    await post('/pregnancies', {
+      damId: estimated,
+      gestationMonths: 9,
+      diagnosisDate: '2026-09-20',
+    });
+    const voided = await cow('M-5');
+    const wrong = await post('/pregnancies', {
+      damId: voided,
+      serviceDate: '2026-02-01',
+      method: 'AI',
+    });
+    await post(`/pregnancies/${wrong.id}/void`, { reason: 'Hembra equivocada' });
+
+    expect(await differences(farm.farmId, SEED_TODAY)).toEqual([]);
+    const shared = await expectedByShared(farm.farmId, SEED_TODAY);
+    expect(shared.get(twins)).toMatchObject({ category: 'COW', calvingCount: 1, calved: true });
+    expect(shared.get(aborted)).toMatchObject({ category: 'HEIFER', calvingCount: 0 });
+    expect(shared.get(dry)).toMatchObject({ served: true, dry: false });
+    expect(shared.get(estimated)).toMatchObject({ pregnant: true, calvingSoon: true });
+    expect(shared.get(voided)).toMatchObject({ served: false, pregnant: false });
   });
 });

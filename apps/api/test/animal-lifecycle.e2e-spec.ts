@@ -337,7 +337,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
       });
       await sell(admin, five.id).expect(201);
       const nextRetiro = await http().get('/api/v1/animals/next-code').set(admin).expect(200);
-      expect(nextRetiro.body).toEqual({ code: '5' });
+      expect(nextRetiro.body).toEqual({ code: '5', codes: ['5'] });
 
       // La misma finca sin reutilización: el 5 vendido sigue ocupado; el siguiente libre es el 7.
       await prisma.farm.update({
@@ -347,7 +347,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
         },
       });
       const nextStrict = await http().get('/api/v1/animals/next-code').set(admin).expect(200);
-      expect(nextStrict.body).toEqual({ code: '7' });
+      expect(nextStrict.body).toEqual({ code: '7', codes: ['7'] });
 
       // Un archivado no ocupa su número en ningún modo.
       const six = await prisma.animal.findFirstOrThrow({
@@ -360,6 +360,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
         .expect(201);
       expect((await http().get('/api/v1/animals/next-code').set(admin).expect(200)).body).toEqual({
         code: '6',
+        codes: ['6'],
       });
     });
 

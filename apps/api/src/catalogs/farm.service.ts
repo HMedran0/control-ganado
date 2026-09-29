@@ -7,12 +7,17 @@ import {
   type FarmSettings,
   type FarmView,
   type UpdateFarmInput,
+  type WithWarnings,
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import type { Tx } from '../common/persistence.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import {
+  recalculateOpenPregnancies,
+  recalculationWarnings,
+} from '../reproduction/gestation-recalc.js';
 import { assertVersion, audit, catalogWrite, changesBetween } from './catalog-support.js';
 
 type FarmRow = {
@@ -45,11 +50,18 @@ export class FarmService {
    * el resultado se valida completo. Cambiar el destete o la gestación de la finca cambia de
    * inmediato las categorías calculadas (CFG-01 CA1): no hay nada almacenado que recalcular.
    */
-  async update(scope: FarmScope, input: UpdateFarmInput): Promise<FarmView> {
+  /**
+   * Si cambia la gestación de la finca, se recalcula el parto estimado de las preñeces abiertas de
+   * las hembras cuya raza no tiene gestación propia (RN-04, M5), y la respuesta lo avisa.
+   */
+  async update(scope: FarmScope, input: UpdateFarmInput): Promise<WithWarnings<FarmView>> {
     return catalogWrite('Farm', undefined, () => this.transactUpdate(scope, input));
   }
 
-  private transactUpdate(scope: FarmScope, input: UpdateFarmInput): Promise<FarmView> {
+  private transactUpdate(
+    scope: FarmScope,
+    input: UpdateFarmInput,
+  ): Promise<WithWarnings<FarmView>> {
     return this.prisma.$transaction(async (tx) => {
       const current = assertVersion(
         await tx.farm.findUnique({ where: { id: scope.farmId } }),
@@ -90,7 +102,15 @@ export class FarmService {
         ),
       });
 
-      return toView(updated, scope);
+      if (settings.gestationDays === before.gestationDays) {
+        return { ...toView(updated, scope), warnings: [] };
+      }
+      const result = await recalculateOpenPregnancies(tx, scope, {
+        target: { kind: 'FARM_DEFAULT' },
+        farmGestationDays: settings.gestationDays,
+        at: this.clock.now(),
+      });
+      return { ...toView(updated, scope), warnings: recalculationWarnings(result) };
     });
   }
 }

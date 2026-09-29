@@ -78,7 +78,7 @@ export class BreedsController {
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(updateBreedSchema) body: UpdateBreedInput,
     @CurrentScope() scope: FarmScope,
-  ): Promise<BreedView> {
+  ): Promise<WithWarnings<BreedView>> {
     return this.breeds.update(scope, id, body);
   }
 }

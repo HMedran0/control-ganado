@@ -1,5 +1,11 @@
 import { Controller, Get, Patch } from '@nestjs/common';
-import { ROLE, updateFarmSchema, type FarmView, type UpdateFarmInput } from '@hato/shared';
+import {
+  ROLE,
+  updateFarmSchema,
+  type FarmView,
+  type UpdateFarmInput,
+  type WithWarnings,
+} from '@hato/shared';
 
 import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
@@ -22,7 +28,7 @@ export class FarmController {
   update(
     @ZodBody(updateFarmSchema) body: UpdateFarmInput,
     @CurrentScope() scope: FarmScope,
-  ): Promise<FarmView> {
+  ): Promise<WithWarnings<FarmView>> {
     return this.farms.update(scope, body);
   }
 }

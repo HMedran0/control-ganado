@@ -94,6 +94,12 @@ enum CalvingType {
   CESAREAN
 }
 
+/// Estado al nacer de una cría viva registrada con su parto (REP-04, NAC-01 CA2).
+enum BirthCondition {
+  HEALTHY
+  WEAK
+}
+
 enum WeightMethod {
   SCALE
   TAPE
@@ -180,6 +186,7 @@ model User {
 
   memberships   Membership[]
   refreshTokens RefreshToken[]
+  diagnoses     Pregnancy[]
 
   @@map("users")
 }
@@ -305,41 +312,43 @@ model Tag {
 }
 
 model Animal {
-  id                    String    @id @db.Uuid
-  farmId                String    @map("farm_id") @db.Uuid
+  id                    String          @id @db.Uuid
+  farmId                String          @map("farm_id") @db.Uuid
   code                  String
   name                  String?
   sex                   Sex
-  breedId               String    @map("breed_id") @db.Uuid
-  birthDate             DateTime  @map("birth_date") @db.Date
-  birthDateEstimated    Boolean   @default(false) @map("birth_date_estimated")
+  breedId               String          @map("breed_id") @db.Uuid
+  birthDate             DateTime        @map("birth_date") @db.Date
+  birthDateEstimated    Boolean         @default(false) @map("birth_date_estimated")
   origin                Origin
-  originDetail          String?   @map("origin_detail")
-  entryDate             DateTime  @map("entry_date") @db.Date
+  originDetail          String?         @map("origin_detail")
+  entryDate             DateTime        @map("entry_date") @db.Date
   /// La fecha de ingreso no se conocía y se tomó la de nacimiento (importación, ANI-09). Deja
   /// de ser estimada cuando alguien la corrige en la ficha.
-  entryDateEstimated    Boolean   @default(false) @map("entry_date_estimated")
+  entryDateEstimated    Boolean         @default(false) @map("entry_date_estimated")
   /// Partos anteriores al sistema que llegaron por importación sin fecha (ANI-09 CA6, RN-29).
   /// Número de partos = este valor + preñeces `CALVED` registradas. Nunca crea crías ni fechas.
-  importedPriorCalvings Int       @default(0) @map("imported_prior_calvings")
-  damId                 String?   @map("dam_id") @db.Uuid
-  sireId                String?   @map("sire_id") @db.Uuid
-  sireExternalRef       String?   @map("sire_external_ref")
-  birthPregnancyId      String?   @map("birth_pregnancy_id") @db.Uuid
-  lotId                 String?   @map("lot_id") @db.Uuid
-  forSale               Boolean   @default(false) @map("for_sale")
-  exitType              ExitType? @map("exit_type")
-  exitDate              DateTime? @map("exit_date") @db.Date
-  exitReason            String?   @map("exit_reason")
-  photoUrl              String?   @map("photo_url")
+  importedPriorCalvings Int             @default(0) @map("imported_prior_calvings")
+  damId                 String?         @map("dam_id") @db.Uuid
+  sireId                String?         @map("sire_id") @db.Uuid
+  sireExternalRef       String?         @map("sire_external_ref")
+  birthPregnancyId      String?         @map("birth_pregnancy_id") @db.Uuid
+  /// Estado al nacer, solo en las crías registradas con su parto (REP-04, NAC-01 CA2).
+  birthCondition        BirthCondition? @map("birth_condition")
+  lotId                 String?         @map("lot_id") @db.Uuid
+  forSale               Boolean         @default(false) @map("for_sale")
+  exitType              ExitType?       @map("exit_type")
+  exitDate              DateTime?       @map("exit_date") @db.Date
+  exitReason            String?         @map("exit_reason")
+  photoUrl              String?         @map("photo_url")
   notes                 String?
-  version               Int       @default(1)
-  createdById           String    @map("created_by_id") @db.Uuid
-  updatedById           String    @map("updated_by_id") @db.Uuid
-  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz
-  deletedAt             DateTime? @map("deleted_at") @db.Timestamptz
-  deletedReason         String?   @map("deleted_reason")
+  version               Int             @default(1)
+  createdById           String          @map("created_by_id") @db.Uuid
+  updatedById           String          @map("updated_by_id") @db.Uuid
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @default(now()) @map("updated_at") @db.Timestamptz
+  deletedAt             DateTime?       @map("deleted_at") @db.Timestamptz
+  deletedReason         String?         @map("deleted_reason")
 
   farm            Farm       @relation(fields: [farmId], references: [id])
   breed           Breed      @relation(fields: [breedId], references: [id])
@@ -430,34 +439,41 @@ model Identifier {
 }
 
 model Pregnancy {
-  id                   String           @id @db.Uuid
-  farmId               String           @map("farm_id") @db.Uuid
-  damId                String           @map("dam_id") @db.Uuid
-  serviceDate          DateTime         @map("service_date") @db.Date
-  serviceDateEstimated Boolean          @default(false) @map("service_date_estimated")
-  method               ServiceMethod
-  sireId               String?          @map("sire_id") @db.Uuid
-  sireExternalRef      String?          @map("sire_external_ref")
-  confirmedAt          DateTime?        @map("confirmed_at") @db.Date
-  expectedCalvingDate  DateTime         @map("expected_calving_date") @db.Date
-  outcome              PregnancyOutcome @default(PENDING)
-  outcomeDate          DateTime?        @map("outcome_date") @db.Date
-  calvingType          CalvingType?     @map("calving_type")
-  stillbornCount       Int              @default(0) @map("stillborn_count")
-  isImported           Boolean          @default(false) @map("is_imported")
-  responsible          String?
-  notes                String?
-  version              Int              @default(1)
-  createdById          String           @map("created_by_id") @db.Uuid
-  updatedById          String           @map("updated_by_id") @db.Uuid
-  createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime         @default(now()) @map("updated_at") @db.Timestamptz
-  voidedAt             DateTime?        @map("voided_at") @db.Timestamptz
-  voidReason           String?          @map("void_reason")
+  id                         String           @id @db.Uuid
+  farmId                     String           @map("farm_id") @db.Uuid
+  damId                      String           @map("dam_id") @db.Uuid
+  serviceDate                DateTime         @map("service_date") @db.Date
+  serviceDateEstimated       Boolean          @default(false) @map("service_date_estimated")
+  method                     ServiceMethod
+  sireId                     String?          @map("sire_id") @db.Uuid
+  sireExternalRef            String?          @map("sire_external_ref")
+  confirmedAt                DateTime?        @map("confirmed_at") @db.Date
+  /// Quién palpó (REP-02 CA1): texto, porque suele ser un veterinario externo que no es usuario.
+  diagnosisResponsible       String?          @map("diagnosis_responsible")
+  /// Si quien palpó es usuario de la finca.
+  diagnosisResponsibleUserId String?          @map("diagnosis_responsible_user_id") @db.Uuid
+  expectedCalvingDate        DateTime         @map("expected_calving_date") @db.Date
+  /// El parto estimado se corrigió a mano (PATCH): el recálculo por gestación no lo toca (M5).
+  expectedCalvingManual      Boolean          @default(false) @map("expected_calving_manual")
+  outcome                    PregnancyOutcome @default(PENDING)
+  outcomeDate                DateTime?        @map("outcome_date") @db.Date
+  calvingType                CalvingType?     @map("calving_type")
+  stillbornCount             Int              @default(0) @map("stillborn_count")
+  isImported                 Boolean          @default(false) @map("is_imported")
+  responsible                String?
+  notes                      String?
+  version                    Int              @default(1)
+  createdById                String           @map("created_by_id") @db.Uuid
+  updatedById                String           @map("updated_by_id") @db.Uuid
+  createdAt                  DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt                  DateTime         @default(now()) @map("updated_at") @db.Timestamptz
+  voidedAt                   DateTime?        @map("voided_at") @db.Timestamptz
+  voidReason                 String?          @map("void_reason")
 
-  dam    Animal   @relation("DamPregnancies", fields: [damId], references: [id])
-  sire   Animal?  @relation("SirePregnancies", fields: [sireId], references: [id])
-  calves Animal[] @relation("PregnancyCalves")
+  dam                      Animal   @relation("DamPregnancies", fields: [damId], references: [id])
+  diagnosisResponsibleUser User?    @relation(fields: [diagnosisResponsibleUserId], references: [id])
+  sire                     Animal?  @relation("SirePregnancies", fields: [sireId], references: [id])
+  calves                   Animal[] @relation("PregnancyCalves")
 
   // Único parcial (dam_id) WHERE outcome='PENDING' AND voided_at IS NULL → migración SQL manual.
   @@index([farmId, outcome, expectedCalvingDate])

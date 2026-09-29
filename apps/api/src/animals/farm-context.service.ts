@@ -41,5 +41,6 @@ export function classificationParams(scope: FarmScope, context: FarmContext): Cl
     weaningAgeMonths: context.settings.weaningAgeMonths,
     calvingAlertDays: context.settings.calvingAlertDays,
     unconfirmedServiceAlertDays: context.settings.unconfirmedServiceAlertDays,
+    overdueCalvingAlertDays: context.settings.overdueCalvingAlertDays,
   };
 }

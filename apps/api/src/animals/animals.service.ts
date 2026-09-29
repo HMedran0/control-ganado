@@ -41,6 +41,10 @@ import { Prisma } from '../generated/prisma/client.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import {
+  recalculateOpenPregnancies,
+  recalculationWarnings,
+} from '../reproduction/gestation-recalc.js';
 import { AnimalDetailService } from './animal-detail.service.js';
 import {
   assertNotBeforeBirth,
@@ -516,6 +520,15 @@ export class AnimalsService {
           at,
           diff,
         });
+        // RN-04 (M5): otra raza en una hembra cambia la gestación de sus preñeces abiertas.
+        if (updated.sex === SEX.FEMALE && updated.breedId !== current.breedId) {
+          const result = await recalculateOpenPregnancies(tx, scope, {
+            target: { kind: 'DAM', damId: id },
+            farmGestationDays: context.settings.gestationDays,
+            at,
+          });
+          found.push(...recalculationWarnings(result));
+        }
         return found;
       })
       .catch((error: unknown) => translateUniqueViolation(error, input.code ?? ''));

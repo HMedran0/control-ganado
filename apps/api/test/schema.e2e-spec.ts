@@ -80,7 +80,7 @@ describe('Esquema de la base de datos', () => {
     },
   );
 
-  it('tiene las 16 restricciones CHECK (14 de la migración manual, la de M4d y la de M5)', async () => {
+  it('tiene las 17 restricciones CHECK (14 de la migración manual, la de M4d y dos de M5)', async () => {
     const rows = await prisma.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE contype = 'c' AND connamespace = 'public'::regnamespace
@@ -90,6 +90,7 @@ describe('Esquema de la base de datos', () => {
     expect(rows.map((row) => row.conname)).toEqual([
       'allocation_amount_nonneg_ck',
       'animal_tags_removed_ck',
+      'animals_birth_condition_ck',
       'animals_exit_consistency_ck',
       'animals_imported_prior_calvings_check',
       'animals_not_own_dam_ck',

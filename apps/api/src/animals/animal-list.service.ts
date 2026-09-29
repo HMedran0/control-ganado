@@ -100,6 +100,7 @@ const SQL_ALERT_COLUMN: Readonly<Partial<Record<AnimalAlert, Prisma.Sql>>> = {
   [ANIMAL_ALERT.CALVING_SOON]: Prisma.sql`c.calving_soon`,
   [ANIMAL_ALERT.WITHDRAWAL]: Prisma.sql`c.withdrawal`,
   [ANIMAL_ALERT.UNCONFIRMED_SERVICE]: Prisma.sql`c.unconfirmed_service`,
+  [ANIMAL_ALERT.CALVING_OVERDUE]: Prisma.sql`c.calving_overdue`,
 };
 
 /** Tope de filas de la exportación: más que cualquier hato real, menos que un abuso. */

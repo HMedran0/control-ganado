@@ -15,6 +15,7 @@ import { EnvModule } from './config/env.module.js';
 import { HealthModule } from './health/health.module.js';
 import { ImportsModule } from './imports/imports.module.js';
 import { InfraModule } from './infra/infra.module.js';
+import { ReproductionModule } from './reproduction/reproduction.module.js';
 import { UsersModule } from './users/users.module.js';
 
 /**
@@ -39,6 +40,7 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     CatalogsModule,
     AnimalsModule,
+    ReproductionModule,
     ImportsModule,
     AuditModule,
     HealthModule,

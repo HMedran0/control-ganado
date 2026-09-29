@@ -1,18 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import {
   AUDIT_ACTION,
+  parseFarmSettings,
   proposedGestationDays,
   uuidv7,
   type BreedView,
   type CatalogList,
   type CreateBreedInput,
   type UpdateBreedInput,
+  type WithWarnings,
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import {
+  recalculateOpenPregnancies,
+  recalculationWarnings,
+} from '../reproduction/gestation-recalc.js';
 import {
   assertVersion,
   audit,
@@ -76,10 +82,14 @@ export class BreedsService {
   }
 
   /**
-   * Edita una raza. Cambiar su gestación **no** toca las preñeces ya registradas: la fecha
-   * estimada de parto se congela al registrar el servicio (RN-04, `expected_calving_date`).
+   * Edita una raza. Si cambia su gestación, se recalcula el parto estimado de las preñeces
+   * abiertas de sus hembras, salvo las corregidas a mano (RN-04, M5), y la respuesta lo avisa.
    */
-  async update(scope: FarmScope, id: string, input: UpdateBreedInput): Promise<BreedView> {
+  async update(
+    scope: FarmScope,
+    id: string,
+    input: UpdateBreedInput,
+  ): Promise<WithWarnings<BreedView>> {
     return catalogWrite('Breed', input.name, () =>
       this.prisma.$transaction(async (tx) => {
         const current = assertVersion(
@@ -104,7 +114,19 @@ export class BreedsService {
           at: this.clock.now(),
           diff: changesBetween(toView(current), toView(updated), FIELDS),
         });
-        return toView(updated);
+        if (updated.gestationDays === current.gestationDays) {
+          return { ...toView(updated), warnings: [] };
+        }
+        const farm = await tx.farm.findUniqueOrThrow({
+          where: { id: scope.farmId },
+          select: { settings: true },
+        });
+        const result = await recalculateOpenPregnancies(tx, scope, {
+          target: { kind: 'BREED', breedId: id },
+          farmGestationDays: parseFarmSettings(farm.settings).gestationDays,
+          at: this.clock.now(),
+        });
+        return { ...toView(updated), warnings: recalculationWarnings(result) };
       }),
     );
   }

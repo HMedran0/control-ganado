@@ -13,8 +13,8 @@ import { Prisma } from '../generated/prisma/client.js';
 /**
  * Clasificación de los animales en SQL (RN-06, RN-07, RN-08, RN-25; docs/adr/009).
  *
- * Es la traducción de `managementCategory`, `derivedTags`, `isCalvingSoon` e
- * `isServiceUnconfirmedOverdue` de `@hato/shared` a una CTE, para poder **filtrar y contar**
+ * Es la traducción de `managementCategory`, `derivedTags`, `isCalvingSoon`,
+ * `isServiceUnconfirmedOverdue` e `isCalvingOverdue` de `@hato/shared` a una CTE, para poder **filtrar y contar**
  * miles de animales en la base. Mostrar un animal no pasa por aquí: la ficha y cada fila del
  * listado se calculan con las funciones de shared a partir de las columnas crudas que esta CTE
  * también expone. Que las dos cosas coincidan (RN-27) lo comprueba
@@ -33,6 +33,8 @@ export type ClassificationParams = {
   readonly weaningAgeMonths: number;
   readonly calvingAlertDays: number;
   readonly unconfirmedServiceAlertDays: number;
+  /** «Parto vencido sin registrar» (M5), 15 por defecto [Validar]. */
+  readonly overdueCalvingAlertDays: number;
 };
 
 const outcome = (value: string): Prisma.Sql => Prisma.sql`${value}::"PregnancyOutcome"`;
@@ -44,7 +46,7 @@ const outcome = (value: string): Prisma.Sql => Prisma.sql`${value}::"PregnancyOu
  * - hechos crudos: `calving_count`, `last_calving_date`, `open_service_date`,
  *   `open_confirmed_at`, `open_expected_calving_date`, `withdrawal_until`;
  * - derivados: `category`, `served`, `pregnant`, `calved`, `dry`, `withdrawal`,
- *   `calving_soon`, `unconfirmed_service`.
+ *   `calving_soon`, `unconfirmed_service`, `calving_overdue`.
  *
  * Se usa como `WITH ${classificationCtes(params)} SELECT … FROM classified c …`.
  */
@@ -116,7 +118,9 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
         (k.pregnant
           AND k.open_expected_calving_date <= ${todayDate} + ${params.calvingAlertDays}::int) AS calving_soon,
         (k.served
-          AND (${todayDate} - k.open_service_date) > ${params.unconfirmedServiceAlertDays}::int) AS unconfirmed_service
+          AND (${todayDate} - k.open_service_date) > ${params.unconfirmedServiceAlertDays}::int) AS unconfirmed_service,
+        (k.open_service_date IS NOT NULL
+          AND (${todayDate} - k.open_expected_calving_date) > ${params.overdueCalvingAlertDays}::int) AS calving_overdue
       FROM categorized k
     )`;
 }
@@ -151,4 +155,5 @@ export type ClassifiedRow = {
   readonly withdrawal: boolean;
   readonly calving_soon: boolean;
   readonly unconfirmed_service: boolean;
+  readonly calving_overdue: boolean;
 };

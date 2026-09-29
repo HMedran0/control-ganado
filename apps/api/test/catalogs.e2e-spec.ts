@@ -244,30 +244,64 @@ describe('Finca y catálogos', () => {
         .expect(404);
     });
 
-    it('cambiar la gestación de la raza NO toca las fechas de parto ya estimadas (RN-04)', async () => {
-      const damId = await createAnimal(prisma, esperanza, { code: '101' });
-      const pregnancyId = uuidv7();
-      await prisma.pregnancy.create({
-        data: {
-          id: pregnancyId,
-          farmId: esperanza.farmId,
-          damId,
-          serviceDate: toPrismaDate(toIsoDate('2026-01-12')),
-          method: 'AI',
-          expectedCalvingDate: toPrismaDate(toIsoDate('2026-10-31')),
-          createdById: esperanza.userId,
-          updatedById: esperanza.userId,
-        },
-      });
+    it('cambiar la gestación de la raza recalcula las preñeces abiertas, salvo las corregidas a mano (RN-04, M5)', async () => {
+      const pregnancy = async (code: string, manual: boolean, outcome: 'PENDING' | 'CALVED') => {
+        const damId = await createAnimal(prisma, esperanza, { code });
+        const id = uuidv7();
+        await prisma.pregnancy.create({
+          data: {
+            id,
+            farmId: esperanza.farmId,
+            damId,
+            serviceDate: toPrismaDate(toIsoDate('2026-01-12')),
+            method: 'AI',
+            expectedCalvingDate: toPrismaDate(toIsoDate('2026-10-31')),
+            expectedCalvingManual: manual,
+            outcome,
+            ...(outcome === 'CALVED' ? { outcomeDate: toPrismaDate(toIsoDate('2026-09-01')) } : {}),
+            createdById: esperanza.userId,
+            updatedById: esperanza.userId,
+          },
+        });
+        return id;
+      };
+      const open = await pregnancy('101', false, 'PENDING');
+      const manual = await pregnancy('102', true, 'PENDING');
+      const closed = await pregnancy('103', false, 'CALVED');
 
-      await http()
+      const response = await http()
         .patch(`/api/v1/breeds/${esperanza.breedId}`)
         .set(admin)
         .send({ version: 1, gestationDays: 283 })
         .expect(200);
+      expect(response.body.warnings).toEqual([
+        {
+          code: 'EXPECTED_CALVING_RECALCULATED',
+          message:
+            'Se recalculó el parto estimado de 1 preñez abierta. 1 preñez con el parto corregido a mano no se tocó.',
+        },
+      ]);
 
-      const pregnancy = await prisma.pregnancy.findUniqueOrThrow({ where: { id: pregnancyId } });
-      expect(pregnancy.expectedCalvingDate.toISOString().slice(0, 10)).toBe('2026-10-31');
+      const date = async (id: string) =>
+        (await prisma.pregnancy.findUniqueOrThrow({ where: { id } })).expectedCalvingDate
+          .toISOString()
+          .slice(0, 10);
+      // 12/01/2026 + 283 días.
+      expect(await date(open)).toBe('2026-10-22');
+      expect(await date(manual)).toBe('2026-10-31');
+      expect(await date(closed)).toBe('2026-10-31');
+      expect(await prisma.auditLog.count({ where: { entity: 'Pregnancy', entityId: open } })).toBe(
+        1,
+      );
+    });
+
+    it('cambiar solo el nombre de la raza no recalcula nada ni avisa', async () => {
+      const response = await http()
+        .patch(`/api/v1/breeds/${esperanza.breedId}`)
+        .set(admin)
+        .send({ version: 1, name: 'Brahman rojo' })
+        .expect(200);
+      expect(response.body.warnings).toEqual([]);
     });
 
     it('desactivar una raza con animales no rompe los animales', async () => {

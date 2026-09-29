@@ -829,12 +829,13 @@ describe('Animales e identificadores', () => {
           .get('/api/v1/animals/next-code?birthDate=2026-05-01')
           .set(headers)
           .expect(200);
-        expect(response.body).toEqual({ code: '26-002' });
+        expect(response.body).toEqual({ code: '26-002', codes: ['26-002'] });
       }
       expect(
         (await http().get('/api/v1/animals/next-code').set(otherAdmin).expect(200)).body,
       ).toEqual({
         code: '26-001',
+        codes: ['26-001'],
       });
       await prisma.farm.update({
         where: { id: esperanza.farmId },
@@ -850,6 +851,7 @@ describe('Animales e identificadores', () => {
         (await http().get('/api/v1/animals/next-code').set(operator).expect(200)).body,
       ).toEqual({
         code: 'LE-2026-1',
+        codes: ['LE-2026-1'],
       });
     });
   });

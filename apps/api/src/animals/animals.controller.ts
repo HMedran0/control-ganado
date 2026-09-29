@@ -134,10 +134,11 @@ export class AnimalsController {
 
   @Get('next-code')
   nextCode(
-    @Query(new ZodValidationPipe(nextCodeQuerySchema)) query: { birthDate?: string },
+    @Query(new ZodValidationPipe(nextCodeQuerySchema))
+    query: { birthDate?: string; count?: number },
     @CurrentScope() scope: FarmScope,
   ): Promise<NextCodeResult> {
-    return this.details.nextCode(scope, query.birthDate as IsoDate | undefined);
+    return this.details.nextCode(scope, query.birthDate as IsoDate | undefined, query.count);
   }
 
   @Post()

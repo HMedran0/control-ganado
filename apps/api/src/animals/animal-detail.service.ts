@@ -1,16 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
   systemQrUrl,
-  CODE_SUGGESTION,
   DomainError,
   ROLE,
   SEX,
   TIMELINE_KIND,
   ageInDays,
   animalStatus,
+  calvingIntervals,
   isoDateParts,
-  lowestFreeCode,
-  nextCalfCode,
   summarizePregnancies,
   withdrawalUntilOf,
   type AnimalDetail,
@@ -37,7 +35,9 @@ import type { Tx } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { fromPrismaDate, fromPrismaDateOrNull } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { pregnancyInclude, toPregnancyView } from '../reproduction/pregnancy-views.js';
 import { deriveView } from './animal-views.js';
+import { suggestFarmCodes } from './code-suggestion.js';
 import { FarmContextService, type FarmContext } from './farm-context.service.js';
 import { VaccineStatusService } from './vaccine-status.service.js';
 
@@ -117,15 +117,8 @@ export class AnimalDetailService {
           include: { tag: { select: { id: true, key: true, label: true } } },
         },
         pregnancies: {
-          select: {
-            id: true,
-            outcome: true,
-            outcomeDate: true,
-            serviceDate: true,
-            confirmedAt: true,
-            expectedCalvingDate: true,
-            voidedAt: true,
-          },
+          include: pregnancyInclude,
+          orderBy: [{ serviceDate: 'desc' }, { id: 'desc' }],
         },
         treatments: { select: { withdrawalUntil: true, voidedAt: true } },
         weights: {
@@ -171,6 +164,14 @@ export class AnimalDetailService {
 
     const openPregnancy = animal.pregnancies.find(
       (pregnancy) => pregnancy.outcome === 'PENDING' && pregnancy.voidedAt === null,
+    );
+    const interval = calvingIntervals(
+      animal.pregnancies.map((pregnancy) => ({
+        outcome: pregnancy.outcome,
+        outcomeDate: fromPrismaDateOrNull(pregnancy.outcomeDate),
+        serviceDateEstimated: pregnancy.serviceDateEstimated,
+        voided: pregnancy.voidedAt !== null,
+      })),
     );
     const lastWeight = animal.weights[0];
 
@@ -228,14 +229,9 @@ export class AnimalDetailService {
               importedPriorCalvings: animal.importedPriorCalvings,
               lastCalvingDate: facts.lastCalvingDate,
               openPregnancy:
-                openPregnancy === undefined
-                  ? null
-                  : {
-                      id: openPregnancy.id,
-                      serviceDate: fromPrismaDate(openPregnancy.serviceDate),
-                      confirmedAt: fromPrismaDateOrNull(openPregnancy.confirmedAt),
-                      expectedCalvingDate: fromPrismaDate(openPregnancy.expectedCalvingDate),
-                    },
+                openPregnancy === undefined ? null : toPregnancyView(openPregnancy, ctx.today),
+              calvingInterval: { lastDays: interval.lastDays, averageDays: interval.averageDays },
+              history: animal.pregnancies.map((pregnancy) => toPregnancyView(pregnancy, ctx.today)),
             }
           : null,
       vaccines: derived.status === 'ACTIVE' ? vaccines : [],
@@ -527,30 +523,17 @@ export class AnimalDetailService {
    * - `PATTERN`: el siguiente con el patrón de las crías (08 §2.3). Cuenta todos los códigos de la
    *   finca, también los de animales archivados, para no reutilizarlos nunca.
    */
-  async nextCode(scope: FarmScope, birthDate: IsoDate | undefined): Promise<NextCodeResult> {
+  async nextCode(
+    scope: FarmScope,
+    birthDate: IsoDate | undefined,
+    count = 1,
+  ): Promise<NextCodeResult> {
     const context = await this.farmContext.load(scope);
-    if (context.settings.codeSuggestion === CODE_SUGGESTION.LOWEST_FREE) {
-      const inUse = await this.prisma.animal.findMany({
-        where: {
-          farmId: scope.farmId,
-          deletedAt: null,
-          ...(context.settings.codeReuse ? { exitType: null } : {}),
-        },
-        select: { code: true },
-      });
-      return { code: lowestFreeCode(inUse.map((row) => row.code)) };
-    }
-    const codes = await this.prisma.animal.findMany({
-      where: { farmId: scope.farmId },
-      select: { code: true },
+    const codes = await suggestFarmCodes(this.prisma, scope, context.settings, {
+      year: isoDateParts(birthDate ?? context.today).year,
+      count,
     });
-    return {
-      code: nextCalfCode({
-        pattern: context.settings.calfCodePattern,
-        year: isoDateParts(birthDate ?? context.today).year,
-        existingCodes: codes.map((row) => row.code),
-      }),
-    };
+    return { code: codes[0] ?? '', codes };
   }
 
   private async assertExists(scope: FarmScope, animalId: string): Promise<void> {
