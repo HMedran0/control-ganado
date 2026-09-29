@@ -253,7 +253,8 @@ export class AnimalListService {
           ? DERIVED_TAG_COLUMN[key]
           : Prisma.sql`EXISTS (
               SELECT 1 FROM animal_tags at JOIN tags t ON t.id = at.tag_id
-              WHERE at.animal_id = a.id AND t.farm_id = ${scope.farmId}::uuid AND t.key = ${key})`,
+              WHERE at.animal_id = a.id AND at.removed_at IS NULL
+                AND t.farm_id = ${scope.farmId}::uuid AND t.key = ${key})`,
       );
     }
     if (query.ageMinMonths !== undefined) {
@@ -300,7 +301,7 @@ export class AnimalListService {
     const ids = rows.map((row) => row.id);
     const [tagLinks, vaccineStatuses] = await Promise.all([
       this.prisma.animalTag.findMany({
-        where: { animalId: { in: ids }, tag: { farmId: scope.farmId } },
+        where: { animalId: { in: ids }, removedAt: null, tag: { farmId: scope.farmId } },
         include: { tag: { select: { id: true, key: true, label: true } } },
         orderBy: { tag: { label: 'asc' } },
       }),

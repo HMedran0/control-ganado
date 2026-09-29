@@ -235,6 +235,7 @@ export async function writeRetiroSeed(
       name: RETIRO.breed.name,
       group: RETIRO.breed.group,
       gestationDays: defaultGestationDaysForGroup(RETIRO.breed.group),
+      updatedAt: createdAt,
     },
   });
 
@@ -268,6 +269,7 @@ export async function writeRetiroSeed(
       retiredAt: identifier.retiredAt === null ? null : day(identifier.retiredAt),
       retireReason: identifier.retireReason,
       createdAt: instantOf(identifier.assignedAt),
+      updatedAt: instantOf(identifier.retiredAt ?? identifier.assignedAt),
     })),
   );
   await prisma.identifier.createMany({ data: identifiers });
@@ -282,6 +284,7 @@ export async function writeRetiroSeed(
       isBirthWeight: false,
       createdById: seed.userId,
       createdAt: instantOf(weight.on),
+      updatedAt: instantOf(weight.on),
     })),
   );
   await prisma.weightRecord.createMany({ data: weights });
@@ -298,6 +301,7 @@ export async function writeRetiroSeed(
             buyer: animal.sale.buyer,
             createdById: seed.userId,
             createdAt: instantOf(animal.exit.date),
+            updatedAt: instantOf(animal.exit.date),
           },
         ],
   );

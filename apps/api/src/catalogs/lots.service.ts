@@ -17,7 +17,14 @@ import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { assertVersion, audit, catalogWrite, changesBetween, type Tx } from './catalog-support.js';
+import {
+  assertVersion,
+  audit,
+  catalogReplay,
+  catalogWrite,
+  changesBetween,
+  type Tx,
+} from './catalog-support.js';
 
 const FIELDS = ['name', 'description', 'isActive'] as const;
 
@@ -38,11 +45,20 @@ export class LotsService {
   }
 
   async create(scope: FarmScope, input: CreateLotInput): Promise<LotView> {
+    if (input.id !== undefined) {
+      const replay = catalogReplay(
+        await this.prisma.lot.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+        { name: input.name, description: input.description ?? null },
+        toView,
+      );
+      if (replay !== null) return replay;
+    }
     return catalogWrite('Lot', input.name, () =>
       this.prisma.$transaction(async (tx) => {
         const lot = await tx.lot.create({
           data: {
-            id: uuidv7(),
+            id: input.id ?? uuidv7(),
             farmId: scope.farmId,
             name: input.name,
             description: input.description ?? null,

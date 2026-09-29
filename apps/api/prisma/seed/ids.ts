@@ -13,6 +13,8 @@
  * orden, sin depender del reloj de la máquina.
  */
 
+import { createHash } from 'node:crypto';
+
 import { resetUuidv7State, uuidv7 } from '@hato/shared';
 
 import type { SeededRandom } from './random.js';
@@ -53,6 +55,27 @@ export function createIdFactory(random: SeededRandom, epochOffsetMs = 0): IdFact
     },
     count: () => generated,
   };
+}
+
+/**
+ * UUIDv7 derivado de un nombre y una fecha, sin pasar por la fábrica: la marca de tiempo es el
+ * mediodía UTC de la fecha y el resto sale del SHA-256 del nombre. Sirve para filas que no tienen
+ * un identificador propio en el plan del seed (las etiquetas de cada animal, ADR-012), sin mover
+ * la secuencia de los demás identificadores.
+ */
+export function derivedId(name: string, date: string): string {
+  const hash = createHash('sha256').update(name).digest();
+  const ms = instantOf(date).getTime();
+  const bytes = new Uint8Array(16);
+  for (let index = 0; index < 6; index += 1) {
+    bytes[index] = Math.floor(ms / 2 ** (8 * (5 - index))) & 0xff;
+  }
+  bytes[6] = 0x70 | ((hash[0] ?? 0) & 0x0f);
+  bytes[7] = hash[1] ?? 0;
+  bytes[8] = 0x80 | ((hash[2] ?? 0) & 0x3f);
+  for (let index = 9; index < 16; index += 1) bytes[index] = hash[index - 6] ?? 0;
+  const text = Buffer.from(bytes).toString('hex');
+  return `${text.slice(0, 8)}-${text.slice(8, 12)}-${text.slice(12, 16)}-${text.slice(16, 20)}-${text.slice(20)}`;
 }
 
 /**

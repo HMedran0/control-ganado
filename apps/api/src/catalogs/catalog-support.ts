@@ -1,5 +1,10 @@
 import { AUDIT_ACTION, DomainError } from '@hato/shared';
 
+import {
+  asReplayed,
+  assertSameContent,
+  ownRecordOrConflict,
+} from '../common/idempotency/client-id.js';
 import { isUniqueViolation } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
 
@@ -52,6 +57,28 @@ export async function catalogWrite<T>(
 }
 
 export { AUDIT_ACTION };
+
+/**
+ * `id` del cliente al crear un elemento de catálogo (ADR-012 §1).
+ *
+ * @returns `null` si el `id` no existe (hay que crearlo), o la vista del guardado, marcada para
+ *   responder 200, si llegó con el mismo contenido.
+ * @throws {DomainError} `CLIENT_ID_CONFLICT` si es de otra finca o tiene otros datos.
+ */
+export function catalogReplay<Row extends { readonly farmId: string }, View extends object>(
+  existing: Row | null,
+  farmId: string,
+  requested: Readonly<Record<string, unknown>>,
+  view: (row: Row) => View,
+  comparable: (view: View) => Readonly<Record<string, unknown>> = (stored) =>
+    stored as Readonly<Record<string, unknown>>,
+): View | null {
+  const own = ownRecordOrConflict(existing, farmId);
+  if (own === null) return null;
+  const stored = view(own);
+  assertSameContent(requested, comparable(stored));
+  return asReplayed(stored);
+}
 
 /** `?includeInactive=true` en los listados. */
 export function parseIncludeInactive(value: string | undefined): boolean {

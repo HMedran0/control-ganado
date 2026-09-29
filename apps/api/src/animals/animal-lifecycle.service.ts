@@ -21,11 +21,12 @@ import {
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import { asReplayed } from '../common/idempotency/client-id.js';
+import { TransactionsService } from '../common/idempotency/transactions.service.js';
 import { audit, type Tx } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, fromPrismaDateOrNull, toPrismaDate } from '../infra/date-mapper.js';
-import { PrismaService } from '../infra/prisma.service.js';
 import { AnimalDetailService, toIdentifierView } from './animal-detail.service.js';
 import { assertNotBeforeBirth, assertNotFuture, userOf } from './animal-rules.js';
 import { assertCodeAvailable, findCodeHolder } from './code-availability.js';
@@ -52,10 +53,10 @@ type Blocked = {
 @Injectable()
 export class AnimalLifecycleService {
   constructor(
-    private readonly prisma: PrismaService,
     private readonly clock: Clock,
     private readonly farmContext: FarmContextService,
     private readonly details: AnimalDetailService,
+    private readonly transactions: TransactionsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------
@@ -80,7 +81,7 @@ export class AnimalLifecycleService {
       });
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animal = await lockAnimal(tx, scope, id);
       if (animal.deletedAt !== null) throw new DomainError('ANIMAL_ARCHIVED');
       if (animal.exitType !== null) {
@@ -125,7 +126,6 @@ export class AnimalLifecycleService {
           forSale: false,
           version: { increment: 1 },
           updatedById: userId,
-          updatedAt: at,
         },
       });
 
@@ -188,9 +188,8 @@ export class AnimalLifecycleService {
           },
         },
       });
+      return { ...(await this.details.detail(scope, id, context, tx)), warnings: [] };
     });
-
-    return { ...(await this.details.detail(scope, id, context)), warnings: [] };
   }
 
   /**
@@ -211,7 +210,7 @@ export class AnimalLifecycleService {
     const at = this.clock.now();
     const codeReuse = context.settings.codeReuse;
 
-    const warnings = await this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animal = await lockAnimal(tx, scope, id);
       if (animal.deletedAt !== null) throw new DomainError('ANIMAL_ARCHIVED');
       if (animal.exitType === null) {
@@ -281,7 +280,6 @@ export class AnimalLifecycleService {
           exitReason: null,
           version: { increment: 1 },
           updatedById: userId,
-          updatedAt: at,
         },
       });
       await this.reactivate(tx, scope, free, at);
@@ -306,10 +304,11 @@ export class AnimalLifecycleService {
           },
         },
       });
-      return notRestoredWarnings(blocked);
+      return {
+        ...(await this.details.detail(scope, id, context, tx)),
+        warnings: notRestoredWarnings(blocked),
+      };
     });
-
-    return { ...(await this.details.detail(scope, id, context)), warnings };
   }
 
   // -------------------------------------------------------------------------------------------
@@ -330,9 +329,15 @@ export class AnimalLifecycleService {
     const userId = userOf(scope);
     const at = this.clock.now();
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animal = await lockAnimal(tx, scope, id);
-      if (animal.deletedAt !== null) throw new DomainError('ANIMAL_ARCHIVED');
+      // ADR-012 §4: archivar lo que ya está archivado no es un error; responde 200 con la ficha.
+      if (animal.deletedAt !== null) {
+        return asReplayed({
+          ...(await this.details.detail(scope, id, context, tx)),
+          warnings: [],
+        });
+      }
 
       const retired = await this.retireIdentifiers(tx, scope, {
         animalId: id,
@@ -349,7 +354,6 @@ export class AnimalLifecycleService {
           forSale: false,
           version: { increment: 1 },
           updatedById: userId,
-          updatedAt: at,
         },
       });
       await audit(tx, {
@@ -360,9 +364,8 @@ export class AnimalLifecycleService {
         at,
         diff: { after: { reason: input.reason, retiredIdentifiers: retired.map(label) } },
       });
+      return { ...(await this.details.detail(scope, id, context, tx)), warnings: [] };
     });
-
-    return { ...(await this.details.detail(scope, id, context)), warnings: [] };
   }
 
   /**
@@ -379,7 +382,7 @@ export class AnimalLifecycleService {
     const userId = userOf(scope);
     const at = this.clock.now();
 
-    const warnings = await this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animal = await lockAnimal(tx, scope, id);
       if (animal.deletedAt === null) {
         throw new DomainError('VALIDATION_FAILED', { detail: 'El animal no está archivado.' });
@@ -411,7 +414,6 @@ export class AnimalLifecycleService {
           deletedReason: null,
           version: { increment: 1 },
           updatedById: userId,
-          updatedAt: at,
         },
       });
       await this.reactivate(tx, scope, free, at);
@@ -431,10 +433,11 @@ export class AnimalLifecycleService {
           },
         },
       });
-      return notRestoredWarnings(blocked);
+      return {
+        ...(await this.details.detail(scope, id, context, tx)),
+        warnings: notRestoredWarnings(blocked),
+      };
     });
-
-    return { ...(await this.details.detail(scope, id, context)), warnings };
   }
 
   // -------------------------------------------------------------------------------------------

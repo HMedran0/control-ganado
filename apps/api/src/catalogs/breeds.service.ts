@@ -13,7 +13,13 @@ import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { assertVersion, audit, catalogWrite, changesBetween } from './catalog-support.js';
+import {
+  assertVersion,
+  audit,
+  catalogReplay,
+  catalogWrite,
+  changesBetween,
+} from './catalog-support.js';
 
 const FIELDS = ['name', 'group', 'gestationDays', 'isActive'] as const;
 
@@ -35,15 +41,25 @@ export class BreedsService {
 
   /** Crea una raza. Sin gestación, se propone la del grupo (293, 283 o 288 días). */
   async create(scope: FarmScope, input: CreateBreedInput): Promise<BreedView> {
+    const gestationDays = input.gestationDays ?? proposedGestationDays(input.group);
+    if (input.id !== undefined) {
+      const replay = catalogReplay(
+        await this.prisma.breed.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+        { name: input.name, group: input.group, gestationDays },
+        toView,
+      );
+      if (replay !== null) return replay;
+    }
     return catalogWrite('Breed', input.name, () =>
       this.prisma.$transaction(async (tx) => {
         const breed = await tx.breed.create({
           data: {
-            id: uuidv7(),
+            id: input.id ?? uuidv7(),
             farmId: scope.farmId,
             name: input.name,
             group: input.group,
-            gestationDays: input.gestationDays ?? proposedGestationDays(input.group),
+            gestationDays,
           },
         });
         await audit(tx, {

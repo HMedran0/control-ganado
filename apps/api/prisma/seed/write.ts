@@ -3,14 +3,15 @@
  *
  * Tres cosas que no son obvias:
  *
- * 1. **Orden y ciclo de referencias.** `animals.birth_pregnancy_id` apunta a `pregnancies` y
- *    `pregnancies.dam_id` apunta a `animals`: el ciclo se rompe insertando los animales sin
- *    esa columna, luego las preñeces, y actualizando al final. Los animales se insertan en
- *    orden de nacimiento para que la madre y el padre ya existan cuando llega la cría.
+ * 1. **Orden de dependencias, sin UPDATE.** `animals.birth_pregnancy_id` apunta a
+ *    `pregnancies` y `pregnancies.dam_id` apunta a `animals`. Los animales van en orden de
+ *    nacimiento y, antes de cada cría, la preñez de la que nació: cuando algo depende de una
+ *    fila que aún no está en la base, se escribe lo acumulado. No se actualiza nada después,
+ *    porque el trigger `set_updated_at()` (ADR-012) pondría la hora real en `updated_at`.
  * 2. **Marcas de tiempo deterministas.** `created_at` y `updated_at` se escriben a mano, a
- *    partir de la fecha del hecho, en lugar de dejar el `now()` de la base. Sin eso, dos
- *    ejecuciones del seed no darían un volcado idéntico y no se podría comprobar el
- *    determinismo comparando la base entera.
+ *    partir de la fecha del hecho, en lugar de dejar el `now()` de la base, también en los
+ *    catálogos. Sin eso, dos ejecuciones del seed no darían un volcado idéntico y no se podría
+ *    comprobar el determinismo comparando la base entera.
  * 3. **Todo en una transacción**, para que un fallo a mitad no deje media finca sembrada.
  */
 
@@ -29,10 +30,9 @@ import {
 } from './catalog.js';
 import type { SeedClient } from './client.js';
 import type { Economics } from './economics.js';
-import type { Herd } from './herd.js';
+import type { Herd, SeedAnimal, SeedPregnancy } from './herd.js';
 import type { History } from './history.js';
-import { instantOf } from './ids.js';
-import { Prisma } from '../../src/generated/prisma/client.js';
+import { derivedId, instantOf } from './ids.js';
 
 /** Filas por lote en las inserciones masivas. */
 const CHUNK = 500;
@@ -72,6 +72,7 @@ export async function resetFarmData(
   const where = { animalId: { in: animalIds } };
 
   await prisma.auditLog.deleteMany({ where: { farmId } });
+  await prisma.idempotencyKey.deleteMany({ where: { farmId } });
   await prisma.workSessionEntry.deleteMany({ where });
   await prisma.expenseAllocation.deleteMany({ where: { farmId } });
   await prisma.expense.deleteMany({ where: { farmId } });
@@ -179,6 +180,7 @@ export async function writeSeed(
       group: breed.group,
       gestationDays: catalog.breedGestationDays.get(breed.name) ?? null,
       isActive: true,
+      updatedAt: createdAt,
     })),
   });
 
@@ -197,6 +199,7 @@ export async function writeSeed(
       maxAgeDays: vaccine.maxAgeDays,
       blockIneligibleSex: vaccine.blockIneligibleSex,
       isActive: true,
+      updatedAt: createdAt,
     })),
   });
 
@@ -209,6 +212,7 @@ export async function writeSeed(
       endsOn: day(cycle.endsOn),
       isOfficial: true,
       createdAt,
+      updatedAt: createdAt,
     })),
   });
 
@@ -228,6 +232,7 @@ export async function writeSeed(
       name: lot.name,
       description: lot.description,
       isActive: true,
+      updatedAt: createdAt,
     })),
   });
 
@@ -238,100 +243,125 @@ export async function writeSeed(
       key: tag.key,
       label: tag.label,
       description: tag.description,
+      updatedAt: createdAt,
       isSystem: tag.isSystem,
     })),
   });
 
-  // --- Animales, en orden de nacimiento para que madre y padre ya existan ---
+  // --- Animales y preñeces, en orden de dependencias (ver el punto 1 de arriba) ---
   const byBirth = [...herd.animals].sort(
     (a, b) => compareIsoDates(a.birthDate, b.birthDate) || a.id.localeCompare(b.id),
   );
+  const pregnancyById = new Map(herd.pregnancies.map((pregnancy) => [pregnancy.id, pregnancy]));
+  const writtenAnimals = new Set<string>();
+  const writtenPregnancies = new Set<string>();
+  let pendingAnimals: SeedAnimal[] = [];
+  let pendingPregnancies: SeedPregnancy[] = [];
 
-  await inChunks(byBirth, (chunk) =>
-    prisma.animal.createMany({
-      data: chunk.map((animal) => ({
-        id: animal.id,
-        farmId,
-        code: animal.code,
-        name: animal.name,
-        sex: animal.sex,
-        breedId: required(catalog.breedIds, animal.breedName, 'la raza'),
-        birthDate: day(animal.birthDate),
-        birthDateEstimated: animal.birthDateEstimated,
-        origin: animal.origin,
-        originDetail: animal.originDetail,
-        entryDate: day(animal.entryDate),
-        damId: animal.damId,
-        sireId: animal.sireId,
-        // Se completa después de insertar las preñeces: la referencia es circular.
-        birthPregnancyId: null,
-        lotId: required(catalog.lotIds, animal.lotKey, 'el lote'),
-        forSale: animal.forSale,
-        exitType: animal.exitType,
-        exitDate: dayOrNull(animal.exitDate),
-        exitReason: animal.exitReason,
-        notes: animal.notes,
-        version: 1,
-        createdById: author,
-        updatedById: author,
-        createdAt: instantOf(animal.entryDate),
-        updatedAt: instantOf(animal.exitDate ?? animal.entryDate),
-      })),
-    }),
-  );
-
-  await inChunks(herd.pregnancies, (chunk) =>
-    prisma.pregnancy.createMany({
-      data: chunk.map((pregnancy) => ({
-        id: pregnancy.id,
-        farmId,
-        damId: pregnancy.damId,
-        serviceDate: day(pregnancy.serviceDate),
-        serviceDateEstimated: pregnancy.serviceDateEstimated,
-        method: pregnancy.method,
-        sireId: pregnancy.sireId,
-        sireExternalRef: pregnancy.sireExternalRef,
-        confirmedAt: dayOrNull(pregnancy.confirmedAt),
-        expectedCalvingDate: day(pregnancy.expectedCalvingDate),
-        outcome: pregnancy.outcome,
-        outcomeDate: dayOrNull(pregnancy.outcomeDate),
-        calvingType: pregnancy.calvingType,
-        stillbornCount: pregnancy.stillbornCount,
-        isImported: pregnancy.isImported,
-        responsible: pregnancy.responsible,
-        notes: pregnancy.notes,
-        version: 1,
-        createdById: author,
-        updatedById: author,
-        createdAt: instantOf(pregnancy.serviceDate),
-        updatedAt: instantOf(pregnancy.outcomeDate ?? pregnancy.serviceDate),
-      })),
-    }),
-  );
-
-  // Cierre del ciclo de referencias: qué preñez trajo a cada cría (RN-05).
-  const born = herd.animals.filter((animal) => animal.birthPregnancyId !== null);
-  for (let index = 0; index < born.length; index += CHUNK) {
-    const chunk = born.slice(index, index + CHUNK);
-    const values = Prisma.join(
-      chunk.map(
-        (animal) => Prisma.sql`(${animal.id}::uuid, ${animal.birthPregnancyId ?? ''}::uuid)`,
-      ),
+  const writePending = async (): Promise<void> => {
+    await inChunks(pendingPregnancies, (chunk) =>
+      prisma.pregnancy.createMany({ data: chunk.map((pregnancy) => pregnancyRow(pregnancy)) }),
     );
-    await prisma.$executeRaw`
-      UPDATE animals AS a
-      SET birth_pregnancy_id = v.pregnancy_id
-      FROM (VALUES ${values}) AS v(animal_id, pregnancy_id)
-      WHERE a.id = v.animal_id`;
+    await inChunks(pendingAnimals, (chunk) =>
+      prisma.animal.createMany({ data: chunk.map((animal) => animalRow(animal)) }),
+    );
+    for (const pregnancy of pendingPregnancies) writtenPregnancies.add(pregnancy.id);
+    for (const animal of pendingAnimals) writtenAnimals.add(animal.id);
+    pendingAnimals = [];
+    pendingPregnancies = [];
+  };
+  const written = (id: string | null): boolean => id === null || writtenAnimals.has(id);
+
+  for (const animal of byBirth) {
+    const pregnancy =
+      animal.birthPregnancyId === null ? undefined : pregnancyById.get(animal.birthPregnancyId);
+    const ready =
+      written(animal.damId) &&
+      written(animal.sireId) &&
+      (pregnancy === undefined || (written(pregnancy.damId) && written(pregnancy.sireId)));
+    if (!ready) await writePending();
+    if (
+      pregnancy !== undefined &&
+      !writtenPregnancies.has(pregnancy.id) &&
+      !pendingPregnancies.includes(pregnancy)
+    ) {
+      pendingPregnancies.push(pregnancy);
+    }
+    pendingAnimals.push(animal);
+  }
+  await writePending();
+  pendingPregnancies = herd.pregnancies.filter(
+    (pregnancy) => !writtenPregnancies.has(pregnancy.id),
+  );
+  await writePending();
+
+  function animalRow(animal: SeedAnimal) {
+    return {
+      id: animal.id,
+      farmId,
+      code: animal.code,
+      name: animal.name,
+      sex: animal.sex,
+      breedId: required(catalog.breedIds, animal.breedName, 'la raza'),
+      birthDate: day(animal.birthDate),
+      birthDateEstimated: animal.birthDateEstimated,
+      origin: animal.origin,
+      originDetail: animal.originDetail,
+      entryDate: day(animal.entryDate),
+      damId: animal.damId,
+      sireId: animal.sireId,
+      birthPregnancyId: animal.birthPregnancyId,
+      lotId: required(catalog.lotIds, animal.lotKey, 'el lote'),
+      forSale: animal.forSale,
+      exitType: animal.exitType,
+      exitDate: dayOrNull(animal.exitDate),
+      exitReason: animal.exitReason,
+      notes: animal.notes,
+      version: 1,
+      createdById: author,
+      updatedById: author,
+      createdAt: instantOf(animal.entryDate),
+      updatedAt: instantOf(animal.exitDate ?? animal.entryDate),
+    };
+  }
+
+  function pregnancyRow(pregnancy: SeedPregnancy) {
+    return {
+      id: pregnancy.id,
+      farmId,
+      damId: pregnancy.damId,
+      serviceDate: day(pregnancy.serviceDate),
+      serviceDateEstimated: pregnancy.serviceDateEstimated,
+      method: pregnancy.method,
+      sireId: pregnancy.sireId,
+      sireExternalRef: pregnancy.sireExternalRef,
+      confirmedAt: dayOrNull(pregnancy.confirmedAt),
+      expectedCalvingDate: day(pregnancy.expectedCalvingDate),
+      outcome: pregnancy.outcome,
+      outcomeDate: dayOrNull(pregnancy.outcomeDate),
+      calvingType: pregnancy.calvingType,
+      stillbornCount: pregnancy.stillbornCount,
+      isImported: pregnancy.isImported,
+      responsible: pregnancy.responsible,
+      notes: pregnancy.notes,
+      version: 1,
+      createdById: author,
+      updatedById: author,
+      createdAt: instantOf(pregnancy.serviceDate),
+      updatedAt: instantOf(pregnancy.outcomeDate ?? pregnancy.serviceDate),
+    };
   }
 
   await prisma.animalTag.createMany({
     data: herd.animals.flatMap((animal) =>
       animal.tagKeys.map((key) => ({
+        id: derivedId(`animal-tag:${animal.id}:${key}`, animal.entryDate),
+        farmId,
         animalId: animal.id,
         tagId: required(catalog.tagIds, key, 'la etiqueta'),
         createdById: author,
         createdAt: instantOf(animal.entryDate),
+        updatedAt: instantOf(animal.entryDate),
       })),
     ),
   });
@@ -346,6 +376,7 @@ export async function writeSeed(
         value: identifier.value,
         assignedAt: day(identifier.assignedAt),
         createdAt: instantOf(identifier.assignedAt),
+        updatedAt: instantOf(identifier.assignedAt),
       })),
     }),
   );
@@ -361,6 +392,7 @@ export async function writeSeed(
       closedAt: instantOf(session.sessionDate),
       createdById: author,
       createdAt: instantOf(session.sessionDate),
+      updatedAt: instantOf(session.sessionDate),
     })),
   });
 
@@ -385,6 +417,7 @@ export async function writeSeed(
           record.workSessionKey === null ? null : (sessionIds.get(record.workSessionKey) ?? null),
         createdById: author,
         createdAt: instantOf(record.appliedOn),
+        updatedAt: instantOf(record.appliedOn),
       })),
     }),
   );
@@ -403,6 +436,7 @@ export async function writeSeed(
           record.workSessionKey === null ? null : (sessionIds.get(record.workSessionKey) ?? null),
         createdById: author,
         createdAt: instantOf(record.weighedOn),
+        updatedAt: instantOf(record.weighedOn),
       })),
     }),
   );
@@ -423,6 +457,7 @@ export async function writeSeed(
       responsible: record.responsible,
       createdById: author,
       createdAt: instantOf(record.startedOn),
+      updatedAt: instantOf(record.startedOn),
     })),
   });
 
@@ -437,6 +472,7 @@ export async function writeSeed(
         movedOn: day(movement.movedOn),
         createdById: author,
         createdAt: instantOf(movement.movedOn),
+        updatedAt: instantOf(movement.movedOn),
       })),
     }),
   );
@@ -452,12 +488,17 @@ export async function writeSeed(
       allocationMethod: expense.allocationMethod,
       createdById: author,
       createdAt: instantOf(expense.occurredOn),
+      updatedAt: instantOf(expense.occurredOn),
     })),
   });
 
   await inChunks(
     economics.expenses.flatMap((expense) =>
-      expense.allocations.map((allocation) => ({ expenseId: expense.id, ...allocation })),
+      expense.allocations.map((allocation) => ({
+        expenseId: expense.id,
+        occurredOn: expense.occurredOn,
+        ...allocation,
+      })),
     ),
     (chunk) =>
       prisma.expenseAllocation.createMany({
@@ -467,6 +508,7 @@ export async function writeSeed(
           expenseId: allocation.expenseId,
           animalId: allocation.animalId,
           amount: allocation.amount,
+          updatedAt: instantOf(allocation.occurredOn),
         })),
       }),
   );
@@ -482,6 +524,7 @@ export async function writeSeed(
       notes: sale.notes,
       createdById: author,
       createdAt: instantOf(sale.soldOn),
+      updatedAt: instantOf(sale.soldOn),
     })),
   });
 
@@ -495,6 +538,7 @@ export async function writeSeed(
       method: valuation.method,
       createdById: author,
       createdAt: instantOf(valuation.valuedOn),
+      updatedAt: instantOf(valuation.valuedOn),
     })),
   });
 

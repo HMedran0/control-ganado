@@ -49,6 +49,7 @@ import type { FastifyReply } from 'fastify';
 import { z } from 'zod';
 
 import { CurrentScope } from '../common/farm-scope/farm-scope.decorator.js';
+import { Idempotent } from '../common/idempotency/idempotent.decorator.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { Roles } from '../common/roles/roles.decorator.js';
 import { ZodBody, ZodValidationPipe } from '../common/validation/zod-validation.pipe.js';
@@ -71,6 +72,9 @@ type PageQuery = z.infer<typeof pageQuerySchema>;
  * transacción, no el interceptor.
  *
  * Las rutas fijas (`search`, `next-code`, `bulk/…`) se declaran antes que `:id`.
+ *
+ * Las acciones que no son creaciones aceptan `Idempotency-Key` (`@Idempotent()`, ADR-012 §2);
+ * las creaciones aceptan el `id` del cliente (ADR-012 §1).
  */
 @Controller('animals')
 export class AnimalsController {
@@ -145,6 +149,7 @@ export class AnimalsController {
   }
 
   @Post('bulk/tags')
+  @Idempotent()
   bulkTags(
     @ZodBody(bulkTagsSchema) body: BulkTagsInput,
     @CurrentScope() scope: FarmScope,
@@ -153,6 +158,7 @@ export class AnimalsController {
   }
 
   @Post('bulk/lot')
+  @Idempotent()
   bulkLot(
     @ZodBody(bulkLotSchema) body: BulkLotInput,
     @CurrentScope() scope: FarmScope,
@@ -179,6 +185,7 @@ export class AnimalsController {
 
   @Post(':id/exit')
   @Roles(ROLE.ADMIN)
+  @Idempotent()
   exit(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(exitAnimalSchema) body: ExitAnimalInput,
@@ -189,6 +196,7 @@ export class AnimalsController {
 
   @Post(':id/revert-exit')
   @Roles(ROLE.ADMIN)
+  @Idempotent()
   revertExit(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(revertExitSchema) body: RevertExitInput,
@@ -199,6 +207,7 @@ export class AnimalsController {
 
   @Post(':id/archive')
   @Roles(ROLE.ADMIN)
+  @Idempotent()
   archive(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(archiveAnimalSchema) body: ArchiveAnimalInput,
@@ -209,6 +218,7 @@ export class AnimalsController {
 
   @Post(':id/restore')
   @Roles(ROLE.ADMIN)
+  @Idempotent()
   restore(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(restoreAnimalSchema) body: RestoreAnimalInput,
@@ -250,6 +260,7 @@ export class IdentifiersController {
   constructor(private readonly identifiers: IdentifiersService) {}
 
   @Post(':id/replace')
+  @Idempotent()
   replace(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(replaceIdentifierSchema) body: ReplaceIdentifierInput,
@@ -259,6 +270,7 @@ export class IdentifiersController {
   }
 
   @Post(':id/retire')
+  @Idempotent()
   retire(
     @Param('id', ParseUUIDPipe) id: string,
     @ZodBody(retireIdentifierSchema) body: RetireIdentifierInput,

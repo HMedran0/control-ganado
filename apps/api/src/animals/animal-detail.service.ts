@@ -33,6 +33,7 @@ import { ENV } from '../config/env.module.js';
 import type { Env } from '../config/env.schema.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { encodeCursor, parsePagination } from '../common/pagination/cursor.js';
+import type { Tx } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { fromPrismaDate, fromPrismaDateOrNull } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
@@ -90,9 +91,18 @@ export class AnimalDetailService {
     @Inject(ENV) private readonly env: Pick<Env, 'APP_TIMEZONE' | 'PUBLIC_WEB_URL'>,
   ) {}
 
-  async detail(scope: FarmScope, id: string, context?: FarmContext): Promise<AnimalDetail> {
+  /**
+   * Ficha del animal. `db` es la transacción cuando la ficha es la respuesta de una acción con
+   * `Idempotency-Key`: se guarda junto con la acción (ADR-012 §2).
+   */
+  async detail(
+    scope: FarmScope,
+    id: string,
+    context?: FarmContext,
+    db: Tx = this.prisma,
+  ): Promise<AnimalDetail> {
     const ctx = context ?? (await this.farmContext.load(scope));
-    const animal = await this.prisma.animal.findFirst({
+    const animal = await db.animal.findFirst({
       where: { id, farmId: scope.farmId },
       include: {
         breed: { select: { id: true, name: true } },
@@ -102,7 +112,10 @@ export class AnimalDetailService {
         identifiers: {
           orderBy: [{ retiredAt: { sort: 'asc', nulls: 'first' } }, { assignedAt: 'desc' }],
         },
-        tags: { include: { tag: { select: { id: true, key: true, label: true } } } },
+        tags: {
+          where: { removedAt: null },
+          include: { tag: { select: { id: true, key: true, label: true } } },
+        },
         pregnancies: {
           select: {
             id: true,
@@ -141,7 +154,7 @@ export class AnimalDetailService {
       })),
     );
     const vaccines =
-      (await this.vaccineStatus.statusesFor(scope, ctx, [animal.id])).get(animal.id) ?? [];
+      (await this.vaccineStatus.statusesFor(scope, ctx, [animal.id], db)).get(animal.id) ?? [];
     const birthDate = fromPrismaDate(animal.birthDate);
     const derived = deriveView(
       {
@@ -227,7 +240,7 @@ export class AnimalDetailService {
           : null,
       vaccines: derived.status === 'ACTIVE' ? vaccines : [],
       withdrawalUntil,
-      codeHistory: await this.codeHistory(scope, animal),
+      codeHistory: await this.codeHistory(scope, animal, db),
       qrUrl: systemQrUrl(this.env.PUBLIC_WEB_URL, animal.id),
       archive:
         animal.deletedAt === null
@@ -237,7 +250,10 @@ export class AnimalDetailService {
     };
 
     if (scope.role !== ROLE.ADMIN) return detail;
-    return { ...detail, economics: { purchasePrice: await this.purchasePrice(scope, animal.id) } };
+    return {
+      ...detail,
+      economics: { purchasePrice: await this.purchasePrice(scope, animal.id, db) },
+    };
   }
 
   /**
@@ -250,12 +266,13 @@ export class AnimalDetailService {
   private async codeHistory(
     scope: FarmScope,
     animal: { id: string; code: string; exitType: ExitType | null; deletedAt: Date | null },
+    db: Tx,
   ): Promise<CodeHistory> {
     const isActive = animal.exitType === null && animal.deletedAt === null;
     const holderState = isActive
       ? Prisma.sql`a.exit_type IS NOT NULL`
       : Prisma.sql`a.exit_type IS NULL`;
-    const rows = await this.prisma.$queryRaw<
+    const rows = await db.$queryRaw<
       { id: string; code: string; exit_type: ExitType | null; exit_date: Date | null }[]
     >(Prisma.sql`
       SELECT a.id, a.code, a.exit_type::text AS exit_type, a.exit_date
@@ -283,8 +300,8 @@ export class AnimalDetailService {
   }
 
   /** Valor de compra: la asignación del gasto `PURCHASE` vigente del animal (ANI-01 CA2). */
-  private async purchasePrice(scope: FarmScope, animalId: string): Promise<string | null> {
-    const allocation = await this.prisma.expenseAllocation.findFirst({
+  private async purchasePrice(scope: FarmScope, animalId: string, db: Tx): Promise<string | null> {
+    const allocation = await db.expenseAllocation.findFirst({
       where: {
         farmId: scope.farmId,
         animalId,

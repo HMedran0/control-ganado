@@ -21,7 +21,14 @@ import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { assertVersion, audit, catalogWrite, changesBetween, type Tx } from './catalog-support.js';
+import {
+  assertVersion,
+  audit,
+  catalogReplay,
+  catalogWrite,
+  changesBetween,
+  type Tx,
+} from './catalog-support.js';
 
 const FIELDS = [
   'name',
@@ -54,23 +61,31 @@ export class VaccinesService {
   }
 
   async create(scope: FarmScope, input: CreateVaccineInput): Promise<VaccineView> {
+    const fields = {
+      name: input.name,
+      disease: input.disease,
+      defaultDose: input.defaultDose ?? null,
+      route: input.route ?? null,
+      scheduleType: input.scheduleType,
+      boosterIntervalDays: input.boosterIntervalDays ?? null,
+      eligibleSex: input.eligibleSex ?? null,
+      minAgeDays: input.minAgeDays ?? null,
+      maxAgeDays: input.maxAgeDays ?? null,
+      blockIneligibleSex: input.blockIneligibleSex ?? false,
+    };
+    if (input.id !== undefined) {
+      const replay = catalogReplay(
+        await this.prisma.vaccine.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+        fields,
+        toView,
+      );
+      if (replay !== null) return replay;
+    }
     return catalogWrite('Vaccine', input.name, () =>
       this.prisma.$transaction(async (tx) => {
         const vaccine = await tx.vaccine.create({
-          data: {
-            id: uuidv7(),
-            farmId: scope.farmId,
-            name: input.name,
-            disease: input.disease,
-            defaultDose: input.defaultDose ?? null,
-            route: input.route ?? null,
-            scheduleType: input.scheduleType,
-            boosterIntervalDays: input.boosterIntervalDays ?? null,
-            eligibleSex: input.eligibleSex ?? null,
-            minAgeDays: input.minAgeDays ?? null,
-            maxAgeDays: input.maxAgeDays ?? null,
-            blockIneligibleSex: input.blockIneligibleSex ?? false,
-          },
+          data: { id: input.id ?? uuidv7(), farmId: scope.farmId, ...fields },
         });
         await audit(tx, {
           scope,

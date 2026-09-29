@@ -98,6 +98,7 @@ export async function createAnimal(
  */
 export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.auditLog.deleteMany();
+  await prisma.idempotencyKey.deleteMany();
   await prisma.workSessionEntry.deleteMany();
   await prisma.expenseAllocation.deleteMany();
   await prisma.expense.deleteMany();

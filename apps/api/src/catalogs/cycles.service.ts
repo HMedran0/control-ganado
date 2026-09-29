@@ -21,7 +21,14 @@ import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { assertVersion, audit, catalogWrite, changesBetween, type Tx } from './catalog-support.js';
+import {
+  assertVersion,
+  audit,
+  catalogReplay,
+  catalogWrite,
+  changesBetween,
+  type Tx,
+} from './catalog-support.js';
 
 const FIELDS = ['name', 'startsOn', 'endsOn', 'isOfficial', 'isActive', 'vaccineIds'] as const;
 
@@ -59,10 +66,29 @@ export class CyclesService {
 
   /** Crea un ciclo. Si se cruza con otro ciclo activo, se guarda y se advierte. */
   async create(scope: FarmScope, input: CreateCycleInput): Promise<WithWarnings<CycleView>> {
+    if (input.id !== undefined) {
+      const replay = catalogReplay(
+        await this.prisma.vaccinationCycle.findUnique({
+          where: { id: input.id },
+          include: { vaccines: { include: { vaccine: { select: { id: true, name: true } } } } },
+        }),
+        scope.farmId,
+        {
+          name: input.name,
+          startsOn: input.startsOn,
+          endsOn: input.endsOn,
+          isOfficial: input.isOfficial ?? true,
+          vaccineIds: [...input.vaccineIds].sort(),
+        },
+        (row): WithWarnings<CycleView> => ({ ...toView(row), warnings: [] }),
+        (view) => ({ ...view, vaccineIds: view.vaccines.map((vaccine) => vaccine.id).sort() }),
+      );
+      if (replay !== null) return replay;
+    }
     return catalogWrite('VaccinationCycle', input.name, () =>
       this.prisma.$transaction(async (tx) => {
         await assertVaccinesOfFarm(tx, scope, input.vaccineIds);
-        const id = uuidv7();
+        const id = input.id ?? uuidv7();
         await tx.vaccinationCycle.create({
           data: {
             id,

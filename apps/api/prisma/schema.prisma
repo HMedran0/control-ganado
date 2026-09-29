@@ -148,18 +148,20 @@ model Farm {
   settings       Json
   version        Int      @default(1)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
-  memberships   Membership[]
-  animals       Animal[]
-  breeds        Breed[]
-  vaccines      Vaccine[]
-  lots          Lot[]
-  tags          Tag[]
-  expenses      Expense[]
-  workSessions  WorkSession[]
-  cycles        VaccinationCycle[]
-  importBatches ImportBatch[]
+  memberships     Membership[]
+  animals         Animal[]
+  breeds          Breed[]
+  vaccines        Vaccine[]
+  lots            Lot[]
+  tags            Tag[]
+  expenses        Expense[]
+  workSessions    WorkSession[]
+  cycles          VaccinationCycle[]
+  importBatches   ImportBatch[]
+  animalTags      AnimalTag[]
+  idempotencyKeys IdempotencyKey[]
 
   @@map("farms")
 }
@@ -229,11 +231,13 @@ model Breed {
   gestationDays Int?       @map("gestation_days")
   isActive      Boolean    @default(true) @map("is_active")
   version       Int        @default(1)
+  updatedAt     DateTime   @default(now()) @map("updated_at") @db.Timestamptz
 
   farm    Farm     @relation(fields: [farmId], references: [id])
   animals Animal[]
 
   @@unique([farmId, name])
+  @@index([farmId, updatedAt])
   @@map("breeds")
 }
 
@@ -252,45 +256,51 @@ model Vaccine {
   blockIneligibleSex  Boolean             @default(false) @map("block_ineligible_sex")
   isActive            Boolean             @default(true) @map("is_active")
   version             Int                 @default(1)
+  updatedAt           DateTime            @default(now()) @map("updated_at") @db.Timestamptz
 
   farm    Farm                      @relation(fields: [farmId], references: [id])
   records VaccinationRecord[]
   cycles  VaccinationCycleVaccine[]
 
   @@unique([farmId, name])
+  @@index([farmId, updatedAt])
   @@map("vaccines")
 }
 
 model Lot {
-  id          String  @id @db.Uuid
-  farmId      String  @map("farm_id") @db.Uuid
+  id          String   @id @db.Uuid
+  farmId      String   @map("farm_id") @db.Uuid
   name        String
   description String?
-  isActive    Boolean @default(true) @map("is_active")
-  version     Int     @default(1)
+  isActive    Boolean  @default(true) @map("is_active")
+  version     Int      @default(1)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   farm    Farm     @relation(fields: [farmId], references: [id])
   animals Animal[]
 
   @@unique([farmId, name])
+  @@index([farmId, updatedAt])
   @@map("lots")
 }
 
 model Tag {
-  id          String  @id @db.Uuid
-  farmId      String  @map("farm_id") @db.Uuid
+  id          String   @id @db.Uuid
+  farmId      String   @map("farm_id") @db.Uuid
   // Se genera del nombre al crear la etiqueta y no cambia aunque se renombre (M3).
   key         String
   label       String
   description String?
-  isSystem    Boolean @default(false) @map("is_system")
-  isActive    Boolean @default(true) @map("is_active")
-  version     Int     @default(1)
+  isSystem    Boolean  @default(false) @map("is_system")
+  isActive    Boolean  @default(true) @map("is_active")
+  version     Int      @default(1)
+  updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   farm    Farm        @relation(fields: [farmId], references: [id])
   animals AnimalTag[]
 
   @@unique([farmId, key])
+  @@index([farmId, updatedAt])
   @@map("tags")
 }
 
@@ -327,7 +337,7 @@ model Animal {
   createdById           String    @map("created_by_id") @db.Uuid
   updatedById           String    @map("updated_by_id") @db.Uuid
   createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+  updatedAt             DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   deletedAt             DateTime? @map("deleted_at") @db.Timestamptz
   deletedReason         String?   @map("deleted_reason")
 
@@ -365,20 +375,32 @@ model Animal {
   // nombre para que `prisma migrate dev` no los tome por sobrantes y los elimine.
   @@index([code(ops: raw("gin_trgm_ops"))], map: "animals_code_trgm_idx", type: Gin)
   @@index([name(ops: raw("gin_trgm_ops"))], map: "animals_name_trgm_idx", type: Gin)
+  @@index([farmId, updatedAt])
   @@map("animals")
 }
 
+/// Etiqueta manual de un animal (CLS-02). Quitar una etiqueta no borra la fila: se marca
+/// `removed_at` (ADR-012), para que la sincronización lleve el cambio. Una etiqueta vigente es
+/// única por animal: índice único parcial (animal_id, tag_id) WHERE removed_at IS NULL, en la
+/// migración SQL.
 model AnimalTag {
-  animalId    String   @map("animal_id") @db.Uuid
-  tagId       String   @map("tag_id") @db.Uuid
-  createdById String   @map("created_by_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  id          String    @id @db.Uuid
+  farmId      String    @map("farm_id") @db.Uuid
+  animalId    String    @map("animal_id") @db.Uuid
+  tagId       String    @map("tag_id") @db.Uuid
+  createdById String    @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  removedAt   DateTime? @map("removed_at") @db.Timestamptz
+  removedById String?   @map("removed_by_id") @db.Uuid
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
+  farm   Farm   @relation(fields: [farmId], references: [id])
   animal Animal @relation(fields: [animalId], references: [id])
   tag    Tag    @relation(fields: [tagId], references: [id])
 
-  @@id([animalId, tagId])
+  @@index([animalId])
   @@index([tagId])
+  @@index([farmId, updatedAt])
   @@map("animal_tags")
 }
 
@@ -393,6 +415,7 @@ model Identifier {
   retireReason IdentifierRetireReason? @map("retire_reason")
   replacedById String?                 @map("replaced_by_id") @db.Uuid
   createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime                @default(now()) @map("updated_at") @db.Timestamptz
 
   animal     Animal       @relation(fields: [animalId], references: [id])
   replacedBy Identifier?  @relation("IdentifierReplacement", fields: [replacedById], references: [id])
@@ -402,6 +425,7 @@ model Identifier {
   @@index([farmId, value])
   @@index([animalId])
   @@index([value(ops: raw("gin_trgm_ops"))], map: "identifiers_value_trgm_idx", type: Gin)
+  @@index([farmId, updatedAt])
   @@map("identifiers")
 }
 
@@ -427,7 +451,7 @@ model Pregnancy {
   createdById          String           @map("created_by_id") @db.Uuid
   updatedById          String           @map("updated_by_id") @db.Uuid
   createdAt            DateTime         @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt            DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+  updatedAt            DateTime         @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt             DateTime?        @map("voided_at") @db.Timestamptz
   voidReason           String?          @map("void_reason")
 
@@ -438,6 +462,7 @@ model Pregnancy {
   // Único parcial (dam_id) WHERE outcome='PENDING' AND voided_at IS NULL → migración SQL manual.
   @@index([farmId, outcome, expectedCalvingDate])
   @@index([damId])
+  @@index([farmId, updatedAt])
   @@map("pregnancies")
 }
 
@@ -457,6 +482,7 @@ model VaccinationRecord {
   notes         String?
   createdById   String    @map("created_by_id") @db.Uuid
   createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt      DateTime? @map("voided_at") @db.Timestamptz
   voidReason    String?   @map("void_reason")
 
@@ -467,6 +493,7 @@ model VaccinationRecord {
 
   @@index([farmId, animalId, vaccineId, appliedOn(sort: Desc)])
   @@index([farmId, nextDueOn])
+  @@index([farmId, updatedAt])
   @@map("vaccination_records")
 }
 
@@ -487,6 +514,7 @@ model TreatmentRecord {
   notes              String?
   createdById        String    @map("created_by_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt           DateTime? @map("voided_at") @db.Timestamptz
   voidReason         String?   @map("void_reason")
 
@@ -495,6 +523,7 @@ model TreatmentRecord {
 
   @@index([farmId, animalId])
   @@index([farmId, withdrawalUntil])
+  @@index([farmId, updatedAt])
   @@map("treatment_records")
 }
 
@@ -510,6 +539,7 @@ model WeightRecord {
   notes         String?
   createdById   String       @map("created_by_id") @db.Uuid
   createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime     @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt      DateTime?    @map("voided_at") @db.Timestamptz
   voidReason    String?      @map("void_reason")
 
@@ -517,6 +547,7 @@ model WeightRecord {
   workSession WorkSession? @relation(fields: [workSessionId], references: [id])
 
   @@index([animalId, weighedOn(sort: Desc)])
+  @@index([farmId, updatedAt])
   @@map("weight_records")
 }
 
@@ -530,10 +561,12 @@ model LotMovement {
   workSessionId String?  @map("work_session_id") @db.Uuid
   createdById   String   @map("created_by_id") @db.Uuid
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   animal Animal @relation(fields: [animalId], references: [id])
 
   @@index([animalId])
+  @@index([farmId, updatedAt])
   @@map("lot_movements")
 }
 
@@ -547,6 +580,7 @@ model Expense {
   allocationMethod AllocationMethod @map("allocation_method")
   createdById      String           @map("created_by_id") @db.Uuid
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime         @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt         DateTime?        @map("voided_at") @db.Timestamptz
   voidReason       String?          @map("void_reason")
 
@@ -554,21 +588,24 @@ model Expense {
   allocations ExpenseAllocation[]
 
   @@index([farmId, occurredOn])
+  @@index([farmId, updatedAt])
   @@map("expenses")
 }
 
 model ExpenseAllocation {
-  id        String  @id @db.Uuid
-  farmId    String  @map("farm_id") @db.Uuid
-  expenseId String  @map("expense_id") @db.Uuid
-  animalId  String  @map("animal_id") @db.Uuid
-  amount    Decimal @db.Decimal(14, 2)
+  id        String   @id @db.Uuid
+  farmId    String   @map("farm_id") @db.Uuid
+  expenseId String   @map("expense_id") @db.Uuid
+  animalId  String   @map("animal_id") @db.Uuid
+  amount    Decimal  @db.Decimal(14, 2)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   expense Expense @relation(fields: [expenseId], references: [id])
   animal  Animal  @relation(fields: [animalId], references: [id])
 
   @@index([animalId])
   @@index([expenseId])
+  @@index([farmId, updatedAt])
   @@map("expense_allocations")
 }
 
@@ -582,6 +619,7 @@ model Sale {
   notes       String?
   createdById String    @map("created_by_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt    DateTime? @map("voided_at") @db.Timestamptz
   voidReason  String?   @map("void_reason")
 
@@ -589,6 +627,7 @@ model Sale {
 
   // Único parcial (animal_id) WHERE voided_at IS NULL → migración SQL manual.
   @@index([farmId, soldOn])
+  @@index([farmId, updatedAt])
   @@map("sales")
 }
 
@@ -601,10 +640,12 @@ model Valuation {
   method      ValuationMethod
   createdById String          @map("created_by_id") @db.Uuid
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime        @default(now()) @map("updated_at") @db.Timestamptz
 
   animal Animal @relation(fields: [animalId], references: [id])
 
   @@index([animalId, valuedOn(sort: Desc)])
+  @@index([farmId, updatedAt])
   @@map("valuations")
 }
 
@@ -619,6 +660,7 @@ model WorkSession {
   closedAt      DateTime?         @map("closed_at") @db.Timestamptz
   createdById   String            @map("created_by_id") @db.Uuid
   createdAt     DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime          @default(now()) @map("updated_at") @db.Timestamptz
 
   farm         Farm                @relation(fields: [farmId], references: [id])
   entries      WorkSessionEntry[]
@@ -627,6 +669,7 @@ model WorkSession {
   weights      WeightRecord[]
 
   @@index([farmId, sessionDate])
+  @@index([farmId, updatedAt])
   @@map("work_sessions")
 }
 
@@ -669,6 +712,7 @@ model VaccinationCycle {
   isActive   Boolean  @default(true) @map("is_active")
   version    Int      @default(1)
   createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
   farm         Farm                      @relation(fields: [farmId], references: [id])
   vaccines     VaccinationCycleVaccine[]
@@ -676,6 +720,7 @@ model VaccinationCycle {
 
   @@unique([farmId, name])
   @@index([farmId, startsOn])
+  @@index([farmId, updatedAt])
   @@map("vaccination_cycles")
 }
 
@@ -688,6 +733,29 @@ model VaccinationCycleVaccine {
 
   @@id([cycleId, vaccineId])
   @@map("vaccination_cycle_vaccines")
+}
+
+/// Respuesta guardada de una acción con encabezado `Idempotency-Key` (ADR-012 §2): la misma
+/// clave con la misma petición devuelve esta respuesta sin repetir la acción. Se purga a los 7
+/// días. Nunca guarda respuestas de `/auth`. La importación no la usa: su clave vive en
+/// `import_batches.idempotency_key` (ADR-011).
+model IdempotencyKey {
+  id             String   @id @db.Uuid
+  farmId         String   @map("farm_id") @db.Uuid
+  key            String   @db.Uuid
+  method         String
+  path           String
+  /// SHA-256 del método, la ruta y el cuerpo canónico de la petición.
+  requestHash    String   @map("request_hash")
+  responseStatus Int      @map("response_status")
+  responseBody   Json     @map("response_body")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@unique([farmId, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
 }
 
 model ImportBatch {

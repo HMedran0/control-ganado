@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import {
   AUDIT_ACTION,
   DomainError,
+  normalizeIdentifier,
   uuidv7,
   type AddIdentifierInput,
   type IdentifierView,
@@ -13,6 +14,12 @@ import {
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import {
+  asReplayed,
+  assertSameContent,
+  ownRecordOrConflict,
+} from '../common/idempotency/client-id.js';
+import { TransactionsService } from '../common/idempotency/transactions.service.js';
 import { audit, isUniqueViolation, type Tx } from '../common/persistence.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
@@ -32,6 +39,7 @@ export class IdentifiersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly clock: Clock,
+    private readonly transactions: TransactionsService,
   ) {}
 
   async add(
@@ -42,6 +50,26 @@ export class IdentifiersService {
     const today = this.clock.today();
     const assignedAt = input.assignedAt ?? today;
     const at = this.clock.now();
+
+    // ADR-012 §1: el mismo `id` con el mismo identificador devuelve el ya creado (200).
+    if (input.id !== undefined) {
+      const existing = ownRecordOrConflict(
+        await this.prisma.identifier.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+      );
+      if (existing !== null) {
+        assertSameContent(
+          {
+            animalId,
+            type: input.type,
+            value: normalizeIdentifier(input.type, input.value),
+            assignedAt: input.assignedAt,
+          },
+          { ...toIdentifierView(existing) },
+        );
+        return asReplayed({ ...toIdentifierView(existing), warnings: [] });
+      }
+    }
 
     return this.write(async (tx) => {
       const animal = await editableAnimal(tx, scope, animalId);
@@ -54,7 +82,7 @@ export class IdentifiersService {
       });
       const created = await tx.identifier.create({
         data: {
-          id: uuidv7(),
+          id: input.id ?? uuidv7(),
           farmId: scope.farmId,
           animalId,
           type: checked.type,
@@ -193,7 +221,7 @@ export class IdentifiersService {
   /** Transacción con la traducción del choque del índice único de los activos (RN-19). */
   private async write<T>(work: (tx: Tx) => Promise<T>): Promise<T> {
     try {
-      return await this.prisma.$transaction(work);
+      return await this.transactions.run(work);
     } catch (error) {
       if (isUniqueViolation(error)) {
         throw new DomainError('IDENTIFIER_TAKEN', {

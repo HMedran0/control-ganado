@@ -7,6 +7,7 @@ import {
   SEX,
   WEIGHT_METHOD,
   formatAge,
+  normalizeIdentifier,
   monthsBetween,
   uuidv7,
   warning,
@@ -22,6 +23,12 @@ import {
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import {
+  asReplayed,
+  assertSameContent,
+  ownRecordOrConflict,
+} from '../common/idempotency/client-id.js';
+import { TransactionsService } from '../common/idempotency/transactions.service.js';
 import {
   assertVersion,
   audit,
@@ -90,6 +97,30 @@ function snapshot(animal: AnimalRow): AnimalSnapshot {
   };
 }
 
+/** Los campos de la petición de alta como quedarían guardados (lo omitido, con su defecto). */
+function snapshotOfInput(
+  input: CreateAnimalInput,
+  entryDate: IsoDate,
+): Omit<AnimalSnapshot, 'photoUrl'> {
+  return {
+    code: input.code,
+    name: input.name ?? null,
+    sex: input.sex,
+    breedId: input.breedId,
+    birthDate: input.birthDate,
+    birthDateEstimated: input.birthDateEstimated ?? false,
+    origin: input.origin,
+    originDetail: input.originDetail ?? null,
+    entryDate,
+    damId: input.damId ?? null,
+    sireId: input.sireId ?? null,
+    sireExternalRef: input.sireExternalRef ?? null,
+    lotId: input.lotId ?? null,
+    notes: input.notes ?? null,
+    forSale: input.forSale ?? false,
+  };
+}
+
 /** Traduce los choques de índice único de un animal o sus identificadores. */
 function translateUniqueViolation(error: unknown, code: string): never {
   if (isUniqueViolation(error)) {
@@ -121,6 +152,7 @@ export class AnimalsService {
     private readonly clock: Clock,
     private readonly farmContext: FarmContextService,
     private readonly details: AnimalDetailService,
+    private readonly transactions: TransactionsService,
   ) {}
 
   // -------------------------------------------------------------------------------------------
@@ -130,17 +162,19 @@ export class AnimalsService {
   async create(scope: FarmScope, input: CreateAnimalInput): Promise<AnimalDetailWithWarnings> {
     const context = await this.farmContext.load(scope);
 
-    // Idempotencia (05): el mismo `id` otra vez devuelve el animal ya creado.
+    // ADR-012 §1: el mismo `id` con el mismo contenido devuelve el animal ya creado (200); con
+    // otro contenido o de otra finca, `CLIENT_ID_CONFLICT`.
     if (input.id !== undefined) {
-      const existing = await this.prisma.animal.findUnique({
-        where: { id: input.id },
-        select: { farmId: true },
-      });
+      const existing = ownRecordOrConflict(
+        await this.prisma.animal.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+      );
       if (existing !== null) {
-        if (existing.farmId !== scope.farmId) {
-          throw fieldError('VALIDATION_FAILED', 'id', 'Ese identificador ya está en uso.');
-        }
-        return { ...(await this.details.detail(scope, input.id, context)), warnings: [] };
+        await this.assertSameAnimal(scope, input, existing, context);
+        return asReplayed({
+          ...(await this.details.detail(scope, input.id, context)),
+          warnings: [],
+        });
       }
     }
 
@@ -259,6 +293,8 @@ export class AnimalsService {
         if ((input.tagIds ?? []).length > 0) {
           await tx.animalTag.createMany({
             data: [...new Set(input.tagIds)].map((tagId) => ({
+              id: uuidv7(),
+              farmId: scope.farmId,
               animalId: id,
               tagId,
               createdById: userId,
@@ -440,7 +476,6 @@ export class AnimalsService {
             ...(input.forSale === undefined ? {} : { forSale: input.forSale }),
             version: { increment: 1 },
             updatedById: userId,
-            updatedAt: at,
           },
         });
 
@@ -501,7 +536,7 @@ export class AnimalsService {
     const add = [...new Set(input.add ?? [])];
     const remove = [...new Set(input.remove ?? [])];
 
-    await this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animals = await this.lockEditable(tx, scope, input.animalIds);
       if (add.length > 0)
         await this.assertCatalogRefs(tx, scope, { breedId: null, lotId: null, tagIds: add });
@@ -517,7 +552,7 @@ export class AnimalsService {
       }
 
       const links = await tx.animalTag.findMany({
-        where: { animalId: { in: input.animalIds } },
+        where: { animalId: { in: input.animalIds }, removedAt: null },
         select: { animalId: true, tagId: true },
       });
       const tagsOf = (animalId: string) =>
@@ -527,18 +562,33 @@ export class AnimalsService {
           .sort();
 
       if (add.length > 0) {
+        // Solo las que el animal no tiene vigentes: el índice único parcial de las vigentes no
+        // admite otra fila igual, y una quitada antes se vuelve a agregar como fila nueva.
         await tx.animalTag.createMany({
           data: input.animalIds.flatMap((animalId) =>
-            add.map((tagId) => ({ animalId, tagId, createdById: userId, createdAt: at })),
+            add
+              .filter((tagId) => !tagsOf(animalId).includes(tagId))
+              .map((tagId) => ({
+                id: uuidv7(),
+                farmId: scope.farmId,
+                animalId,
+                tagId,
+                createdById: userId,
+                createdAt: at,
+              })),
           ),
-          skipDuplicates: true,
         });
       }
       if (remove.length > 0) {
-        // Es la relación animal–etiqueta, no un dato de negocio: quitarla es la edición en sí,
-        // y queda en la auditoría con el antes y el después.
-        await tx.animalTag.deleteMany({
-          where: { animalId: { in: input.animalIds }, tagId: { in: remove } },
+        // Quitar una etiqueta no borra la fila (ADR-012): queda con `removed_at` para que la
+        // sincronización lleve el cambio, y en la auditoría con el antes y el después.
+        await tx.animalTag.updateMany({
+          where: {
+            animalId: { in: input.animalIds },
+            tagId: { in: remove },
+            removedAt: null,
+          },
+          data: { removedAt: at, removedById: userId },
         });
       }
       if (input.forSale !== undefined) {
@@ -548,7 +598,6 @@ export class AnimalsService {
             forSale: input.forSale,
             version: { increment: 1 },
             updatedById: userId,
-            updatedAt: at,
           },
         });
       }
@@ -571,9 +620,8 @@ export class AnimalsService {
           diff,
         });
       }
+      return { updated: input.animalIds.length };
     });
-
-    return { updated: input.animalIds.length };
   }
 
   /** Cambia de lote a varios animales con la fecha indicada y deja un `LotMovement` por cada uno. */
@@ -584,7 +632,7 @@ export class AnimalsService {
     const userId = userOf(scope);
     const at = this.clock.now();
 
-    return this.prisma.$transaction(async (tx) => {
+    return this.transactions.run(async (tx) => {
       const animals = await this.lockEditable(tx, scope, input.animalIds);
       await this.assertCatalogRefs(tx, scope, { breedId: null, lotId: input.lotId, tagIds: [] });
 
@@ -598,7 +646,6 @@ export class AnimalsService {
             lotId: input.lotId,
             version: { increment: 1 },
             updatedById: userId,
-            updatedAt: at,
           },
         });
         await tx.lotMovement.create({
@@ -832,6 +879,86 @@ export class AnimalsService {
   // -------------------------------------------------------------------------------------------
 
   /** Gasto `PURCHASE` asignado 100 % al animal. */
+  /**
+   * ADR-012 §1: ¿el animal guardado con ese `id` es el que describe la petición? Compara los
+   * campos del registro como se guardan (lo omitido toma su valor por defecto), las etiquetas y
+   * los identificadores vigentes, el peso inicial y, para el ADMIN, el valor de compra.
+   *
+   * @throws {DomainError} `CLIENT_ID_CONFLICT` si algo difiere.
+   */
+  private async assertSameAnimal(
+    scope: FarmScope,
+    input: CreateAnimalInput,
+    existing: AnimalRow,
+    context: FarmContext,
+  ): Promise<void> {
+    const entryDate = input.origin === ORIGIN.PURCHASED ? input.entryDate : input.birthDate;
+    const [tags, identifiers, firstWeight, purchasePrice] = await Promise.all([
+      this.prisma.animalTag.findMany({
+        where: { animalId: existing.id, removedAt: null },
+        select: { tagId: true },
+      }),
+      this.prisma.identifier.findMany({
+        where: { animalId: existing.id, retiredAt: null },
+        select: { type: true, value: true },
+      }),
+      this.prisma.weightRecord.findFirst({
+        where: { animalId: existing.id, voidedAt: null },
+        orderBy: [{ weighedOn: 'asc' }, { createdAt: 'asc' }],
+        select: { weightKg: true, method: true, weighedOn: true },
+      }),
+      input.purchasePrice === undefined
+        ? Promise.resolve(null)
+        : this.details
+            .detail(scope, existing.id, context)
+            .then((detail) => detail.economics?.purchasePrice ?? null),
+    ]);
+
+    const requestedIdentifiers = (input.identifiers ?? []).map(
+      (identifier) =>
+        `${identifier.type}:${normalizeIdentifier(identifier.type, identifier.value)}`,
+    );
+    assertSameContent(
+      {
+        ...snapshotOfInput(input, entryDate ?? input.birthDate),
+        tagIds: [...new Set(input.tagIds ?? [])].sort(),
+        identifiers: requestedIdentifiers.sort(),
+        initialWeight:
+          input.initialWeight === undefined
+            ? undefined
+            : {
+                weightKg: input.initialWeight.weightKg,
+                method: input.initialWeight.method ?? WEIGHT_METHOD.SCALE,
+                ...(input.initialWeight.weighedOn === undefined
+                  ? {}
+                  : { weighedOn: input.initialWeight.weighedOn }),
+              },
+        purchasePrice:
+          input.purchasePrice === undefined
+            ? undefined
+            : new Prisma.Decimal(input.purchasePrice).toFixed(2),
+      },
+      {
+        ...snapshot(existing),
+        tagIds: tags.map((tag) => tag.tagId).sort(),
+        identifiers: identifiers
+          .map((identifier) => `${identifier.type}:${identifier.value}`)
+          .sort(),
+        initialWeight:
+          firstWeight === null
+            ? null
+            : {
+                weightKg: Number(firstWeight.weightKg),
+                method: firstWeight.method,
+                ...(input.initialWeight?.weighedOn === undefined
+                  ? {}
+                  : { weighedOn: fromPrismaDate(firstWeight.weighedOn) }),
+              },
+        purchasePrice,
+      },
+    );
+  }
+
   private async createPurchaseExpense(
     tx: Tx,
     scope: FarmScope,

@@ -107,6 +107,7 @@ export async function writeNuevaSeed(
       name: breed.name,
       group: breed.group,
       gestationDays: defaultGestationDaysForGroup(breed.group),
+      updatedAt: createdAt,
     })),
   });
   await prisma.lot.createMany({
@@ -115,6 +116,7 @@ export async function writeNuevaSeed(
       farmId: seed.farmId,
       name: lot.name,
       description: lot.description,
+      updatedAt: createdAt,
     })),
   });
 

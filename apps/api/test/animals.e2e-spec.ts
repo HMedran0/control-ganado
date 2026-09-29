@@ -140,10 +140,16 @@ describe('Animales e identificadores', () => {
       expect(animal.warnings.map((warning) => warning.code)).toEqual(['RFID_FOREIGN_COUNTRY']);
     });
 
-    it('repetir la misma petición con el mismo id no duplica (05, idempotencia)', async () => {
+    it('repetir la misma petición con el mismo id no duplica: 200 (ADR-012 §1)', async () => {
       const id = uuidv7();
       const first = await create({ ...base(), id });
-      const second = await create({ ...base(), id });
+      const second = (
+        await http()
+          .post('/api/v1/animals')
+          .set(operator)
+          .send({ ...base(), id })
+          .expect(200)
+      ).body as AnimalDetailWithWarnings;
       expect(second.id).toBe(first.id);
       expect(await prisma.animal.count({ where: { farmId: esperanza.farmId } })).toBe(1);
     });

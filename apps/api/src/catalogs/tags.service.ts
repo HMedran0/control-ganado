@@ -16,7 +16,14 @@ import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { assertVersion, audit, catalogWrite, changesBetween, type Tx } from './catalog-support.js';
+import {
+  assertVersion,
+  audit,
+  catalogReplay,
+  catalogWrite,
+  changesBetween,
+  type Tx,
+} from './catalog-support.js';
 
 const FIELDS = ['label', 'description', 'isActive'] as const;
 
@@ -41,11 +48,20 @@ export class TagsService {
    * es la referencia estable (filtros, exportaciones), el nombre es solo lo que se ve.
    */
   async create(scope: FarmScope, input: CreateTagInput): Promise<TagView> {
+    if (input.id !== undefined) {
+      const replay = catalogReplay(
+        await this.prisma.tag.findUnique({ where: { id: input.id } }),
+        scope.farmId,
+        { label: input.label, description: input.description ?? null },
+        toView,
+      );
+      if (replay !== null) return replay;
+    }
     return catalogWrite('Tag', input.label, () =>
       this.prisma.$transaction(async (tx) => {
         const tag = await tx.tag.create({
           data: {
-            id: uuidv7(),
+            id: input.id ?? uuidv7(),
             farmId: scope.farmId,
             key: await freeKey(tx, scope, tagKeyFromLabel(input.label)),
             label: input.label,

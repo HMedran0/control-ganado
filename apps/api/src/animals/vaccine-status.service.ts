@@ -10,6 +10,7 @@ import {
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
+import type { Tx } from '../common/persistence.js';
 import { fromPrismaDate, fromPrismaDateOrNull } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import type { FarmContext } from './farm-context.service.js';
@@ -35,11 +36,15 @@ export class VaccineStatusService {
     scope: FarmScope,
     context: FarmContext,
     animalIds: readonly string[] | 'ALL_ACTIVE',
+    db: Tx = this.prisma,
   ): Promise<Map<string, VaccineStatusView[]>> {
     const result = new Map<string, VaccineStatusView[]>();
     if (animalIds !== 'ALL_ACTIVE' && animalIds.length === 0) return result;
 
-    const [vaccines, cycles] = await Promise.all([this.vaccines(scope), this.cycles(scope)]);
+    const [vaccines, cycles] = await Promise.all([
+      this.vaccines(scope, db),
+      this.cycles(scope, db),
+    ]);
     if (vaccines.length === 0) return result;
 
     const animalWhere =
@@ -48,11 +53,11 @@ export class VaccineStatusService {
         : { farmId: scope.farmId, id: { in: [...animalIds] }, deletedAt: null, exitType: null };
 
     const [animals, records] = await Promise.all([
-      this.prisma.animal.findMany({
+      db.animal.findMany({
         where: animalWhere,
         select: { id: true, sex: true, birthDate: true, entryDate: true },
       }),
-      this.prisma.vaccinationRecord.findMany({
+      db.vaccinationRecord.findMany({
         where: {
           farmId: scope.farmId,
           vaccineId: { in: vaccines.map((vaccine) => vaccine.id) },
@@ -121,8 +126,8 @@ export class VaccineStatusService {
   }
 
   /** Vacunas activas que generan alertas, en orden alfabético. */
-  private async vaccines(scope: FarmScope): Promise<CatalogVaccine[]> {
-    const rows = await this.prisma.vaccine.findMany({
+  private async vaccines(scope: FarmScope, db: Tx): Promise<CatalogVaccine[]> {
+    const rows = await db.vaccine.findMany({
       where: {
         farmId: scope.farmId,
         isActive: true,
@@ -145,8 +150,9 @@ export class VaccineStatusService {
   /** Ciclos oficiales activos con las vacunas que incluyen (SAN-06). */
   private async cycles(
     scope: FarmScope,
+    db: Tx,
   ): Promise<(VaccinationCycleLike & { readonly vaccineIds: ReadonlySet<string> })[]> {
-    const rows = await this.prisma.vaccinationCycle.findMany({
+    const rows = await db.vaccinationCycle.findMany({
       where: { farmId: scope.farmId, isActive: true, isOfficial: true },
       include: { vaccines: { select: { vaccineId: true } } },
     });
