@@ -41,10 +41,18 @@ export class VaccineStatusService {
     const result = new Map<string, VaccineStatusView[]>();
     if (animalIds !== 'ALL_ACTIVE' && animalIds.length === 0) return result;
 
-    const [vaccines, cycles] = await Promise.all([
-      this.vaccines(scope, db),
-      this.cycles(scope, db),
-    ]);
+    // Dentro de una transacción las consultas van en serie: comparten una sola conexión, y
+    // node-postgres ya no admite consultas simultáneas en el mismo cliente.
+    const inTransaction = db !== this.prisma;
+    const both = <A, B>(first: () => Promise<A>, second: () => Promise<B>): Promise<[A, B]> =>
+      inTransaction
+        ? first().then(async (a) => [a, await second()] as [A, B])
+        : Promise.all([first(), second()]);
+
+    const [vaccines, cycles] = await both(
+      () => this.vaccines(scope, db),
+      () => this.cycles(scope, db),
+    );
     if (vaccines.length === 0) return result;
 
     const animalWhere =
@@ -52,26 +60,28 @@ export class VaccineStatusService {
         ? { farmId: scope.farmId, deletedAt: null, exitType: null }
         : { farmId: scope.farmId, id: { in: [...animalIds] }, deletedAt: null, exitType: null };
 
-    const [animals, records] = await Promise.all([
-      db.animal.findMany({
-        where: animalWhere,
-        select: { id: true, sex: true, birthDate: true, entryDate: true },
-      }),
-      db.vaccinationRecord.findMany({
-        where: {
-          farmId: scope.farmId,
-          vaccineId: { in: vaccines.map((vaccine) => vaccine.id) },
-          animal: animalWhere,
-        },
-        select: {
-          animalId: true,
-          vaccineId: true,
-          appliedOn: true,
-          nextDueOn: true,
-          voidedAt: true,
-        },
-      }),
-    ]);
+    const [animals, records] = await both(
+      () =>
+        db.animal.findMany({
+          where: animalWhere,
+          select: { id: true, sex: true, birthDate: true, entryDate: true },
+        }),
+      () =>
+        db.vaccinationRecord.findMany({
+          where: {
+            farmId: scope.farmId,
+            vaccineId: { in: vaccines.map((vaccine) => vaccine.id) },
+            animal: animalWhere,
+          },
+          select: {
+            animalId: true,
+            vaccineId: true,
+            appliedOn: true,
+            nextDueOn: true,
+            voidedAt: true,
+          },
+        }),
+    );
 
     const recordsByKey = new Map<string, VaccinationRecordLike[]>();
     for (const record of records) {
