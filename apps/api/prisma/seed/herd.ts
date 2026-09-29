@@ -48,6 +48,7 @@ import {
   CALF_SEX_SPLIT,
   CALVING_2026,
   CALVINGS_DUE_SOON,
+  CALVINGS_OVERDUE,
   COW_CALVING_PATTERNS,
   COW_STATE,
   EARLIER_CALVINGS,
@@ -826,6 +827,7 @@ type OpenPregnancyInput = {
 /** Crea las preñeces abiertas de vacas y novillas (RN-03: una sola abierta por hembra). */
 function addOpenPregnancies(input: OpenPregnancyInput): void {
   const { cows, heifers, pregnancies, catalog, random, ids, today, pickSire, gestationOf } = input;
+  let overdueLeft = CALVINGS_OVERDUE;
 
   const open = (
     damId: string,
@@ -874,7 +876,19 @@ function addOpenPregnancies(input: OpenPregnancyInput): void {
     if (cow.dueSoon) {
       // Se calcula hacia atrás desde la fecha de parto deseada, para que el tablero muestre
       // exactamente los partos próximos previstos.
-      serviceDate = addDays(addDays(today, random.int(4, 29)), -gestation);
+      const offset = random.int(4, 29);
+      serviceDate = addDays(addDays(today, offset), -gestation);
+      // Las primeras que lo permiten quedan con el parto vencido hace 16 a 41 días (M5), con el
+      // mismo número aleatorio para no mover el resto de la secuencia. Solo si el servicio sigue
+      // siendo posterior al último parto más 55 días.
+      const overdueService = addDays(addDays(today, -(offset + 12)), -gestation);
+      if (
+        overdueLeft > 0 &&
+        (lastCalving === null || compareIsoDates(addDays(lastCalving, 55), overdueService) <= 0)
+      ) {
+        serviceDate = overdueService;
+        overdueLeft -= 1;
+      }
     } else if (cow.servedLongAgo) {
       serviceDate = addDays(today, -random.int(95, 135));
     } else if (cow.state === 'SERVED') {
@@ -896,6 +910,10 @@ function addOpenPregnancies(input: OpenPregnancyInput): void {
       );
     }
     open(cow.animalId, cow.breedName, serviceDate, cow.state === 'PREGNANT');
+  }
+
+  if (overdueLeft > 0) {
+    throw new Error(`No hubo vacas para los ${CALVINGS_OVERDUE} partos vencidos del seed.`);
   }
 
   // Novillas: las 12 de mayor edad son las servidas y 7 de ellas están confirmadas (08 §3.2).

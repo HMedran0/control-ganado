@@ -66,8 +66,16 @@ export const EXPECTED_REPRODUCTION = {
   dry: 29,
   /** Vacas con cría viva de menos de siete meses. */
   withCalfAtFoot: 72,
-  /** Preñeces confirmadas con parto previsto dentro de los 30 días de alerta. */
+  /**
+   * Preñeces confirmadas con parto previsto dentro de los 30 días de alerta, incluidas las que ya
+   * pasaron su fecha (como en `isCalvingSoon`).
+   */
   calvingsDueSoon: 9,
+  /**
+   * Preñeces abiertas cuyo parto estimado pasó hace más de 15 días: «Parto vencido sin registrar»
+   * (M5). Son 2 de los 9 partos próximos; decisión del seed (`CALVINGS_OVERDUE`).
+   */
+  calvingsOverdue: 2,
   /** Con al menos un parto (RN-07). */
   calved: 118,
   /** Con período de retiro vigente. */

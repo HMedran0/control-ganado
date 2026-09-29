@@ -263,6 +263,14 @@ describe('seed de la finca de referencia', () => {
       expect(Number(row?.total)).toBe(EXPECTED_REPRODUCTION.calvingsDueSoon);
     });
 
+    it('cuenta los partos vencidos sin registrar: más de 15 días después del estimado (M5)', async () => {
+      const [row] = await prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`
+        SELECT count(*)::bigint AS total FROM pregnancies p
+        WHERE p.farm_id = ${farmId}::uuid AND p.outcome = 'PENDING' AND p.voided_at IS NULL
+          AND DATE '${Prisma.raw(SEED_TODAY)}' - p.expected_calving_date > 15`);
+      expect(Number(row?.total)).toBe(EXPECTED_REPRODUCTION.calvingsOverdue);
+    });
+
     it('no deja ninguna hembra con dos preñeces abiertas (RN-03)', async () => {
       const rows = await prisma.$queryRaw<{ dam_id: string }[]>(Prisma.sql`
         SELECT dam_id FROM pregnancies

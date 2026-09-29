@@ -22,6 +22,8 @@ import {
   compareIsoDates,
   daysBetween,
   derivedTags,
+  isCalvingOverdue,
+  isCalvingSoon,
   isWithin,
   managementCategory,
   parseMoney,
@@ -139,6 +141,7 @@ export function verifyHerd(
   let males = 0;
   let servedOver90 = 0;
   let dueSoon = 0;
+  let overdue = 0;
   let forSale = 0;
 
   for (const animal of active) {
@@ -176,12 +179,25 @@ export function verifyHerd(
     if (open !== undefined && !open.confirmed && daysBetween(open.service, today) > 90) {
       servedOver90 += 1;
     }
-    if (open?.confirmed === true) {
-      if (compareIsoDates(open.ecd, today) < 0) {
-        problems.push(`Preñez confirmada de ${animal.code} con parto previsto ya vencido.`);
-      } else if (daysBetween(today, open.ecd) <= catalog.settings.calvingAlertDays) {
-        dueSoon += 1;
-      }
+    if (
+      open?.confirmed === true &&
+      isCalvingSoon({
+        expectedCalvingDate: open.ecd,
+        calvingAlertDays: catalog.settings.calvingAlertDays,
+        today,
+      })
+    ) {
+      dueSoon += 1;
+    }
+    if (
+      open !== undefined &&
+      isCalvingOverdue({
+        expectedCalvingDate: open.ecd,
+        overdueCalvingAlertDays: catalog.settings.overdueCalvingAlertDays,
+        today,
+      })
+    ) {
+      overdue += 1;
     }
   }
 
@@ -200,6 +216,7 @@ export function verifyHerd(
   check('Paridas', tags.get('CALVED') ?? 0, EXPECTED_REPRODUCTION.calved);
   check('En retiro', tags.get('WITHDRAWAL') ?? 0, EXPECTED_REPRODUCTION.withdrawal);
   check('Partos próximos', dueSoon, EXPECTED_REPRODUCTION.calvingsDueSoon);
+  check('Partos vencidos sin registrar', overdue, EXPECTED_REPRODUCTION.calvingsOverdue);
   check('Disponibles para venta', forSale, EXPECTED_EXITS.forSale);
 
   const withCalfAtFoot = active.filter((cow) =>

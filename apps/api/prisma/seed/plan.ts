@@ -174,6 +174,14 @@ export const FOR_SALE_YOUNG_MALES = 14;
 export const CALVINGS_DUE_SOON = 9;
 
 /**
+ * De esos partos próximos, los que ya pasaron su fecha estimada hace más de los 15 días de la
+ * alerta «Parto vencido sin registrar» (M5). Decisión del seed: siguen siendo preñadas y partos
+ * próximos (la fecha estimada ya pasada cuenta como próxima), así que no cambia ninguna otra
+ * cifra; sin ellos la alerta no tendría casos en la finca de referencia.
+ */
+export const CALVINGS_OVERDUE = 2;
+
+/**
  * Animales que se perdieron la jornada del ciclo oficial 2026-1 y quedan con aftosa y rabia
  * vencidas. Decisión del seed: sin ellos el tablero no tendría ninguna alerta vencida que
  * mostrar, y en una finca extensiva siempre queda ganado en el potrero lejano.
