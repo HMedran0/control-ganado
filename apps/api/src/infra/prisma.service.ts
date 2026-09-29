@@ -4,6 +4,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { ENV } from '../config/env.module.js';
 import type { Env } from '../config/env.schema.js';
 import { PrismaClient } from '../generated/prisma/client.js';
+import { SESSION_OPTIONS } from './db-session.js';
 
 /**
  * Tiempo máximo para conseguir una conexión del pool. Por defecto `pg` espera para siempre:
@@ -25,6 +26,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
       adapter: new PrismaPg({
         connectionString: env.DATABASE_URL,
         connectionTimeoutMillis: CONNECTION_TIMEOUT_MS,
+        options: SESSION_OPTIONS,
       }),
     });
   }
