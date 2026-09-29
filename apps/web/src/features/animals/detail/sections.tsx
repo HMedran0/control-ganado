@@ -5,7 +5,6 @@ import {
   type AnimalDetail,
   type AnimalRef,
   type GenealogyNode,
-  type IsoDate,
 } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
 import { ClipboardList, History, Printer } from 'lucide-react';
@@ -19,7 +18,6 @@ import { Timeline } from '../../../components/ui/Timeline';
 import { isApiError } from '../../../lib/api/errors';
 import { FARM_TIME_ZONE } from '../../../lib/clock';
 import { useAnimalAudit, useGenealogy, useTimeline } from '../api';
-import { calvingText } from '../list/AnimalCells';
 import { ORIGIN_LABEL, SEX_LABEL, STATUS_LABEL, WEIGHT_METHOD_LABEL } from '../labels';
 import { changeText, entryMeta, entryTitle } from './audit';
 import { EXIT_TYPE_LABEL, toTimelineItem } from './history';
@@ -121,55 +119,6 @@ export function SummaryTab({
       </Section>
       <IdentifiersSection animal={animal} isAdmin={isAdmin} onSaved={onSaved} />
       <SystemQrSection animal={animal} isAdmin={isAdmin} />
-    </div>
-  );
-}
-
-export function ReproductionTab({ animal, today }: { animal: AnimalDetail; today: IsoDate }) {
-  const reproduction = animal.reproduction;
-  if (reproduction === null) return null;
-  const open = reproduction.openPregnancy;
-  return (
-    <div className="flex flex-col gap-5">
-      <Section title="Preñez actual">
-        {open === null ? (
-          <p className="text-texto-2">No tiene una preñez abierta.</p>
-        ) : (
-          <Facts
-            items={[
-              ['Servicio', formatDate(open.serviceDate)],
-              [
-                'Diagnóstico',
-                open.confirmedAt === null
-                  ? 'Sin palpar todavía'
-                  : `Preñez confirmada el ${formatDate(open.confirmedAt)}`,
-              ],
-              [
-                'Parto estimado',
-                <strong key="parto">{calvingText(open.expectedCalvingDate, today)}</strong>,
-              ],
-            ]}
-          />
-        )}
-      </Section>
-      <Section title="Partos">
-        <Facts
-          items={[
-            [
-              'Partos',
-              reproduction.importedPriorCalvings === 0
-                ? String(reproduction.calvingCount)
-                : `${reproduction.calvingCount} (${reproduction.importedPriorCalvings} ${reproduction.importedPriorCalvings === 1 ? 'anterior' : 'anteriores'} al sistema, sin fecha)`,
-            ],
-            [
-              'Último parto',
-              reproduction.lastCalvingDate === null
-                ? '—'
-                : formatDate(reproduction.lastCalvingDate),
-            ],
-          ]}
-        />
-      </Section>
     </div>
   );
 }

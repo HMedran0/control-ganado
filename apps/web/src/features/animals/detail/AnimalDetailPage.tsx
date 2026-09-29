@@ -5,7 +5,7 @@ import {
   type AnimalDetail,
   type Warning,
 } from '@hato/shared';
-import { Link, useRouterState } from '@tanstack/react-router';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Pencil, SearchX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -28,17 +28,11 @@ import {
   SEX_LABEL,
 } from '../labels';
 import '../nav-state';
-import { animalBanners } from './banners';
+import { animalBanners, type BannerAction } from './banners';
 import { CodeHistoryBanner } from './CodeHistoryBanner';
 import { LifecycleActions } from './Lifecycle';
-import {
-  ChangesTab,
-  CostsTab,
-  GenealogyTab,
-  HistoryTab,
-  ReproductionTab,
-  SummaryTab,
-} from './sections';
+import { ReproductionTab } from '../../reproduction/ReproductionTab';
+import { ChangesTab, CostsTab, GenealogyTab, HistoryTab, SummaryTab } from './sections';
 
 export const DETAIL_TABS = [
   'resumen',
@@ -133,7 +127,7 @@ function Detail({
           {
             value: 'reproduccion' as const,
             label: 'Reproducción',
-            content: <ReproductionTab animal={animal} today={today} />,
+            content: <ReproductionTab animal={animal} today={today} isAdmin={isAdmin} />,
           },
         ]
       : []),
@@ -152,6 +146,16 @@ function Detail({
   const active = animal.identifiers.filter((identifier) => identifier.retiredAt === null);
   const exitLabel = exitLabelFor(animal.status);
   const banners = animalBanners(animal, today);
+  const navigate = useNavigate();
+  const bannerAction = (action: BannerAction) => ({
+    label: action === 'calving' ? 'Registrar parto' : 'Registrar palpación',
+    onClick: () => {
+      void navigate({
+        to: action === 'calving' ? '/animals/$id/calving' : '/animals/$id/diagnosis',
+        params: { id: animal.id },
+      });
+    },
+  });
 
   return (
     <div className="lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-8">
@@ -252,6 +256,7 @@ function Detail({
             tone={banner.tone}
             title={banner.title}
             {...(banner.description === undefined ? {} : { description: banner.description })}
+            {...(banner.action === undefined ? {} : { action: bannerAction(banner.action) })}
           />
         ))}
         <Tabs

@@ -159,6 +159,7 @@ describe('avisos de la ficha (06 §5.3)', () => {
       tone: 'alerta',
       title: 'Pasó la fecha de parto: registra el parto o el aborto',
       description: 'El parto estaba estimado para el 01/09/2026 (hace 24 días).',
+      action: 'calving',
     });
   });
 

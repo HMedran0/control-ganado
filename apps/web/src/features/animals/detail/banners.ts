@@ -5,15 +5,19 @@ import type { AlertTone } from '../../../components/ui/AlertBanner';
 /**
  * Avisos de la ficha (ANI-07 CA1, 06 §5.3): qué pasa y cuándo, como `AlertBanner`.
  *
- * Todavía sin botón de acción: registrar vacunas, partos o palpaciones llega en M5 y M6, y la
- * ficha no muestra botones que no hacen nada. Cada aviso sale de lo que ya calculó la API con
- * las funciones de shared (`vaccineStatus`, `animalAlerts`); aquí solo se redacta.
+ * Los avisos reproductivos traen la acción que los resuelve (M5): registrar el parto o la
+ * palpación. Los de vacunas la tendrán con M6; mientras tanto la ficha no muestra botones que no
+ * hacen nada. Cada aviso sale de lo que ya calculó la API con las funciones de shared
+ * (`vaccineStatus`, `animalAlerts`); aquí solo se redacta.
  */
+export type BannerAction = 'calving' | 'diagnosis';
+
 export type Banner = {
   readonly key: string;
   readonly tone: AlertTone;
   readonly title: string;
   readonly description?: string;
+  readonly action?: BannerAction;
 };
 
 /** «en 3 días», «hoy», «hace 6 días». */
@@ -77,6 +81,7 @@ export function animalBanners(animal: AnimalDetail, today: IsoDate): Banner[] {
       tone: 'info',
       title: `Parto estimado ${relativeDays(animal.expectedCalvingDate, today)}`,
       description: `Fecha estimada: ${formatDate(animal.expectedCalvingDate)}.`,
+      action: 'calving',
     });
   }
   if (animal.alerts.includes('calving_overdue') && open !== null) {
@@ -84,6 +89,7 @@ export function animalBanners(animal: AnimalDetail, today: IsoDate): Banner[] {
       key: 'calving-overdue',
       tone: 'alerta',
       title: 'Pasó la fecha de parto: registra el parto o el aborto',
+      action: 'calving',
       description: `El parto estaba estimado para el ${formatDate(open.expectedCalvingDate)} (${relativeDays(open.expectedCalvingDate, today)}).`,
     });
   }
@@ -93,6 +99,7 @@ export function animalBanners(animal: AnimalDetail, today: IsoDate): Banner[] {
       tone: 'aviso',
       title: `Servida ${relativeDays(open.serviceDate, today)} sin diagnóstico`,
       description: 'Conviene programar la palpación.',
+      action: 'diagnosis',
     });
   }
   if (animal.alerts.includes('withdrawal') && animal.withdrawalUntil !== null) {
