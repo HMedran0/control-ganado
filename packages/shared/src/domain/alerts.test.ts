@@ -49,6 +49,7 @@ describe('animalAlerts', () => {
     vaccineStatuses: [],
     calvingAlertDays: 30,
     unconfirmedServiceAlertDays: 90,
+    overdueCalvingAlertDays: 15,
     today: HOY,
   };
 
@@ -103,6 +104,31 @@ describe('animalAlerts', () => {
         },
       }),
     ).toEqual([]);
+  });
+
+  it('parto vencido sin registrar: más de 15 días después del parto estimado', () => {
+    const open = (expected: string, confirmedAt: string | null = '2025-12-20') => ({
+      serviceDate: d('2025-12-01'),
+      confirmedAt: confirmedAt === null ? null : d(confirmedAt),
+      expectedCalvingDate: d(expected),
+    });
+    // 15 días justos todavía no; 16 sí. El parto próximo sigue (fecha estimada ya pasada).
+    expect(animalAlerts({ ...base, openPregnancy: open('2026-09-10') })).toEqual([
+      ANIMAL_ALERT.CALVING_SOON,
+    ]);
+    expect(animalAlerts({ ...base, openPregnancy: open('2026-09-09') })).toEqual([
+      ANIMAL_ALERT.CALVING_SOON,
+      ANIMAL_ALERT.CALVING_OVERDUE,
+    ]);
+    // También en una servida sin diagnóstico: la fecha pasó y no hay parto ni aborto.
+    expect(animalAlerts({ ...base, openPregnancy: open('2026-09-01', null) })).toEqual([
+      ANIMAL_ALERT.CALVING_OVERDUE,
+      ANIMAL_ALERT.UNCONFIRMED_SERVICE,
+    ]);
+    // El umbral sale de la configuración de la finca.
+    expect(
+      animalAlerts({ ...base, overdueCalvingAlertDays: 30, openPregnancy: open('2026-09-01') }),
+    ).toEqual([ANIMAL_ALERT.CALVING_SOON]);
   });
 
   it('retiro vigente hasta hoy inclusive', () => {

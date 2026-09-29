@@ -129,6 +129,42 @@ function sequencePattern(pattern: string, year: number): RegExp {
   return new RegExp(`^${source}$`);
 }
 
+/** Entrada de `suggestCodes`. */
+export type SuggestCodesInput = {
+  /** `Farm.settings.codeSuggestion` (ANI-10). */
+  readonly suggestion: 'PATTERN' | 'LOWEST_FREE';
+  /** `Farm.settings.calfCodePattern`. */
+  readonly pattern: string;
+  /** Año del consecutivo, normalmente el del nacimiento. */
+  readonly year: number;
+  /**
+   * Códigos que ya cuentan: con `PATTERN`, todos los de la finca (RN-28); con `LOWEST_FREE`, los
+   * del conjunto donde se exige la unicidad (ANI-10 CA2).
+   */
+  readonly existingCodes: Iterable<string>;
+  /** Cuántos códigos distintos (mellizos: hasta 3). */
+  readonly count: number;
+};
+
+/**
+ * Varios códigos sugeridos y distintos entre sí, por ejemplo para las crías de un parto gemelar
+ * (REP-04 CA3): cada uno se toma como ocupado antes de pedir el siguiente. Con `LOWEST_FREE` son
+ * los menores números libres; con `PATTERN`, consecutivos del patrón.
+ */
+export function suggestCodes(input: SuggestCodesInput): string[] {
+  const taken = [...input.existingCodes];
+  const codes: string[] = [];
+  for (let index = 0; index < input.count; index += 1) {
+    const code =
+      input.suggestion === 'LOWEST_FREE'
+        ? lowestFreeCode(taken)
+        : nextCalfCode({ pattern: input.pattern, year: input.year, existingCodes: taken });
+    codes.push(code);
+    taken.push(code);
+  }
+  return codes;
+}
+
 /** Entrada de `nextCalfCode`. */
 export type NextCalfCodeInput = {
   /** `Farm.settings.calfCodePattern`. */

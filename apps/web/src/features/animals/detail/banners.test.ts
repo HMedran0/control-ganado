@@ -1,9 +1,37 @@
-import { toIsoDate, type AnimalDetail } from '@hato/shared';
+import { toIsoDate, type AnimalDetail, type PregnancyView } from '@hato/shared';
 import { describe, expect, it } from 'vitest';
 
 import { animalBanners, relativeDays } from './banners';
 
 const HOY = toIsoDate('2026-09-25');
+
+function openPregnancy(patch: Partial<PregnancyView>): PregnancyView {
+  return {
+    id: 'p',
+    dam: { id: 'a', code: '045', name: null },
+    serviceDate: toIsoDate('2026-06-01'),
+    serviceDateEstimated: false,
+    method: 'NATURAL',
+    sire: null,
+    sireExternalRef: null,
+    responsible: null,
+    confirmedAt: null,
+    diagnosisResponsible: null,
+    expectedCalvingDate: toIsoDate('2027-03-20'),
+    expectedCalvingManual: false,
+    outcome: 'PENDING',
+    outcomeDate: null,
+    calvingType: null,
+    stillbornCount: 0,
+    isImported: false,
+    notes: null,
+    gestationDays: 116,
+    calves: [],
+    voided: null,
+    version: 1,
+    ...patch,
+  };
+}
 
 function animal(patch: Partial<AnimalDetail>): AnimalDetail {
   return {
@@ -93,12 +121,9 @@ describe('avisos de la ficha (06 §5.3)', () => {
           calvingCount: 2,
           importedPriorCalvings: 0,
           lastCalvingDate: null,
-          openPregnancy: {
-            id: 'p',
-            serviceDate: toIsoDate('2026-06-01'),
-            confirmedAt: null,
-            expectedCalvingDate: toIsoDate('2027-03-20'),
-          },
+          openPregnancy: openPregnancy({}),
+          calvingInterval: { lastDays: null, averageDays: null },
+          history: [],
         },
       }),
       HOY,
@@ -108,6 +133,33 @@ describe('avisos de la ficha (06 §5.3)', () => {
       'Servida hace 116 días sin diagnóstico',
       'En retiro hasta el 01/10/2026',
     ]);
+  });
+
+  it('parto vencido sin registrar: pide registrar el parto o el aborto (M5)', () => {
+    const banners = animalBanners(
+      animal({
+        alerts: ['calving_soon', 'calving_overdue'],
+        expectedCalvingDate: toIsoDate('2026-09-01'),
+        reproduction: {
+          calvingCount: 2,
+          importedPriorCalvings: 0,
+          lastCalvingDate: null,
+          openPregnancy: openPregnancy({
+            confirmedAt: toIsoDate('2026-02-01'),
+            expectedCalvingDate: toIsoDate('2026-09-01'),
+          }),
+          calvingInterval: { lastDays: null, averageDays: null },
+          history: [],
+        },
+      }),
+      HOY,
+    );
+    expect(banners.find((banner) => banner.key === 'calving-overdue')).toEqual({
+      key: 'calving-overdue',
+      tone: 'alerta',
+      title: 'Pasó la fecha de parto: registra el parto o el aborto',
+      description: 'El parto estaba estimado para el 01/09/2026 (hace 24 días).',
+    });
   });
 
   it('un animal que ya salió no tiene avisos', () => {

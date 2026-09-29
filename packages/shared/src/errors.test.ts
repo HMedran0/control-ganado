@@ -12,11 +12,11 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 41 códigos de error de 05-api.md implementados hasta M5 (ADR-012 y ADR-013)', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(41);
+  it('tiene los 42 códigos de error de 05-api.md implementados hasta M5', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(42);
   });
 
-  it('tiene las 10 advertencias de 05-api.md', () => {
+  it('tiene las 11 advertencias de 05-api.md', () => {
     expect(Object.keys(WARNING_CATALOG)).toEqual([
       'WEIGHT_OUTLIER',
       'RFID_FOREIGN_COUNTRY',
@@ -28,6 +28,7 @@ describe('catálogo', () => {
       'LOT_HAS_ACTIVE_ANIMALS',
       'VACCINE_IN_ACTIVE_CYCLE',
       'IDENTIFIER_NOT_RESTORED',
+      'EXPECTED_CALVING_RECALCULATED',
     ]);
   });
 

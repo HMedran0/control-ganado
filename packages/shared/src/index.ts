@@ -20,3 +20,4 @@ export * from './schemas/catalogs.js';
 export * from './schemas/farm-settings.js';
 export * from './schemas/imports.js';
 export * from './schemas/offline.js';
+export * from './schemas/reproduction.js';

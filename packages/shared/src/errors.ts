@@ -67,6 +67,8 @@ export const ERROR_CATALOG = {
   SEX_NOT_ALLOWED: { status: 422, detail: 'Esta acción solo aplica a hembras.' },
   PREGNANCY_ALREADY_OPEN: { status: 409, detail: 'La hembra ya tiene una preñez abierta.' },
   PREGNANCY_NOT_OPEN: { status: 409, detail: 'La hembra no tiene una preñez abierta.' },
+  /** Anular un parto con crías vivas activas (M5): primero se archivan las crías. */
+  PREGNANCY_HAS_CALVES: { status: 409, detail: 'Archiva primero las crías de este parto.' },
   DATE_IN_FUTURE: { status: 422, detail: 'La fecha no puede ser posterior a hoy.' },
   DATE_BEFORE_BIRTH: { status: 422, detail: 'La fecha es anterior al nacimiento del animal.' },
   CALVES_COUNT_INVALID: { status: 422, detail: 'Un parto puede registrar de 1 a 3 crías.' },
@@ -137,6 +139,8 @@ export const WARNING_CATALOG = {
     'La vacuna está en el ciclo {name} ({from} a {to}), en curso o por empezar.',
   IDENTIFIER_NOT_RESTORED:
     'El identificador {value} ya lo tiene el animal {code}: quedó retirado en este animal.',
+  /** Cambió la gestación de una raza, de la finca o la raza de una madre (RN-04, M5). */
+  EXPECTED_CALVING_RECALCULATED: 'Se recalculó el parto estimado de {count} preñeces abiertas.',
 } as const satisfies Record<string, string>;
 
 /** Código de advertencia estable. */
@@ -225,6 +229,24 @@ export class DomainError extends Error {
 /** ¿El valor es un `DomainError`? Útil en los filtros de excepciones de la API. */
 export function isDomainError(value: unknown): value is DomainError {
   return value instanceof DomainError;
+}
+
+/**
+ * Advertencia del recálculo del parto estimado (RN-04, M5), con el número en singular o plural y
+ * las preñeces que se dejaron quietas porque alguien corrigió su parto estimado a mano.
+ */
+export function expectedCalvingRecalculatedWarning(count: number, skippedManual: number): Warning {
+  const main =
+    count === 1
+      ? 'Se recalculó el parto estimado de 1 preñez abierta.'
+      : warningMessage('EXPECTED_CALVING_RECALCULATED', { count });
+  const skipped =
+    skippedManual === 0
+      ? ''
+      : skippedManual === 1
+        ? ' 1 preñez con el parto corregido a mano no se tocó.'
+        : ` ${skippedManual} preñeces con el parto corregido a mano no se tocaron.`;
+  return { code: 'EXPECTED_CALVING_RECALCULATED', message: main + skipped };
 }
 
 /**

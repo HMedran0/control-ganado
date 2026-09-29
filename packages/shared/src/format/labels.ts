@@ -39,6 +39,7 @@ export const ALERT_LABEL: Readonly<Record<AnimalAlert, string>> = {
   calving_soon: 'Parto próximo',
   withdrawal: 'En retiro',
   unconfirmed_service: 'Servida sin diagnóstico',
+  calving_overdue: 'Parto vencido sin registrar',
 };
 
 export const STATUS_LABEL: Readonly<Record<AnimalStatus, string>> = {

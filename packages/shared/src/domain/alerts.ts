@@ -7,6 +7,7 @@
 
 import { addDays, daysBetween, type IsoDate } from '../date.js';
 import { ANIMAL_ALERT, type AnimalAlert } from '../enums.js';
+import { isCalvingOverdue } from './reproduction.js';
 import { VACCINE_STATUS, type VaccineStatusKind } from './vaccination.js';
 
 /** Entrada de `isCalvingSoon`. */
@@ -58,12 +59,14 @@ export type AnimalAlertsInput = {
   readonly vaccineStatuses: readonly VaccineStatusKind[];
   readonly calvingAlertDays: number;
   readonly unconfirmedServiceAlertDays: number;
+  /** `Farm.settings.overdueCalvingAlertDays`, 15 por defecto [Validar]. */
+  readonly overdueCalvingAlertDays: number;
   readonly today: IsoDate;
 };
 
 /**
  * Alertas activas del animal, en orden fijo: vacuna vencida, vacuna pendiente o próxima,
- * parto próximo, retiro, servida sin diagnóstico.
+ * parto próximo, parto vencido sin registrar, retiro, servida sin diagnóstico.
  */
 export function animalAlerts(input: AnimalAlertsInput): AnimalAlert[] {
   const alerts: AnimalAlert[] = [];
@@ -89,6 +92,18 @@ export function animalAlerts(input: AnimalAlertsInput): AnimalAlert[] {
     })
   ) {
     alerts.push(ANIMAL_ALERT.CALVING_SOON);
+  }
+
+  // Cualquier preñez abierta, confirmada o no: pasó la fecha y no hay parto ni aborto.
+  if (
+    open !== null &&
+    isCalvingOverdue({
+      expectedCalvingDate: open.expectedCalvingDate,
+      overdueCalvingAlertDays: input.overdueCalvingAlertDays,
+      today: input.today,
+    })
+  ) {
+    alerts.push(ANIMAL_ALERT.CALVING_OVERDUE);
   }
 
   if (input.withdrawalUntil !== null && input.withdrawalUntil >= input.today) {

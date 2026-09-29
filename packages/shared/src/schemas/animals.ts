@@ -38,6 +38,7 @@ import type { Warning } from '../errors.js';
 import type { MoneyString } from '../money.js';
 import { isoDateSchema, versionSchema } from './catalogs.js';
 import { clientIdSchema } from './offline.js';
+import type { CalvingIntervalView, PregnancyView } from './reproduction.js';
 
 // ---------------------------------------------------------------------------------------------
 // Piezas
@@ -401,7 +402,11 @@ export type SearchAnimalsQuery = z.infer<typeof searchAnimalsQuerySchema>;
 /** Con menos caracteres que estos solo hay búsqueda exacta, sin difusa. */
 export const FUZZY_SEARCH_MIN_LENGTH = 2;
 
-export const nextCodeQuerySchema = z.object({ birthDate: isoDateSchema.optional() });
+export const nextCodeQuerySchema = z.object({
+  birthDate: isoDateSchema.optional(),
+  /** Cuántos códigos distintos (crías de un parto gemelar, REP-04 CA3). */
+  count: z.coerce.number().int().min(1).max(3).optional(),
+});
 
 // ---------------------------------------------------------------------------------------------
 // Operaciones en lote (CLS-02 CA2)
@@ -555,12 +560,8 @@ export type VaccineStatusView = {
   readonly lastAppliedOn: IsoDate | null;
 };
 
-export type OpenPregnancyView = {
-  readonly id: string;
-  readonly serviceDate: IsoDate;
-  readonly confirmedAt: IsoDate | null;
-  readonly expectedCalvingDate: IsoDate;
-};
+/** Preñez abierta de la ficha: la vista completa de la preñez (M5). */
+export type OpenPregnancyView = PregnancyView;
 
 /** Resumen reproductivo; solo en hembras. */
 export type ReproductiveSummary = {
@@ -569,6 +570,10 @@ export type ReproductiveSummary = {
   readonly importedPriorCalvings: number;
   readonly lastCalvingDate: IsoDate | null;
   readonly openPregnancy: OpenPregnancyView | null;
+  /** Intervalo entre partos con servicio real (REP-05 CA1, RN-38). */
+  readonly calvingInterval: CalvingIntervalView;
+  /** Todas las preñeces, de la más reciente a la más antigua, anuladas incluidas (REP-05). */
+  readonly history: readonly PregnancyView[];
 };
 
 /** Ficha del animal (ANI-07). `economics` solo existe si quien consulta es ADMIN (RN-20). */
@@ -658,7 +663,8 @@ export type SearchResult = {
   readonly items: readonly SearchResultItem[];
 };
 
-export type NextCodeResult = { readonly code: string };
+/** Código sugerido; `codes` trae tantos como se pidieron con `count`, distintos entre sí. */
+export type NextCodeResult = { readonly code: string; readonly codes: readonly string[] };
 
 export type GenealogyNode = AnimalRef & {
   readonly sex: Sex;

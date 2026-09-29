@@ -11,6 +11,7 @@ describe('DEFAULT_FARM_SETTINGS (03-modelo-datos.md §2.1)', () => {
       calvingAlertDays: 30,
       vaccineAlertDays: 15,
       unconfirmedServiceAlertDays: 90,
+      overdueCalvingAlertDays: 15,
       calfCodePattern: '{YY}-{NNN}',
       rabiesRiskZone: true,
       pricePerKgByCategory: {},

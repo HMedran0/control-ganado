@@ -12,6 +12,9 @@ import { z } from 'zod';
 import { DEFAULT_CALF_CODE_PATTERN, isValidCalfCodePattern } from '../domain/codes.js';
 import { DEFAULT_FARM_GESTATION_DAYS } from '../domain/pregnancy.js';
 
+/** «Parto vencido sin registrar» a los 15 días del parto estimado [Validar] (M5). */
+export const DEFAULT_OVERDUE_CALVING_ALERT_DAYS = 15;
+
 /**
  * Cómo sugiere la finca el código de un animal nuevo (ANI-10): con el patrón de las crías o con
  * el menor número libre.
@@ -40,6 +43,11 @@ const settingsFields = {
   vaccineAlertDays: z.int().min(0).max(120),
   /** Días desde el servicio sin diagnóstico para alertar (RN-08). */
   unconfirmedServiceAlertDays: z.int().min(1).max(365),
+  /**
+   * Días después del parto estimado de una preñez abierta para alertar «Parto vencido sin
+   * registrar» (M5). 15 por defecto [Validar] con la finca.
+   */
+  overdueCalvingAlertDays: z.int().min(0).max(120),
   /** Patrón del código sugerido para las crías (RN-28, 08 §2.3). */
   calfCodePattern: z.string().min(1).max(40).refine(isValidCalfCodePattern, {
     message: 'El patrón debe incluir {NNN} o {N} para el consecutivo.',
@@ -68,6 +76,9 @@ export const farmSettingsSchema = z
     calvingAlertDays: settingsFields.calvingAlertDays.default(30),
     vaccineAlertDays: settingsFields.vaccineAlertDays.default(15),
     unconfirmedServiceAlertDays: settingsFields.unconfirmedServiceAlertDays.default(90),
+    overdueCalvingAlertDays: settingsFields.overdueCalvingAlertDays.default(
+      DEFAULT_OVERDUE_CALVING_ALERT_DAYS,
+    ),
     calfCodePattern: settingsFields.calfCodePattern.default(DEFAULT_CALF_CODE_PATTERN),
     rabiesRiskZone: settingsFields.rabiesRiskZone.default(true),
     pricePerKgByCategory: settingsFields.pricePerKgByCategory.default({}),

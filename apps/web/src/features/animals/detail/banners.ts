@@ -79,6 +79,14 @@ export function animalBanners(animal: AnimalDetail, today: IsoDate): Banner[] {
       description: `Fecha estimada: ${formatDate(animal.expectedCalvingDate)}.`,
     });
   }
+  if (animal.alerts.includes('calving_overdue') && open !== null) {
+    banners.push({
+      key: 'calving-overdue',
+      tone: 'alerta',
+      title: 'Pasó la fecha de parto: registra el parto o el aborto',
+      description: `El parto estaba estimado para el ${formatDate(open.expectedCalvingDate)} (${relativeDays(open.expectedCalvingDate, today)}).`,
+    });
+  }
   if (animal.alerts.includes('unconfirmed_service') && open !== null) {
     banners.push({
       key: 'service',

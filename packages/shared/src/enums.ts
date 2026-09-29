@@ -119,6 +119,31 @@ export const CALVING_TYPE = {
 } as const;
 export type CalvingType = (typeof CALVING_TYPE)[keyof typeof CALVING_TYPE];
 
+/**
+ * Estado de cada cría al registrar el parto (REP-04). `STILLBORN` (muerta al nacer) no crea animal:
+ * suma a `Pregnancy.stillbornCount` (REP-04 CA4).
+ */
+export const CALF_HEALTH = {
+  ALIVE: 'ALIVE',
+  WEAK: 'WEAK',
+  STILLBORN: 'STILLBORN',
+} as const;
+export type CalfHealth = (typeof CALF_HEALTH)[keyof typeof CALF_HEALTH];
+
+/** Estado al nacer que se guarda en la cría viva (`Animal.birthCondition`, NAC-01 CA2). */
+export const BIRTH_CONDITION = {
+  HEALTHY: 'HEALTHY',
+  WEAK: 'WEAK',
+} as const;
+export type BirthCondition = (typeof BIRTH_CONDITION)[keyof typeof BIRTH_CONDITION];
+
+/** Resultado de la palpación o ecografía (REP-02). */
+export const DIAGNOSIS_RESULT = {
+  POSITIVE: 'POSITIVE',
+  NEGATIVE: 'NEGATIVE',
+} as const;
+export type DiagnosisResult = (typeof DIAGNOSIS_RESULT)[keyof typeof DIAGNOSIS_RESULT];
+
 /** Método de pesaje. La finca de referencia usa cinta bovinométrica (08 §1.7). */
 export const WEIGHT_METHOD = {
   SCALE: 'SCALE',
@@ -228,6 +253,11 @@ export const ANIMAL_ALERT = {
   WITHDRAWAL: 'withdrawal',
   /** Servida hace más de `unconfirmedServiceAlertDays` sin diagnóstico (RN-08). */
   UNCONFIRMED_SERVICE: 'unconfirmed_service',
+  /**
+   * Parto vencido sin registrar: preñez abierta cuyo parto estimado pasó hace más de
+   * `overdueCalvingAlertDays` (M5).
+   */
+  CALVING_OVERDUE: 'calving_overdue',
 } as const;
 export type AnimalAlert = (typeof ANIMAL_ALERT)[keyof typeof ANIMAL_ALERT];
 

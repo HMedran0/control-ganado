@@ -11,4 +11,5 @@ export * from './exits.js';
 export * from './identifiers.js';
 export * from './pregnancy.js';
 export * from './qr.js';
+export * from './reproduction.js';
 export * from './vaccination.js';
