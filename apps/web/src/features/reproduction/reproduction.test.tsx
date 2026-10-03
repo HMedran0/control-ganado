@@ -24,6 +24,7 @@ function pregnancy(patch: Partial<PregnancyView> = {}): PregnancyView {
     responsible: null,
     confirmedAt: toIsoDate('2026-03-20'),
     diagnosisResponsible: 'Dra. Paola',
+    diagnosisNotes: null,
     expectedCalvingDate: toIsoDate('2026-11-01'),
     expectedCalvingManual: false,
     outcome: 'PENDING',

@@ -113,6 +113,9 @@ export function ReproductionTab({
                   ? 'Sin palpar todavía'
                   : `Preñez confirmada el ${formatDate(open.confirmedAt)}${open.diagnosisResponsible === null ? '' : ` · ${open.diagnosisResponsible}`}`,
               ],
+              ...(open.diagnosisNotes === null
+                ? []
+                : [['Observaciones de la palpación', open.diagnosisNotes] as const]),
               ['Gestación', `${open.gestationDays ?? 0} días`],
               [
                 'Parto estimado',
@@ -220,6 +223,9 @@ export function ReproductionTab({
                 )}
                 {pregnancy.voided?.reason == null ? null : (
                   <p>Motivo de la anulación: {pregnancy.voided.reason}</p>
+                )}
+                {pregnancy.diagnosisNotes === null ? null : (
+                  <p className="text-texto-2">Palpación: {pregnancy.diagnosisNotes}</p>
                 )}
                 {pregnancy.notes === null ? null : (
                   <p className="text-texto-2">{pregnancy.notes}</p>

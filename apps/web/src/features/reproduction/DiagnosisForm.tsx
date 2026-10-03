@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/Button';
 import { DateQuickPick } from '../../components/ui/DateQuickPick';
 import { NumberField } from '../../components/ui/NumberField';
 import { SegmentedChoice } from '../../components/ui/SegmentedChoice';
+import { TextAreaField } from '../../components/ui/TextAreaField';
 import { TextField } from '../../components/ui/TextField';
 import { useToday } from '../../lib/clock';
 import { useCreatePregnancy, usePregnancyActions } from './api';
@@ -39,6 +40,7 @@ type DiagnosisValues = {
   date: string;
   result: 'POSITIVE' | 'NEGATIVE' | null;
   responsible: string;
+  notes: string;
 };
 
 function DiagnoseOpen({ animal, pregnancy }: { animal: AnimalDetail; pregnancy: PregnancyView }) {
@@ -55,8 +57,9 @@ function DiagnoseOpen({ animal, pregnancy }: { animal: AnimalDetail; pregnancy: 
       date: values.date,
       result: values.result ?? undefined,
       responsible: optional(values.responsible),
+      notes: optional(values.notes),
     })),
-    defaultValues: { date: today, result: null, responsible: '' },
+    defaultValues: { date: today, result: null, responsible: '', notes: '' },
   });
 
   return (
@@ -123,6 +126,12 @@ function DiagnoseOpen({ animal, pregnancy }: { animal: AnimalDetail; pregnancy: 
         error={errors.responsible?.message}
         {...register('responsible')}
       />
+      <TextAreaField
+        label="Observaciones de la palpación"
+        hint="Opcional, por ejemplo el tamaño del feto o el estado del útero."
+        error={errors.notes?.message}
+        {...register('notes')}
+      />
       <SaveError error={diagnose.error} damId={animal.id} />
       <Button type="submit" block disabled={isSubmitting || diagnose.isPending}>
         {diagnose.isPending ? 'Guardando…' : 'Guardar palpación'}
@@ -135,6 +144,7 @@ type WithoutServiceValues = {
   diagnosisDate: string;
   gestationMonths: string | null;
   diagnosisResponsible: string;
+  diagnosisNotes: string;
 };
 
 function ConfirmedWithoutService({ animal }: { animal: AnimalDetail }) {
@@ -155,8 +165,14 @@ function ConfirmedWithoutService({ animal }: { animal: AnimalDetail }) {
           ? undefined
           : Number(values.gestationMonths),
       diagnosisResponsible: optional(values.diagnosisResponsible),
+      diagnosisNotes: optional(values.diagnosisNotes),
     })),
-    defaultValues: { diagnosisDate: today, gestationMonths: null, diagnosisResponsible: '' },
+    defaultValues: {
+      diagnosisDate: today,
+      gestationMonths: null,
+      diagnosisResponsible: '',
+      diagnosisNotes: '',
+    },
   });
 
   return (
@@ -215,6 +231,12 @@ function ConfirmedWithoutService({ animal }: { animal: AnimalDetail }) {
         hint="Opcional, por ejemplo el veterinario."
         error={errors.diagnosisResponsible?.message}
         {...register('diagnosisResponsible')}
+      />
+      <TextAreaField
+        label="Observaciones de la palpación"
+        hint="Opcional, por ejemplo el tamaño del feto o el estado del útero."
+        error={errors.diagnosisNotes?.message}
+        {...register('diagnosisNotes')}
       />
       <SaveError error={create.error} damId={animal.id} />
       <Button type="submit" block disabled={isSubmitting || create.isPending}>

@@ -452,6 +452,8 @@ model Pregnancy {
   diagnosisResponsible       String?          @map("diagnosis_responsible")
   /// Si quien palpó es usuario de la finca.
   diagnosisResponsibleUserId String?          @map("diagnosis_responsible_user_id") @db.Uuid
+  /// Observaciones de la palpación (M6): aparte de las de la preñez para no pisarlas.
+  diagnosisNotes             String?          @map("diagnosis_notes")
   expectedCalvingDate        DateTime         @map("expected_calving_date") @db.Date
   /// El parto estimado se corrigió a mano (PATCH): el recálculo por gestación no lo toca (M5).
   expectedCalvingManual      Boolean          @default(false) @map("expected_calving_manual")

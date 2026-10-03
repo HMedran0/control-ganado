@@ -35,6 +35,7 @@ export function toPregnancyView(row: PregnancyRow, today: IsoDate): PregnancyVie
     responsible: row.responsible,
     confirmedAt: fromPrismaDateOrNull(row.confirmedAt),
     diagnosisResponsible: row.diagnosisResponsible,
+    diagnosisNotes: row.diagnosisNotes,
     expectedCalvingDate: fromPrismaDate(row.expectedCalvingDate),
     expectedCalvingManual: row.expectedCalvingManual,
     outcome: row.outcome,
@@ -60,6 +61,7 @@ export function pregnancySnapshot(row: {
   sireExternalRef: string | null;
   confirmedAt: Date | null;
   diagnosisResponsible: string | null;
+  diagnosisNotes: string | null;
   expectedCalvingDate: Date;
   expectedCalvingManual: boolean;
   outcome: string;
@@ -77,6 +79,7 @@ export function pregnancySnapshot(row: {
     sireExternalRef: row.sireExternalRef,
     confirmedAt: fromPrismaDateOrNull(row.confirmedAt),
     diagnosisResponsible: row.diagnosisResponsible,
+    diagnosisNotes: row.diagnosisNotes,
     expectedCalvingDate: fromPrismaDate(row.expectedCalvingDate),
     expectedCalvingManual: row.expectedCalvingManual,
     outcome: row.outcome,

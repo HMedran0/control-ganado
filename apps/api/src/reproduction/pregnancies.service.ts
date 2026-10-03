@@ -72,6 +72,7 @@ const AUDITED = [
   'sireExternalRef',
   'confirmedAt',
   'diagnosisResponsible',
+  'diagnosisNotes',
   'expectedCalvingDate',
   'expectedCalvingManual',
   'outcome',
@@ -187,6 +188,7 @@ export class PregnanciesService {
             responsible: input.responsible ?? null,
             notes: input.notes ?? null,
             confirmedAt: byDiagnosis ? diagnosisDate : null,
+            diagnosisNotes: byDiagnosis ? (input.diagnosisNotes ?? null) : null,
           },
           { ...pregnancySnapshot(existing), damId: existing.damId },
         );
@@ -245,6 +247,7 @@ export class PregnanciesService {
             diagnosisResponsibleUserId: byDiagnosis
               ? (input.diagnosisResponsibleUserId ?? null)
               : null,
+            diagnosisNotes: byDiagnosis ? (input.diagnosisNotes ?? null) : null,
             expectedCalvingDate: toPrismaDate(expectedFor(dam, serviceDate, context)),
             responsible: input.responsible ?? null,
             notes: input.notes ?? null,
@@ -309,6 +312,7 @@ export class PregnanciesService {
             : { outcome: PREGNANCY_OUTCOME.FAILED, outcomeDate: toPrismaDate(date) }),
           diagnosisResponsible: input.responsible ?? current.diagnosisResponsible,
           diagnosisResponsibleUserId: input.responsibleUserId ?? current.diagnosisResponsibleUserId,
+          diagnosisNotes: input.notes ?? current.diagnosisNotes,
           version: { increment: 1 },
           updatedById: userId,
         },

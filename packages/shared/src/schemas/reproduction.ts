@@ -99,6 +99,8 @@ export const createPregnancySchema = z
     diagnosisDate: isoDateSchema.optional(),
     diagnosisResponsible: optionalText(120),
     diagnosisResponsibleUserId: uuidSchema.nullable().optional(),
+    /** Observaciones de la palpación (M6), aparte de las de la preñez. */
+    diagnosisNotes: optionalText(2000),
   })
   .superRefine((value, ctx) => {
     const byService = value.serviceDate !== undefined;
@@ -140,6 +142,11 @@ export const diagnosisSchema = z.object({
   responsible: optionalText(120),
   /** Si quien palpó es usuario de la finca. */
   responsibleUserId: uuidSchema.nullable().optional(),
+  /**
+   * Observaciones de la palpación (M6): quedan en la preñez, aparte de sus observaciones
+   * generales. Una palpación posterior que trae observaciones las reemplaza.
+   */
+  notes: optionalText(2000),
 });
 export type DiagnosisInput = z.infer<typeof diagnosisSchema>;
 
@@ -291,6 +298,8 @@ export type PregnancyView = {
   readonly responsible: string | null;
   readonly confirmedAt: IsoDate | null;
   readonly diagnosisResponsible: string | null;
+  /** Observaciones de la palpación (M6). */
+  readonly diagnosisNotes: string | null;
   readonly expectedCalvingDate: IsoDate;
   /** El parto estimado se corrigió a mano: el recálculo por gestación no lo toca. */
   readonly expectedCalvingManual: boolean;

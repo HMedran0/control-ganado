@@ -194,6 +194,7 @@ describe('Reproducción y nacimientos', () => {
           gestationMonths: 4,
           diagnosisDate: '2026-09-20',
           diagnosisResponsible: 'Dra. Paola',
+          diagnosisNotes: 'Feto de unos cuatro meses.',
         })
         .expect(201);
       expect(response.body).toMatchObject({
@@ -202,6 +203,8 @@ describe('Reproducción y nacimientos', () => {
         method: 'UNKNOWN',
         confirmedAt: '2026-09-20',
         diagnosisResponsible: 'Dra. Paola',
+        diagnosisNotes: 'Feto de unos cuatro meses.',
+        notes: null,
         expectedCalvingDate: '2027-03-09',
       });
       expect((await detail(cow)).derivedTags).toEqual(['PREGNANT']);
@@ -236,6 +239,42 @@ describe('Reproducción y nacimientos', () => {
         outcome: 'PENDING',
       });
       expect((await detail(cow)).derivedTags).toEqual(['PREGNANT']);
+    });
+
+    it('M6: las observaciones de la palpación quedan aparte de las de la preñez', async () => {
+      const { id } = (await serve(cow, { notes: 'Servicio con el toro del lote' }).expect(201))
+        .body as PregnancyView;
+      const first = await http()
+        .post(`/api/v1/pregnancies/${id}/diagnosis`)
+        .set(vet)
+        .send({ date: '2026-03-20', result: 'POSITIVE', notes: 'Útero con buen tono.' })
+        .expect(201);
+      expect(first.body).toMatchObject({
+        diagnosisNotes: 'Útero con buen tono.',
+        notes: 'Servicio con el toro del lote',
+      });
+
+      // Una palpación sin observaciones conserva las anteriores; con observaciones, las reemplaza.
+      const silent = await http()
+        .post(`/api/v1/pregnancies/${id}/diagnosis`)
+        .set(vet)
+        .send({ date: '2026-04-20', result: 'POSITIVE' })
+        .expect(201);
+      expect(silent.body.diagnosisNotes).toBe('Útero con buen tono.');
+      const second = await http()
+        .post(`/api/v1/pregnancies/${id}/diagnosis`)
+        .set(vet)
+        .send({ date: '2026-05-20', result: 'POSITIVE', notes: 'Gestación de tres meses.' })
+        .expect(201);
+      expect(second.body).toMatchObject({
+        diagnosisNotes: 'Gestación de tres meses.',
+        notes: 'Servicio con el toro del lote',
+      });
+
+      const detailView = await detail(cow);
+      expect(detailView.reproduction?.openPregnancy?.diagnosisNotes).toBe(
+        'Gestación de tres meses.',
+      );
     });
 
     it('negativa → cierra la preñez vacía (FAILED) y la hembra puede volver a servicio', async () => {
