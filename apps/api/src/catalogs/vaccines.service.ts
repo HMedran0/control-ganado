@@ -174,7 +174,7 @@ export class VaccinesService {
       where: scopedWhere(scope, {
         isActive: true,
         endsOn: { gte: toPrismaDate(this.clock.today()) },
-        vaccines: { some: { vaccineId } },
+        vaccines: { some: { vaccineId, removedAt: null } },
       }),
       orderBy: { startsOn: 'asc' },
     });

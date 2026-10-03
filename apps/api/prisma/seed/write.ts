@@ -92,9 +92,7 @@ export async function resetFarmData(
   });
   await prisma.pregnancy.deleteMany({ where: { farmId } });
   await prisma.animal.deleteMany({ where: { farmId } });
-  await prisma.vaccinationCycleVaccine.deleteMany({
-    where: { cycle: { farmId } },
-  });
+  await prisma.vaccinationCycleVaccine.deleteMany({ where: { farmId } });
   await prisma.vaccinationCycle.deleteMany({ where: { farmId } });
   await prisma.vaccine.deleteMany({ where: { farmId } });
   await prisma.lot.deleteMany({ where: { farmId } });
@@ -219,8 +217,12 @@ export async function writeSeed(
   await prisma.vaccinationCycleVaccine.createMany({
     data: CYCLES.flatMap((cycle) =>
       VACCINES.filter((vaccine) => vaccine.inOfficialCycle).map((vaccine) => ({
+        id: derivedId(`cycle-vaccine:${cycle.name}:${vaccine.key}`, today),
+        farmId,
         cycleId: required(catalog.cycleIds, cycle.name, 'el ciclo'),
         vaccineId: required(catalog.vaccineIds, vaccine.key, 'la vacuna'),
+        createdAt,
+        updatedAt: createdAt,
       })),
     ),
   });

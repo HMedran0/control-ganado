@@ -581,6 +581,84 @@ describe('Finca y catálogos', () => {
       ]);
       expect(await auditCount('VaccinationCycle', cycle.body.id)).toBe(2);
     });
+
+    it('ADR-012 (M6): quitar una vacuna del ciclo no borra la fila y deja de contar en las alertas', async () => {
+      const cow = await createAnimal(prisma, esperanza, { code: '301' });
+      const aftosaOf = async () => {
+        const detail = await http().get(`/api/v1/animals/${cow}`).set(admin).expect(200);
+        return (detail.body.vaccines as { name: string; status: string; reason: string }[]).find(
+          (vaccine) => vaccine.name === 'Aftosa',
+        );
+      };
+      // Ciclo en curso el 25/09/2026 (reloj de las pruebas): la vaca queda pendiente.
+      const cycle = await http()
+        .post('/api/v1/vaccination-cycles')
+        .set(admin)
+        .send({
+          name: '2026-X',
+          startsOn: '2026-09-01',
+          endsOn: '2026-10-30',
+          vaccineIds: [aftosaId],
+        })
+        .expect(201);
+      expect(await aftosaOf()).toMatchObject({ status: 'PENDING', reason: 'CURRENT_CYCLE' });
+
+      const rabia = await http().post('/api/v1/vaccines').set(admin).send({
+        name: 'Rabia',
+        disease: 'Rabia silvestre',
+        scheduleType: 'OFFICIAL_CYCLE',
+      });
+      const removed = await http()
+        .patch(`/api/v1/vaccination-cycles/${cycle.body.id}`)
+        .set(admin)
+        .send({ version: 1, vaccineIds: [rabia.body.id] })
+        .expect(200);
+      expect(removed.body.vaccines.map((vaccine: { name: string }) => vaccine.name)).toEqual([
+        'Rabia',
+      ]);
+      const rows = await prisma.vaccinationCycleVaccine.findMany({
+        where: { cycleId: cycle.body.id, vaccineId: aftosaId },
+      });
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ removedById: esperanza.userId, farmId: esperanza.farmId });
+      expect(rows[0]?.removedAt).not.toBeNull();
+      expect(await aftosaOf()).toMatchObject({ status: 'NOT_APPLICABLE', reason: 'NO_CYCLE' });
+
+      // Volver a ponerla crea otra fila vigente; la quitada queda como historial.
+      await http()
+        .patch(`/api/v1/vaccination-cycles/${cycle.body.id}`)
+        .set(admin)
+        .send({ version: 2, vaccineIds: [aftosaId, rabia.body.id] })
+        .expect(200);
+      const again = await prisma.vaccinationCycleVaccine.findMany({
+        where: { cycleId: cycle.body.id, vaccineId: aftosaId },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(again.map((row) => row.removedAt === null)).toEqual([false, true]);
+      expect(await aftosaOf()).toMatchObject({ status: 'PENDING', reason: 'CURRENT_CYCLE' });
+
+      // Un PATCH que no cambia las vacunas no toca las filas.
+      await http()
+        .patch(`/api/v1/vaccination-cycles/${cycle.body.id}`)
+        .set(admin)
+        .send({ version: 3, vaccineIds: [rabia.body.id, aftosaId] })
+        .expect(200);
+      expect(
+        await prisma.vaccinationCycleVaccine.count({ where: { cycleId: cycle.body.id } }),
+      ).toBe(3);
+
+      // El índice único parcial impide dos filas vigentes de la misma vacuna en el ciclo.
+      await expect(
+        prisma.vaccinationCycleVaccine.create({
+          data: {
+            id: uuidv7(),
+            farmId: esperanza.farmId,
+            cycleId: cycle.body.id,
+            vaccineId: aftosaId,
+          },
+        }),
+      ).rejects.toThrow();
+    });
   });
 
   describe('lotes (CFG-02)', () => {

@@ -168,6 +168,7 @@ model Farm {
   importBatches   ImportBatch[]
   animalTags      AnimalTag[]
   idempotencyKeys IdempotencyKey[]
+  cycleVaccines   VaccinationCycleVaccine[]
 
   @@map("farms")
 }
@@ -742,14 +743,26 @@ model VaccinationCycle {
   @@map("vaccination_cycles")
 }
 
+/// Vacunas de un ciclo (SAN-06). Desde M6 (ADR-012) quitar una vacuna del ciclo no borra la fila:
+/// marca `removed_at` y `removed_by_id`. Única vigente por (ciclo, vacuna): índice único parcial
+/// `vaccination_cycle_vaccines_active_uq` WHERE removed_at IS NULL, en la migración SQL.
 model VaccinationCycleVaccine {
-  cycleId   String @map("cycle_id") @db.Uuid
-  vaccineId String @map("vaccine_id") @db.Uuid
+  id          String    @id @db.Uuid
+  farmId      String    @map("farm_id") @db.Uuid
+  cycleId     String    @map("cycle_id") @db.Uuid
+  vaccineId   String    @map("vaccine_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  removedAt   DateTime? @map("removed_at") @db.Timestamptz
+  removedById String?   @map("removed_by_id") @db.Uuid
+  updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
 
+  farm    Farm             @relation(fields: [farmId], references: [id])
   cycle   VaccinationCycle @relation(fields: [cycleId], references: [id])
   vaccine Vaccine          @relation(fields: [vaccineId], references: [id])
 
-  @@id([cycleId, vaccineId])
+  @@index([cycleId])
+  @@index([vaccineId])
+  @@index([farmId, updatedAt])
   @@map("vaccination_cycle_vaccines")
 }
 

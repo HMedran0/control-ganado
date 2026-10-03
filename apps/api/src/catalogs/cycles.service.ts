@@ -16,6 +16,7 @@ import {
   type WithWarnings,
 } from '@hato/shared';
 
+import { userOf } from '../animals/animal-rules.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import { scopedWhere } from '../common/scoped-prisma.js';
 import { Clock } from '../infra/clock.service.js';
@@ -32,8 +33,12 @@ import {
 
 const FIELDS = ['name', 'startsOn', 'endsOn', 'isOfficial', 'isActive', 'vaccineIds'] as const;
 
+/** Las vacunas vigentes del ciclo: las quitadas quedan como historial (ADR-012, M6). */
 const WITH_VACCINES = {
-  vaccines: { include: { vaccine: { select: { id: true, name: true } } } },
+  vaccines: {
+    where: { removedAt: null },
+    include: { vaccine: { select: { id: true, name: true } } },
+  },
 } as const;
 
 type CycleRow = {
@@ -70,7 +75,7 @@ export class CyclesService {
       const replay = catalogReplay(
         await this.prisma.vaccinationCycle.findUnique({
           where: { id: input.id },
-          include: { vaccines: { include: { vaccine: { select: { id: true, name: true } } } } },
+          include: WITH_VACCINES,
         }),
         scope.farmId,
         {
@@ -89,6 +94,7 @@ export class CyclesService {
       this.prisma.$transaction(async (tx) => {
         await assertVaccinesOfFarm(tx, scope, input.vaccineIds);
         const id = input.id ?? uuidv7();
+        const at = this.clock.now();
         await tx.vaccinationCycle.create({
           data: {
             id,
@@ -97,7 +103,15 @@ export class CyclesService {
             startsOn: toPrismaDate(input.startsOn),
             endsOn: toPrismaDate(input.endsOn),
             isOfficial: input.isOfficial ?? true,
-            vaccines: { create: input.vaccineIds.map((vaccineId) => ({ vaccineId })) },
+            vaccines: {
+              create: input.vaccineIds.map((vaccineId) => ({
+                id: uuidv7(),
+                farmId: scope.farmId,
+                vaccineId,
+                createdAt: at,
+                updatedAt: at,
+              })),
+            },
           },
         });
         const cycle = toView(await findCycle(tx, scope, id));
@@ -106,7 +120,7 @@ export class CyclesService {
           entity: 'VaccinationCycle',
           entityId: id,
           action: AUDIT_ACTION.CREATE,
-          at: this.clock.now(),
+          at,
           diff: { after: auditable(cycle) },
         });
         return { ...cycle, warnings: await overlapWarnings(tx, scope, cycle) };
@@ -138,10 +152,7 @@ export class CyclesService {
         }
         if (input.vaccineIds !== undefined) {
           await assertVaccinesOfFarm(tx, scope, input.vaccineIds);
-          await tx.vaccinationCycleVaccine.deleteMany({ where: { cycleId: id } });
-          await tx.vaccinationCycleVaccine.createMany({
-            data: input.vaccineIds.map((vaccineId) => ({ cycleId: id, vaccineId })),
-          });
+          await replaceCycleVaccines(tx, scope, id, before, input.vaccineIds, this.clock.now());
         }
         await tx.vaccinationCycle.update({
           where: { id, version: input.version },
@@ -167,6 +178,44 @@ export class CyclesService {
         return { ...after, warnings };
       }),
     );
+  }
+}
+
+/**
+ * Deja en el ciclo exactamente las vacunas pedidas sin borrar filas (ADR-012): las que salen
+ * quedan con `removed_at`, las que entran se crean y las que siguen no se tocan. Volver a poner
+ * una vacuna quitada crea otra fila, como `animal_tags`.
+ */
+async function replaceCycleVaccines(
+  tx: Tx,
+  scope: FarmScope,
+  cycleId: string,
+  before: CycleView,
+  vaccineIds: readonly string[],
+  at: Date,
+): Promise<void> {
+  const current = new Set(before.vaccines.map((vaccine) => vaccine.id));
+  const wanted = new Set(vaccineIds);
+  const removed = [...current].filter((vaccineId) => !wanted.has(vaccineId));
+  const added = [...wanted].filter((vaccineId) => !current.has(vaccineId));
+
+  if (removed.length > 0) {
+    await tx.vaccinationCycleVaccine.updateMany({
+      where: { farmId: scope.farmId, cycleId, vaccineId: { in: removed }, removedAt: null },
+      data: { removedAt: at, removedById: userOf(scope) },
+    });
+  }
+  if (added.length > 0) {
+    await tx.vaccinationCycleVaccine.createMany({
+      data: added.map((vaccineId) => ({
+        id: uuidv7(),
+        farmId: scope.farmId,
+        cycleId,
+        vaccineId,
+        createdAt: at,
+        updatedAt: at,
+      })),
+    });
   }
 }
 

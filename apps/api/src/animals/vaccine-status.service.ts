@@ -164,7 +164,7 @@ export class VaccineStatusService {
   ): Promise<(VaccinationCycleLike & { readonly vaccineIds: ReadonlySet<string> })[]> {
     const rows = await db.vaccinationCycle.findMany({
       where: { farmId: scope.farmId, isActive: true, isOfficial: true },
-      include: { vaccines: { select: { vaccineId: true } } },
+      include: { vaccines: { where: { removedAt: null }, select: { vaccineId: true } } },
     });
     return rows.map((row) => ({
       name: row.name,

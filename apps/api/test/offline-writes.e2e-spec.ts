@@ -104,6 +104,7 @@ describe('Escrituras sin conexión (ADR-012)', () => {
         'sales',
         'tags',
         'treatment_records',
+        'vaccination_cycle_vaccines',
         'vaccination_cycles',
         'vaccination_records',
         'vaccines',
