@@ -86,7 +86,12 @@ jobs:
         run: pnpm test
 
       # ADR-002: las fechas de negocio no deben depender de la zona horaria del proceso.
+      # PGTZ: los clientes de PostgreSQL abren en la hora de Bogotá, como el contenedor local. La
+      # base de pruebas también la tiene por defecto (global-setup); la API debe seguir en UTC y
+      # conservar la hora exacta de las marcas de tiempo (test/timestamps.e2e-spec.ts, error de M5).
       - name: Pruebas en dos zonas horarias
+        env:
+          PGTZ: America/Bogota
         run: pnpm test:tz
 
       # Las pruebas importan el seed como módulo, así que no pasan por el gancho de

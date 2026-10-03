@@ -50,6 +50,8 @@
       // datos. Turbo filtra el entorno de cada tarea: sin declararlas aquí, el proceso hijo
       // no recibe las URL y la suite falla con «Define TEST_DATABASE_URL o DATABASE_URL».
       "env": ["DATABASE_URL", "TEST_DATABASE_URL"],
+      // Zona de las sesiones de PostgreSQL en la integración continua (timestamps.e2e-spec.ts).
+      "passThroughEnv": ["PGTZ"],
       "cache": false
     }
   }

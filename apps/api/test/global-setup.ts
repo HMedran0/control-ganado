@@ -39,4 +39,18 @@ export default async function globalSetup(): Promise<void> {
     stdio: 'pipe',
     shell: process.platform === 'win32',
   });
+
+  // La zona por defecto de las sesiones de la base de pruebas es la de Bogotá, venga de donde
+  // venga el servidor (contenedor local con PGTZ, servicio de la integración continua). Así toda
+  // la suite corre con la sesión «en contra» y una conexión que olvidara `TimeZone=UTC`
+  // (`db-session.ts`) correría las marcas cinco horas: lo comprueba `timestamps.e2e-spec.ts`.
+  const test = new Client({ connectionString: testDatabaseUrl() });
+  await test.connect();
+  try {
+    await test.query(
+      `ALTER DATABASE "${databaseName.replace(/"/g, '""')}" SET "TimeZone" TO 'America/Bogota'`,
+    );
+  } finally {
+    await test.end();
+  }
 }
