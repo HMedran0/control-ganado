@@ -106,6 +106,33 @@ enum WeightMethod {
   ESTIMATE
 }
 
+/// Cómo se identificó al animal al registrar el evento (PES-01, PIL-05; M6).
+enum IdentifiedBy {
+  RFID_READER
+  QR
+  SEARCH
+  IMPORT
+}
+
+/// De dónde salió el peso (PES-01, PIL-05; M6).
+enum WeightSource {
+  MANUAL
+  SCALE_FILE
+  SCALE_LIVE
+}
+
+/// Formato del archivo de la báscula (PES-04).
+enum ScaleFileFormat {
+  CSV
+  XLSX
+}
+
+/// Qué importó un lote de importación (ANI-09 o PES-04).
+enum ImportKind {
+  ANIMALS
+  WEIGHTS
+}
+
 enum ExpenseType {
   PURCHASE
   FEED
@@ -169,6 +196,7 @@ model Farm {
   animalTags      AnimalTag[]
   idempotencyKeys IdempotencyKey[]
   cycleVaccines   VaccinationCycleVaccine[]
+  scaleProfiles   ScaleProfile[]
 
   @@map("farms")
 }
@@ -530,6 +558,8 @@ model TreatmentRecord {
   withdrawalUntil    DateTime? @map("withdrawal_until") @db.Date
   responsible        String?
   workSessionId      String?   @map("work_session_id") @db.Uuid
+  /// Gasto del costo del tratamiento (SAN-05, solo ADMIN, RN-20). M6.
+  expenseId          String?   @map("expense_id") @db.Uuid
   notes              String?
   createdById        String    @map("created_by_id") @db.Uuid
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz
@@ -539,6 +569,7 @@ model TreatmentRecord {
 
   animal      Animal       @relation(fields: [animalId], references: [id])
   workSession WorkSession? @relation(fields: [workSessionId], references: [id])
+  expense     Expense?     @relation(fields: [expenseId], references: [id])
 
   @@index([farmId, animalId])
   @@index([farmId, withdrawalUntil])
@@ -547,20 +578,25 @@ model TreatmentRecord {
 }
 
 model WeightRecord {
-  id            String       @id @db.Uuid
-  farmId        String       @map("farm_id") @db.Uuid
-  animalId      String       @map("animal_id") @db.Uuid
-  weighedOn     DateTime     @map("weighed_on") @db.Date
-  weightKg      Decimal      @map("weight_kg") @db.Decimal(7, 2)
-  method        WeightMethod @default(SCALE)
-  isBirthWeight Boolean      @default(false) @map("is_birth_weight")
-  workSessionId String?      @map("work_session_id") @db.Uuid
+  id            String        @id @db.Uuid
+  farmId        String        @map("farm_id") @db.Uuid
+  animalId      String        @map("animal_id") @db.Uuid
+  weighedOn     DateTime      @map("weighed_on") @db.Date
+  weightKg      Decimal       @map("weight_kg") @db.Decimal(7, 2)
+  method        WeightMethod  @default(SCALE)
+  isBirthWeight Boolean       @default(false) @map("is_birth_weight")
+  /// Nulo cuando nadie identificó al animal: seed, peso al nacer, peso inicial (M6).
+  identifiedBy  IdentifiedBy? @map("identified_by")
+  weightSource  WeightSource  @default(MANUAL) @map("weight_source")
+  /// Número de serie del indicador en el pesaje en vivo (PES-03 CA6, M15).
+  scaleSerial   String?       @map("scale_serial")
+  workSessionId String?       @map("work_session_id") @db.Uuid
   notes         String?
-  createdById   String       @map("created_by_id") @db.Uuid
-  createdAt     DateTime     @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt     DateTime     @default(now()) @map("updated_at") @db.Timestamptz
-  voidedAt      DateTime?    @map("voided_at") @db.Timestamptz
-  voidReason    String?      @map("void_reason")
+  createdById   String        @map("created_by_id") @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @default(now()) @map("updated_at") @db.Timestamptz
+  voidedAt      DateTime?     @map("voided_at") @db.Timestamptz
+  voidReason    String?       @map("void_reason")
 
   animal      Animal       @relation(fields: [animalId], references: [id])
   workSession WorkSession? @relation(fields: [workSessionId], references: [id])
@@ -605,6 +641,7 @@ model Expense {
 
   farm        Farm                @relation(fields: [farmId], references: [id])
   allocations ExpenseAllocation[]
+  treatments  TreatmentRecord[]
 
   @@index([farmId, occurredOn])
   @@index([farmId, updatedAt])
@@ -686,6 +723,7 @@ model WorkSession {
   vaccinations VaccinationRecord[]
   treatments   TreatmentRecord[]
   weights      WeightRecord[]
+  imports      ImportBatch[]
 
   @@index([farmId, sessionDate])
   @@index([farmId, updatedAt])
@@ -790,25 +828,31 @@ model IdempotencyKey {
 }
 
 model ImportBatch {
-  id             String   @id @db.Uuid
-  farmId         String   @map("farm_id") @db.Uuid
+  id             String     @id @db.Uuid
+  farmId         String     @map("farm_id") @db.Uuid
   /// Clave que la web genera al elegir el archivo: un doble clic o un reintento con la misma
   /// clave devuelve el lote ya creado en lugar de importar otra vez (ADR-011).
-  idempotencyKey String   @map("idempotency_key") @db.Uuid
+  idempotencyKey String     @map("idempotency_key") @db.Uuid
   /// SHA-256 del archivo: la simulación avisa si ese mismo archivo ya se importó.
-  fileSha256     String   @map("file_sha256")
-  fileName       String   @map("file_name")
-  totalRows      Int      @map("total_rows")
-  createdRows    Int      @map("created_rows")
-  errorRows      Int      @map("error_rows")
+  fileSha256     String     @map("file_sha256")
+  /// Inventario (ANI-09) o sesión de la báscula (PES-04, M6).
+  kind           ImportKind @default(ANIMALS)
+  /// Jornada de pesaje que creó la importación de la báscula (PES-04 CA4).
+  workSessionId  String?    @map("work_session_id") @db.Uuid
+  fileName       String     @map("file_name")
+  totalRows      Int        @map("total_rows")
+  createdRows    Int        @map("created_rows")
+  errorRows      Int        @map("error_rows")
   summary        Json
-  createdById    String   @map("created_by_id") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  createdById    String     @map("created_by_id") @db.Uuid
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz
 
-  farm Farm @relation(fields: [farmId], references: [id])
+  farm        Farm         @relation(fields: [farmId], references: [id])
+  workSession WorkSession? @relation(fields: [workSessionId], references: [id])
 
   @@unique([farmId, idempotencyKey])
   @@index([farmId, fileSha256])
+  @@index([workSessionId])
   @@index([farmId, createdAt])
   @@map("import_batches")
 }
@@ -833,4 +877,28 @@ model LoginAttempt {
   @@index([ip, createdAt])
   @@index([createdAt])
   @@map("login_attempts")
+}
+
+/// Perfil de báscula de la finca (PES-04, M6): cómo leer el archivo que exporta su indicador. Las
+/// plantillas del sistema (Tru-Test) no son filas: viven en packages/shared. Único por finca sin
+/// distinguir mayúsculas (índice sobre lower(name) en la migración SQL), como los catálogos.
+model ScaleProfile {
+  id                    String          @id @db.Uuid
+  farmId                String          @map("farm_id") @db.Uuid
+  name                  String
+  fileFormat            ScaleFileFormat @map("file_format")
+  columnMapping         Json            @map("column_mapping")
+  /// Plantilla del sistema de la que se duplicó, y su versión en ese momento.
+  sourceTemplateKey     String?         @map("source_template_key")
+  sourceTemplateVersion Int?            @map("source_template_version")
+  version               Int             @default(1)
+  createdById           String          @map("created_by_id") @db.Uuid
+  updatedById           String          @map("updated_by_id") @db.Uuid
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime        @default(now()) @map("updated_at") @db.Timestamptz
+
+  farm Farm @relation(fields: [farmId], references: [id])
+
+  @@index([farmId, updatedAt])
+  @@map("scale_profiles")
 }
