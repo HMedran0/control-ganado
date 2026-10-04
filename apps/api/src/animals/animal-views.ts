@@ -4,7 +4,9 @@ import {
   animalStatus,
   ageInMonths,
   derivedTags,
+  gainFromMilli,
   managementCategory,
+  weightAlerts,
   type AnimalAlert,
   type AnimalStatus,
   type DerivedTag,
@@ -14,7 +16,12 @@ import {
   type PregnancyFacts,
   type Sex,
   type VaccineStatusView,
+  type WeightRecordLike,
+  type WeightSummary,
 } from '@hato/shared';
+
+import type { Prisma } from '../generated/prisma/client.js';
+import { fromPrismaDate } from '../infra/date-mapper.js';
 
 import type { FarmContext } from './farm-context.service.js';
 
@@ -41,7 +48,58 @@ export type DerivedView = {
   readonly alerts: AnimalAlert[];
   /** Parto estimado, solo con la preñez abierta confirmada (la columna del listado, 06 §5.2). */
   readonly expectedCalvingDate: IsoDate | null;
+  /** Ganancias y alertas de peso (PES-05); `null` si el animal no está activo. */
+  readonly weight: WeightSummary | null;
 };
+
+/** Pesaje de la base, reducido a lo que necesitan la ganancia y las alertas (ADR-015). */
+export function toWeightLike(row: {
+  readonly id: string;
+  readonly weighedOn: Date;
+  readonly weightKg: Prisma.Decimal | number | string;
+  readonly isBirthWeight: boolean;
+  readonly voidedAt: Date | null;
+}): WeightRecordLike {
+  return {
+    id: row.id,
+    weighedOn: fromPrismaDate(row.weighedOn),
+    weightKg: Number(row.weightKg),
+    isBirthWeight: row.isBirthWeight,
+    voided: row.voidedAt !== null,
+  };
+}
+
+/** Lo que se lee de cada pesaje para `toWeightLike`. */
+export const WEIGHT_LIKE_SELECT = {
+  id: true,
+  animalId: true,
+  weighedOn: true,
+  weightKg: true,
+  isBirthWeight: true,
+  voidedAt: true,
+} as const;
+
+/** Resumen de peso de un animal de la categoría dada (PES-05), con las funciones de shared. */
+export function weightSummaryOf(
+  records: readonly WeightRecordLike[],
+  category: ManagementCategory,
+  context: FarmContext,
+): WeightSummary {
+  const { settings, today } = context;
+  const result = weightAlerts({ records, category, settings, today });
+  const toKg = (milli: number | null) => (milli === null ? null : gainFromMilli(milli));
+  return {
+    gains: {
+      lastTwo: toKg(result.gains.lastTwoMilli),
+      last90Days: toKg(result.gains.last90DaysMilli),
+      sinceBirth: toKg(result.gains.sinceBirthMilli),
+    },
+    gainThreshold: settings.weightGainAlertKgPerDay[category] ?? null,
+    lowGain: result.lowGain,
+    weightLoss: result.weightLoss,
+    lossPercent: result.lossPercent,
+  };
+}
 
 /**
  * Categoría, etiquetas, estado y alertas de un animal. Un animal que no está activo no tiene
@@ -51,6 +109,7 @@ export function deriveView(
   facts: AnimalFacts,
   context: FarmContext,
   vaccineStatuses: readonly VaccineStatusView[],
+  weights: readonly WeightRecordLike[],
 ): DerivedView {
   const { today, settings } = context;
   const category = managementCategory({
@@ -72,6 +131,8 @@ export function deriveView(
     today,
   });
   const status = animalStatus({ archived: facts.archived, exitType: facts.exitType });
+  const weight =
+    status === ANIMAL_STATUS.ACTIVE ? weightSummaryOf(weights, category, context) : null;
   const alerts =
     status === ANIMAL_STATUS.ACTIVE
       ? animalAlerts({
@@ -81,6 +142,10 @@ export function deriveView(
           calvingAlertDays: settings.calvingAlertDays,
           unconfirmedServiceAlertDays: settings.unconfirmedServiceAlertDays,
           overdueCalvingAlertDays: settings.overdueCalvingAlertDays,
+          weight: {
+            lowGain: weight?.lowGain ?? false,
+            weightLoss: weight?.weightLoss ?? false,
+          },
           today,
         })
       : [];
@@ -93,5 +158,6 @@ export function deriveView(
     alerts,
     expectedCalvingDate:
       open !== null && open.confirmedAt !== null ? open.expectedCalvingDate : null,
+    weight,
   };
 }

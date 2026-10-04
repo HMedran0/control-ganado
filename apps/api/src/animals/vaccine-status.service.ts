@@ -19,8 +19,8 @@ type CatalogVaccine = VaccineSchedule & { readonly id: string; readonly name: st
 
 /**
  * Estado de las vacunas por animal, calculado con `vaccineStatus` de `@hato/shared` (RN-13,
- * RN-27). No hay versión SQL: los cuatro tipos de programación viven solo en shared, y el
- * filtro de alertas de vacuna del listado recibe aquí la lista de animales que cumplen.
+ * RN-27), para **mostrarlo** (ficha, filas del listado y de Alertas). Para filtrar y contar está
+ * su traducción SQL, `vaccine-status.sql.ts` (ADR-009 decisión 8, M6), comprobada contra esta.
  *
  * Solo tiene sentido para animales activos: uno que salió o está archivado no tiene alertas.
  */
@@ -64,7 +64,13 @@ export class VaccineStatusService {
       () =>
         db.animal.findMany({
           where: animalWhere,
-          select: { id: true, sex: true, birthDate: true, entryDate: true },
+          select: {
+            id: true,
+            sex: true,
+            birthDate: true,
+            entryDate: true,
+            entryDateEstimated: true,
+          },
         }),
       () =>
         db.vaccinationRecord.findMany({
@@ -114,6 +120,7 @@ export class VaccineStatusService {
             sex: animal.sex,
             birthDate: fromPrismaDate(animal.birthDate),
             entryDate: fromPrismaDate(animal.entryDate),
+            entryDateEstimated: animal.entryDateEstimated,
           },
           records: recordsByKey.get(`${animal.id}:${vaccine.id}`) ?? [],
           currentCycle: current,

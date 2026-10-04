@@ -10,6 +10,7 @@ import {
   calvingIntervals,
   isoDateParts,
   summarizePregnancies,
+  animalWithdrawals,
   withdrawalUntilOf,
   type AnimalDetail,
   type AnimalRef,
@@ -36,7 +37,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { fromPrismaDate, fromPrismaDateOrNull } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
 import { pregnancyInclude, toPregnancyView } from '../reproduction/pregnancy-views.js';
-import { deriveView } from './animal-views.js';
+import { WEIGHT_LIKE_SELECT, deriveView, toWeightLike } from './animal-views.js';
 import { suggestFarmCodes } from './code-suggestion.js';
 import { FarmContextService, type FarmContext } from './farm-context.service.js';
 import { VaccineStatusService } from './vaccine-status.service.js';
@@ -120,12 +121,19 @@ export class AnimalDetailService {
           include: pregnancyInclude,
           orderBy: [{ serviceDate: 'desc' }, { id: 'desc' }],
         },
-        treatments: { select: { withdrawalUntil: true, voidedAt: true } },
+        treatments: {
+          select: {
+            withdrawalUntil: true,
+            voidedAt: true,
+            startedOn: true,
+            durationDays: true,
+            withdrawalMeatDays: true,
+            withdrawalMilkDays: true,
+          },
+        },
         weights: {
-          where: { voidedAt: null },
           orderBy: [{ weighedOn: 'desc' }, { createdAt: 'desc' }],
-          take: 1,
-          select: { weightKg: true, weighedOn: true, method: true },
+          select: { ...WEIGHT_LIKE_SELECT, method: true },
         },
       },
     });
@@ -146,6 +154,15 @@ export class AnimalDetailService {
         voided: treatment.voidedAt !== null,
       })),
     );
+    const withdrawals = animalWithdrawals(
+      animal.treatments.map((treatment) => ({
+        startedOn: fromPrismaDate(treatment.startedOn),
+        durationDays: treatment.durationDays,
+        withdrawalMeatDays: treatment.withdrawalMeatDays,
+        withdrawalMilkDays: treatment.withdrawalMilkDays,
+        voided: treatment.voidedAt !== null,
+      })),
+    );
     const vaccines =
       (await this.vaccineStatus.statusesFor(scope, ctx, [animal.id], db)).get(animal.id) ?? [];
     const birthDate = fromPrismaDate(animal.birthDate);
@@ -160,6 +177,7 @@ export class AnimalDetailService {
       },
       ctx,
       vaccines,
+      animal.weights.map(toWeightLike),
     );
 
     const openPregnancy = animal.pregnancies.find(
@@ -173,7 +191,7 @@ export class AnimalDetailService {
         voided: pregnancy.voidedAt !== null,
       })),
     );
-    const lastWeight = animal.weights[0];
+    const lastWeight = animal.weights.find((weight) => weight.voidedAt === null);
 
     const detail: AnimalDetail = {
       id: animal.id,
@@ -236,6 +254,8 @@ export class AnimalDetailService {
           : null,
       vaccines: derived.status === 'ACTIVE' ? vaccines : [],
       withdrawalUntil,
+      withdrawals: { meatUntil: withdrawals.meatUntil, milkUntil: withdrawals.milkUntil },
+      weight: derived.weight,
       codeHistory: await this.codeHistory(scope, animal, db),
       qrUrl: systemQrUrl(this.env.PUBLIC_WEB_URL, animal.id),
       archive:

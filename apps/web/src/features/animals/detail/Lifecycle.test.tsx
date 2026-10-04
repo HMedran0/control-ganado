@@ -65,13 +65,16 @@ describe('Salida (ANI-04)', () => {
     const user = userEvent.setup();
     const { fetchMock } = await renderApp(
       <LifecycleActions
-        animal={animalDetail({ withdrawalUntil: toIsoDate('2099-01-01') })}
+        animal={animalDetail({
+          withdrawalUntil: toIsoDate('2099-01-01'),
+          withdrawals: { meatUntil: toIsoDate('2099-01-01'), milkUntil: null },
+        })}
         onDone={vi.fn()}
       />,
       (url) => (url.includes('/exit') ? json({ ...animalDetail(), warnings: [] }, 201) : json({})),
     );
     await user.click(screen.getByRole('button', { name: 'Registrar salida' }));
-    expect(screen.getByText(/Está en retiro de medicamento hasta el 01\/01\/2099/)).toBeVisible();
+    expect(screen.getByText(/Está en retiro de carne hasta el 01\/01\/2099/)).toBeVisible();
     await user.type(screen.getByLabelText('Precio de venta'), '100');
     await user.click(screen.getByLabelText('Confirmo la salida aunque esté en retiro'));
     await user.click(screen.getAllByRole('button', { name: 'Registrar salida' }).at(-1)!);

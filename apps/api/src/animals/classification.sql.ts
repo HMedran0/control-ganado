@@ -4,17 +4,23 @@ import {
   MANAGEMENT_CATEGORY,
   PREGNANCY_OUTCOME,
   SEX,
+  gainToMilli,
   type DerivedTag,
   type IsoDate,
+  type ManagementCategory,
 } from '@hato/shared';
 
 import { Prisma } from '../generated/prisma/client.js';
+import { vaccineStatusCtes } from './vaccine-status.sql.js';
+import { weightGainCtes } from './weight-gain.sql.js';
 
 /**
  * Clasificación de los animales en SQL (RN-06, RN-07, RN-08, RN-25; docs/adr/009).
  *
  * Es la traducción de `managementCategory`, `derivedTags`, `isCalvingSoon`,
- * `isServiceUnconfirmedOverdue` e `isCalvingOverdue` de `@hato/shared` a una CTE, para poder **filtrar y contar**
+ * `isServiceUnconfirmedOverdue`, `isCalvingOverdue` y, desde M6, `vaccineStatus`
+ * (`vaccine-status.sql.ts`) y `weightAlerts` (`weight-gain.sql.ts`) de `@hato/shared` a una CTE,
+ * para poder **filtrar y contar**
  * miles de animales en la base. Mostrar un animal no pasa por aquí: la ficha y cada fila del
  * listado se calculan con las funciones de shared a partir de las columnas crudas que esta CTE
  * también expone. Que las dos cosas coincidan (RN-27) lo comprueba
@@ -35,7 +41,29 @@ export type ClassificationParams = {
   readonly unconfirmedServiceAlertDays: number;
   /** «Parto vencido sin registrar» (M5), 15 por defecto [Validar]. */
   readonly overdueCalvingAlertDays: number;
+  /** Ventana de vacuna próxima (RN-13), M6. */
+  readonly vaccineAlertDays: number;
+  /** Umbral de «Ganancia baja» por categoría, en kg/día (PES-05 CA2), M6. */
+  readonly weightGainAlertKgPerDay: Partial<Readonly<Record<ManagementCategory, number>>>;
+  /** «Perdió peso» (PES-05 CA3), M6. */
+  readonly weightLossAlertPercent: number;
+  /** Antigüedad máxima del ancla de la ganancia de 90 días (ADR-015), M6. */
+  readonly weightGainAnchorMaxDays: number;
 };
+
+/** Umbral de ganancia de la categoría `k.category` en milésimas de kg/día, o NULL. */
+function gainThresholdSql(params: ClassificationParams): Prisma.Sql {
+  const categories = Object.values(MANAGEMENT_CATEGORY);
+  const entries = categories.flatMap((category) => {
+    const value = params.weightGainAlertKgPerDay[category];
+    return value === undefined ? [] : [[category, gainToMilli(value)] as const];
+  });
+  if (entries.length === 0) return Prisma.sql`NULL::int`;
+  const branches = entries.map(
+    ([category, milli]) => Prisma.sql`WHEN ${category}::text THEN ${milli}::int`,
+  );
+  return Prisma.sql`CASE k.category ${Prisma.join(branches, ' ')} ELSE NULL::int END`;
+}
 
 const outcome = (value: string): Prisma.Sql => Prisma.sql`${value}::"PregnancyOutcome"`;
 
@@ -46,7 +74,11 @@ const outcome = (value: string): Prisma.Sql => Prisma.sql`${value}::"PregnancyOu
  * - hechos crudos: `calving_count`, `last_calving_date`, `open_service_date`,
  *   `open_confirmed_at`, `open_expected_calving_date`, `withdrawal_until`;
  * - derivados: `category`, `served`, `pregnant`, `calved`, `dry`, `withdrawal`,
- *   `calving_soon`, `unconfirmed_service`, `calving_overdue`.
+ *   `calving_soon`, `unconfirmed_service`, `calving_overdue`;
+ * - desde M6: `vaccine_overdue`, `vaccine_due` (solo activos, de `vaccine_status`), las ganancias
+ *   `gain_last_two_milli`, `gain_90_milli`, `gain_birth_milli`, y `low_gain` y `weight_loss`
+ *   (solo activos). La CTE `vaccine_status` queda disponible para quien la necesite (Alertas,
+ *   avance de un ciclo).
  *
  * Se usa como `WITH ${classificationCtes(params)} SELECT … FROM classified c …`.
  */
@@ -55,6 +87,8 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
   const todayDate = Prisma.sql`${today}::date`;
 
   return Prisma.sql`
+    ${vaccineStatusCtes({ farmId, today, vaccineAlertDays: params.vaccineAlertDays })},
+    ${weightGainCtes({ farmId, today, anchorMaxDays: params.weightGainAnchorMaxDays })},
     reproduction AS (
       SELECT p.dam_id,
         count(*) FILTER (WHERE p.outcome = ${outcome(PREGNANCY_OUTCOME.CALVED)})::int AS calving_count,
@@ -75,6 +109,14 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
     facts AS (
       SELECT a.id AS animal_id,
         a.sex,
+        (a.deleted_at IS NULL AND a.exit_type IS NULL) AS is_active,
+        COALESCE(va.vaccine_overdue, false) AS vaccine_overdue,
+        COALESCE(va.vaccine_due, false) AS vaccine_due,
+        wf.last_cents AS weight_last_cents,
+        wf.prev_cents AS weight_prev_cents,
+        wf.gain_last_two_milli,
+        wf.gain_90_milli,
+        wf.gain_birth_milli,
         hato_months_between(a.birth_date, ${todayDate}) AS age_months,
         COALESCE(r.calving_count, 0) + a.imported_prior_calvings AS calving_count,
         r.last_calving_date,
@@ -87,6 +129,8 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
       FROM animals a
       LEFT JOIN reproduction r ON r.dam_id = a.id
       LEFT JOIN withdrawals w ON w.animal_id = a.id
+      LEFT JOIN vaccine_alerts va ON va.animal_id = a.id
+      LEFT JOIN weight_facts wf ON wf.animal_id = a.id
       WHERE a.farm_id = ${farmId}::uuid
     ),
     categorized AS (
@@ -120,7 +164,12 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
         (k.served
           AND (${todayDate} - k.open_service_date) > ${params.unconfirmedServiceAlertDays}::int) AS unconfirmed_service,
         (k.open_service_date IS NOT NULL
-          AND (${todayDate} - k.open_expected_calving_date) > ${params.overdueCalvingAlertDays}::int) AS calving_overdue
+          AND (${todayDate} - k.open_expected_calving_date) > ${params.overdueCalvingAlertDays}::int) AS calving_overdue,
+        COALESCE(k.is_active AND k.gain_90_milli IS NOT NULL
+          AND k.gain_90_milli < ${gainThresholdSql(params)}, false) AS low_gain,
+        (k.is_active AND k.weight_prev_cents IS NOT NULL
+          AND 100 * (k.weight_prev_cents - k.weight_last_cents)
+              > ${params.weightLossAlertPercent}::int * k.weight_prev_cents) AS weight_loss
       FROM categorized k
     )`;
 }
@@ -156,4 +205,14 @@ export type ClassifiedRow = {
   readonly calving_soon: boolean;
   readonly unconfirmed_service: boolean;
   readonly calving_overdue: boolean;
+  readonly is_active: boolean;
+  readonly vaccine_overdue: boolean;
+  readonly vaccine_due: boolean;
+  readonly weight_last_cents: bigint | null;
+  readonly weight_prev_cents: bigint | null;
+  readonly gain_last_two_milli: number | null;
+  readonly gain_90_milli: number | null;
+  readonly gain_birth_milli: number | null;
+  readonly low_gain: boolean;
+  readonly weight_loss: boolean;
 };

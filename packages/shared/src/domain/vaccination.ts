@@ -145,9 +145,24 @@ function validRecords(records: readonly VaccinationRecordLike[]): VaccinationRec
   return records.filter((record) => !record.voided);
 }
 
+/** ¿`a` es una próxima fecha posterior a `b`? Una fecha cuenta como posterior a ninguna. */
+function laterDue(a: IsoDate | null, b: IsoDate | null): boolean {
+  return a !== null && (b === null || a > b);
+}
+
+/**
+ * Última aplicación válida. Dos el mismo día se desempatan por la próxima fecha más lejana (sin
+ * próxima fecha, al final): el mismo orden que `applied_on DESC, next_due_on DESC NULLS LAST` del
+ * SQL (ADR-009), para que los dos caminos elijan la misma.
+ */
 function latestRecord(records: readonly VaccinationRecordLike[]): VaccinationRecordLike | null {
   return validRecords(records).reduce<VaccinationRecordLike | null>(
-    (latest, record) => (latest === null || record.appliedOn > latest.appliedOn ? record : latest),
+    (latest, record) =>
+      latest === null ||
+      record.appliedOn > latest.appliedOn ||
+      (record.appliedOn === latest.appliedOn && laterDue(record.nextDueOn, latest.nextDueOn))
+        ? record
+        : latest,
     null,
   );
 }

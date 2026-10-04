@@ -183,6 +183,9 @@ describe('Salida, archivo y numeración reutilizable', () => {
           startedOn: toPrismaDate(toIsoDate('2026-09-15')),
           reason: 'Neumonía',
           medication: 'Oxitetraciclina',
+          durationDays: 1,
+          withdrawalMeatDays: 12,
+          withdrawalMilkDays: 3,
           withdrawalUntil: toPrismaDate(toIsoDate('2026-09-28')),
           createdById: retiro.userId,
         },
@@ -198,6 +201,26 @@ describe('Salida, archivo y numeración reutilizable', () => {
         where: { entityId: animal.id, action: 'EXIT' },
       });
       expect(audit.diff).toMatchObject({ after: { withdrawalConfirmed: true } });
+    });
+
+    it('M6: un retiro solo de leche no exige confirmar la venta en pie (RN-22)', async () => {
+      const animal = await create(admin, retiro, { code: '17' });
+      await prisma.treatmentRecord.create({
+        data: {
+          id: uuidv7(),
+          farmId: retiro.farmId,
+          animalId: animal.id,
+          startedOn: toPrismaDate(toIsoDate('2026-09-20')),
+          reason: 'Mastitis',
+          medication: 'Cefalexina intramamaria',
+          durationDays: 2,
+          withdrawalMeatDays: 0,
+          withdrawalMilkDays: 10,
+          withdrawalUntil: toPrismaDate(toIsoDate('2026-10-02')),
+          createdById: retiro.userId,
+        },
+      });
+      await sell(admin, animal.id).expect(201);
     });
 
     it('fecha futura, salida repetida y animal archivado', async () => {

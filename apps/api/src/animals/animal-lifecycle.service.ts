@@ -9,7 +9,7 @@ import {
   isReleasedOnExit,
   uuidv7,
   warning,
-  withdrawalUntilOf,
+  animalWithdrawals,
   type AnimalDetailWithWarnings,
   type ArchiveAnimalInput,
   type ExitAnimalInput,
@@ -26,7 +26,7 @@ import { TransactionsService } from '../common/idempotency/transactions.service.
 import { audit, type Tx } from '../common/persistence.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { Clock } from '../infra/clock.service.js';
-import { fromPrismaDate, fromPrismaDateOrNull, toPrismaDate } from '../infra/date-mapper.js';
+import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { AnimalDetailService, toIdentifierView } from './animal-detail.service.js';
 import { assertNotBeforeBirth, assertNotFuture, userOf } from './animal-rules.js';
 import { assertCodeAvailable, findCodeHolder } from './code-availability.js';
@@ -94,21 +94,31 @@ export class AnimalLifecycleService {
         });
       }
 
-      // RN-22: vender o sacrificar un animal en retiro exige confirmarlo.
+      // RN-22: vender o sacrificar un animal en retiro **de carne** exige confirmarlo (M6: el de
+      // leche no cuenta para una venta en pie).
       const treatments = await tx.treatmentRecord.findMany({
         where: { farmId: scope.farmId, animalId: id },
-        select: { withdrawalUntil: true, voidedAt: true },
+        select: {
+          startedOn: true,
+          durationDays: true,
+          withdrawalMeatDays: true,
+          withdrawalMilkDays: true,
+          voidedAt: true,
+        },
       });
-      const withdrawalUntil = withdrawalUntilOf(
+      const withdrawalUntil = animalWithdrawals(
         treatments.map((treatment) => ({
-          withdrawalUntil: fromPrismaDateOrNull(treatment.withdrawalUntil),
+          startedOn: fromPrismaDate(treatment.startedOn),
+          durationDays: treatment.durationDays,
+          withdrawalMeatDays: treatment.withdrawalMeatDays,
+          withdrawalMilkDays: treatment.withdrawalMilkDays,
           voided: treatment.voidedAt !== null,
         })),
-      );
+      ).meatUntil;
       const needsConfirmation = exitNeedsWithdrawalConfirmation({
         type: input.type,
         date,
-        withdrawalUntil,
+        meatWithdrawalUntil: withdrawalUntil,
       });
       if (needsConfirmation && input.confirmWithdrawal !== true) {
         throw new DomainError('WITHDRAWAL_ACTIVE', {

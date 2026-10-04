@@ -774,3 +774,19 @@ describe('bulkVaccinationDecision (SAN-03, M6)', () => {
     expect(cycleContaining([CICLO_2026_1, CICLO_2026_2], d('2026-09-25'))).toBeNull();
   });
 });
+
+describe('dos aplicaciones el mismo día', () => {
+  it('manda la de la próxima fecha más lejana, sin importar el orden', () => {
+    const a = { appliedOn: d('2026-01-10'), nextDueOn: d('2026-06-01'), voided: false };
+    const b = { appliedOn: d('2026-01-10'), nextDueOn: d('2027-01-10'), voided: false };
+    const c = { appliedOn: d('2026-01-10'), nextDueOn: null, voided: false };
+    for (const records of [
+      [a, b, c],
+      [c, b, a],
+      [b, c, a],
+    ]) {
+      const resultado = estado({ vaccine: CLOSTRIDIAL, records, today: d('2026-09-01') });
+      expect(resultado.dueOn).toBe('2027-01-10');
+    }
+  });
+});

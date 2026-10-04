@@ -19,6 +19,8 @@ import {
   summarizePregnancies,
   toIsoDate,
   uuidv7,
+  weightAlerts,
+  weightGains,
   withdrawalUntilOf,
   ageInMonths,
   type IsoDate,
@@ -28,7 +30,10 @@ import {
 import { SEED_TODAY } from '../prisma/seed/guards.js';
 import { runReferenceSeed } from '../prisma/seed/run.js';
 import { SECOND_EVALUATION } from '../prisma/seed/expected.js';
+import { toWeightLike } from '../src/animals/animal-views.js';
 import { classificationCtes, type ClassifiedRow } from '../src/animals/classification.sql.js';
+import { VaccineStatusService } from '../src/animals/vaccine-status.service.js';
+import type { VaccineStatusRow } from '../src/animals/vaccine-status.sql.js';
 import { FarmContextService, classificationParams } from '../src/animals/farm-context.service.js';
 import type { FarmScope } from '../src/common/farm-scope/farm-scope.types.js';
 import { Prisma } from '../src/generated/prisma/client.js';
@@ -42,7 +47,9 @@ import { cleanDatabase, createAnimal, createFarm } from './helpers/fixtures.js';
 /**
  * RN-27: la clasificación en SQL (`classification.sql.ts`) da **exactamente** lo mismo que
  * `managementCategory`, `derivedTags`, `isCalvingSoon` e `isServiceUnconfirmedOverdue` de
- * `@hato/shared`, animal por animal.
+ * `@hato/shared`, animal por animal. Desde M6 también `vaccineStatus` (estado, motivo y fecha
+ * límite por animal y vacuna, y las alertas de vacunas) y las ganancias de peso ya redondeadas y
+ * sus alertas (ADR-009 decisión 8, ADR-015).
  *
  * - La regla de meses (`hato_months_between`) contra `monthsBetween` en cientos de miles de
  *   pares de fechas.
@@ -68,6 +75,13 @@ type Expected = {
   calvingSoon: boolean;
   unconfirmedService: boolean;
   calvingOverdue: boolean;
+  vaccineOverdue: boolean;
+  vaccineDue: boolean;
+  gainLastTwoMilli: number | null;
+  gain90Milli: number | null;
+  gainBirthMilli: number | null;
+  lowGain: boolean;
+  weightLoss: boolean;
 };
 
 describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
@@ -110,8 +124,13 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       include: {
         pregnancies: true,
         treatments: { select: { withdrawalUntil: true, voidedAt: true } },
+        weights: true,
       },
     });
+    const scope: FarmScope = { farmId: scopeFarmId, userId: adminId, role: ROLE.ADMIN };
+    const vaccineStatuses = await app
+      .get(VaccineStatusService)
+      .statusesFor(scope, { today, settings }, 'ALL_ACTIVE');
 
     const result = new Map<string, Expected>();
     for (const animal of animals) {
@@ -151,7 +170,23 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
         weaningAgeMonths: settings.weaningAgeMonths,
         today,
       });
+      const active = animal.deletedAt === null && animal.exitType === null;
+      const weights = animal.weights.map(toWeightLike);
+      const gains = weightGains({
+        records: weights,
+        anchorMaxDays: settings.weightGainAnchorMaxDays,
+        today,
+      });
+      const weightResult = weightAlerts({ records: weights, category, settings, today });
+      const statuses = (vaccineStatuses.get(animal.id) ?? []).map((status) => status.status);
       result.set(animal.id, {
+        vaccineOverdue: active && statuses.includes('OVERDUE'),
+        vaccineDue: active && statuses.some((kind) => kind === 'PENDING' || kind === 'UPCOMING'),
+        gainLastTwoMilli: gains.lastTwoMilli,
+        gain90Milli: gains.last90DaysMilli,
+        gainBirthMilli: gains.sinceBirthMilli,
+        lowGain: active && weightResult.lowGain,
+        weightLoss: active && weightResult.weightLoss,
         category,
         ageMonths: ageInMonths(birthDate, today),
         calvingCount: facts.calvingCount,
@@ -212,6 +247,13 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
           calvingSoon: row.calving_soon,
           unconfirmedService: row.unconfirmed_service,
           calvingOverdue: row.calving_overdue,
+          vaccineOverdue: row.vaccine_overdue,
+          vaccineDue: row.vaccine_due,
+          gainLastTwoMilli: row.gain_last_two_milli,
+          gain90Milli: row.gain_90_milli,
+          gainBirthMilli: row.gain_birth_milli,
+          lowGain: row.low_gain,
+          weightLoss: row.weight_loss,
         },
       ]),
     );
@@ -286,6 +328,11 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       calvingAlertDays: 45,
       unconfirmedServiceAlertDays: 60,
       overdueCalvingAlertDays: 5,
+      vaccineAlertDays: 30,
+      // Umbral más alto en levante y uno nuevo en novillas; pérdida y ancla más estrictas.
+      weightGainAlertKgPerDay: { YOUNG_MALE: 0.42, HEIFER: 0.35 },
+      weightLossAlertPercent: 2,
+      weightGainAnchorMaxDays: 5,
     };
     await prisma.farm.update({ where: { id: farmId }, data: { settings: changed } });
     try {
@@ -294,7 +341,7 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       const categories = [...sql.values()].map((row) => row.category);
       // Con el destete a 8 meses hay más crías que con 7: el SQL leyó el parámetro de la finca.
       const withDefault = await prisma.$queryRaw<{ calves: number }[]>(Prisma.sql`
-        WITH ${classificationCtes({ farmId, today: SEED_TODAY, weaningAgeMonths: 7, calvingAlertDays: 30, unconfirmedServiceAlertDays: 90, overdueCalvingAlertDays: 15 })}
+        WITH ${classificationCtes({ ...classificationParams({ farmId, userId: adminId, role: ROLE.ADMIN }, { today: SEED_TODAY, settings: DEFAULT_FARM_SETTINGS }), weaningAgeMonths: 7 })}
         SELECT count(*) FILTER (WHERE category IN ('CALF_MALE', 'CALF_FEMALE'))::int AS calves FROM classified`);
       const calvesAt8 = categories.filter((category) => category.startsWith('CALF')).length;
       expect(calvesAt8).toBeGreaterThan(withDefault[0]?.calves ?? Infinity);
@@ -582,5 +629,287 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
     expect(shared.get(dry)).toMatchObject({ served: true, dry: false });
     expect(shared.get(estimated)).toMatchObject({ pregnant: true, calvingSoon: true });
     expect(shared.get(voided)).toMatchObject({ served: false, pregnant: false });
+  });
+
+  // -------------------------------------------------------------------------------------------
+  // Vacunas (ADR-009 decisión 8) y pesos (ADR-015), M6
+  // -------------------------------------------------------------------------------------------
+
+  /** Estado, motivo y fecha límite por animal y vacuna: SQL contra `vaccineStatus` de shared. */
+  async function vaccineDifferences(scopeFarmId: string, today: IsoDate): Promise<string[]> {
+    const scope: FarmScope = { farmId: scopeFarmId, userId: adminId, role: ROLE.ADMIN };
+    const context = await app.get(FarmContextService).load(scope);
+    expect(context.today).toBe(today);
+    const shared = await app.get(VaccineStatusService).statusesFor(scope, context, 'ALL_ACTIVE');
+    const rows = await prisma.$queryRaw<VaccineStatusRow[]>(
+      Prisma.sql`WITH ${classificationCtes(classificationParams(scope, context))}
+        SELECT animal_id, vaccine_id, kind, reason, due_on FROM vaccine_status`,
+    );
+    const sql = new Map(rows.map((row) => [`${row.animal_id}:${row.vaccine_id}`, row]));
+    const problems: string[] = [];
+    let pairs = 0;
+    for (const [animalId, statuses] of shared) {
+      for (const status of statuses) {
+        pairs += 1;
+        const row = sql.get(`${animalId}:${status.vaccineId}`);
+        const got =
+          row === undefined
+            ? 'sin fila'
+            : `${row.kind}/${row.reason}/${fromPrismaDateOrNull(row.due_on) ?? '-'}`;
+        const wanted = `${status.status}/${status.reason}/${status.dueOn ?? '-'}`;
+        if (got !== wanted) {
+          problems.push(`${animalId} ${status.name}: SQL=${got} shared=${wanted}`);
+        }
+      }
+    }
+    expect(rows.length).toBe(pairs);
+    return problems;
+  }
+
+  it('vacunas de la finca de referencia hoy y con el ciclo 2026-2 abierto: sin diferencias', async () => {
+    setToday(SEED_TODAY);
+    expect(await vaccineDifferences(farmId, SEED_TODAY)).toEqual([]);
+    setToday(SECOND_EVALUATION);
+    expect(await vaccineDifferences(farmId, SECOND_EVALUATION)).toEqual([]);
+    setToday(SEED_TODAY);
+  });
+
+  it('casos borde de vacunas y pesos: ciclos, ventanas, intervalos, anulados y umbrales exactos', async () => {
+    const edge = uuidv7();
+    const breedId = uuidv7();
+    await prisma.farm.create({
+      data: { id: edge, name: 'Finca de bordes M6', settings: DEFAULT_FARM_SETTINGS },
+    });
+    await prisma.breed.create({
+      data: { id: breedId, farmId: edge, name: 'Brahman', group: BREED_GROUP.INDICUS },
+    });
+    const day = (value: string) => toPrismaDate(toIsoDate(value));
+    const vaccine = async (
+      name: string,
+      data: {
+        scheduleType: 'OFFICIAL_CYCLE' | 'AGE_WINDOW' | 'INTERVAL' | 'NONE';
+        boosterIntervalDays?: number;
+        eligibleSex?: Sex;
+        minAgeDays?: number;
+        maxAgeDays?: number;
+      },
+    ): Promise<string> => {
+      const id = uuidv7();
+      await prisma.vaccine.create({
+        data: { id, farmId: edge, name, disease: name, blockIneligibleSex: true, ...data },
+      });
+      return id;
+    };
+    const aftosa = await vaccine('Aftosa', { scheduleType: 'OFFICIAL_CYCLE' });
+    const rabia = await vaccine('Rabia', { scheduleType: 'OFFICIAL_CYCLE' });
+    const bruce = await vaccine('Brucelosis', {
+      scheduleType: 'AGE_WINDOW',
+      eligibleSex: SEX.FEMALE,
+      minAgeDays: 90,
+      maxAgeDays: 270,
+    });
+    const clostri = await vaccine('Clostridial', {
+      scheduleType: 'INTERVAL',
+      boosterIntervalDays: 365,
+      minAgeDays: 90,
+    });
+    await vaccine('Desparasitante', { scheduleType: 'NONE' });
+    const cycle = async (
+      name: string,
+      from: string,
+      to: string,
+      vaccineIds: string[],
+    ): Promise<string> => {
+      const id = uuidv7();
+      await prisma.vaccinationCycle.create({
+        data: { id, farmId: edge, name, startsOn: day(from), endsOn: day(to) },
+      });
+      for (const vaccineId of vaccineIds) {
+        await prisma.vaccinationCycleVaccine.create({
+          data: { id: uuidv7(), farmId: edge, cycleId: id, vaccineId },
+        });
+      }
+      return id;
+    };
+    // 2026-1 cerrado (aftosa y rabia) y uno en curso solo de aftosa: rabia se quitó del en curso.
+    await cycle('2026-1', '2026-05-04', '2026-06-23', [aftosa, rabia]);
+    const current = await cycle('2026-X', '2026-09-01', '2026-10-31', [aftosa]);
+    await prisma.vaccinationCycleVaccine.create({
+      data: {
+        id: uuidv7(),
+        farmId: edge,
+        cycleId: current,
+        vaccineId: rabia,
+        removedAt: new Date('2026-09-02T12:00:00Z'),
+        removedById: adminId,
+      },
+    });
+
+    const animal = async (
+      code: string,
+      sex: Sex,
+      birth: string,
+      entry = birth,
+      entryEstimated = false,
+    ): Promise<string> => {
+      const id = uuidv7();
+      await prisma.animal.create({
+        data: {
+          id,
+          farmId: edge,
+          code,
+          sex,
+          breedId,
+          birthDate: day(birth),
+          origin: entry === birth ? ORIGIN.BORN_ON_FARM : ORIGIN.PURCHASED,
+          entryDate: day(entry),
+          entryDateEstimated: entryEstimated,
+          createdById: adminId,
+          updatedById: adminId,
+        },
+      });
+      return id;
+    };
+    const applied = async (
+      animalId: string,
+      vaccineId: string,
+      on: string,
+      extra: { nextDueOn?: string | null; voided?: boolean } = {},
+    ): Promise<void> => {
+      await prisma.vaccinationRecord.create({
+        data: {
+          id: uuidv7(),
+          farmId: edge,
+          animalId,
+          vaccineId,
+          appliedOn: day(on),
+          nextDueOn: extra.nextDueOn == null ? null : day(extra.nextDueOn),
+          voidedAt: extra.voided === true ? new Date('2026-09-03T12:00:00Z') : null,
+          createdById: adminId,
+        },
+      });
+    };
+    const weighed = async (
+      animalId: string,
+      on: string,
+      kg: string,
+      extra: { birth?: boolean; voided?: boolean } = {},
+    ): Promise<void> => {
+      await prisma.weightRecord.create({
+        data: {
+          id: uuidv7(),
+          farmId: edge,
+          animalId,
+          weighedOn: day(on),
+          weightKg: kg,
+          isBirthWeight: extra.birth === true,
+          voidedAt: extra.voided === true ? new Date('2026-09-03T12:00:00Z') : null,
+          createdById: adminId,
+        },
+      });
+    };
+
+    // Ciclos: vacunada en el ciclo cerrado, en el en curso, nunca; ingreso el día del cierre y el
+    // día siguiente; ingreso estimado; nacido después del cierre.
+    const v1 = await animal('V-01', SEX.FEMALE, '2022-01-01');
+    await applied(v1, aftosa, '2026-05-10');
+    await applied(v1, rabia, '2026-05-10');
+    const v2 = await animal('V-02', SEX.MALE, '2022-01-01');
+    await applied(v2, aftosa, '2026-09-10');
+    await animal('V-03', SEX.MALE, '2022-01-01', '2026-06-23');
+    await animal('V-04', SEX.MALE, '2022-01-01', '2026-06-24');
+    await animal('V-05', SEX.FEMALE, '2022-01-01', '2026-08-01', true);
+    await animal('V-06', SEX.MALE, '2026-07-01');
+    // Brucelosis: los extremos exactos de la ventana, antes y después, vacunada y anulada.
+    await animal('V-10', SEX.FEMALE, '2026-06-27'); // 90 días hoy
+    await animal('V-11', SEX.FEMALE, '2026-06-28'); // 89 días
+    await animal('V-12', SEX.FEMALE, '2025-12-29'); // 270 días
+    await animal('V-13', SEX.FEMALE, '2025-12-28'); // 271 días
+    const v14 = await animal('V-14', SEX.FEMALE, '2026-03-01');
+    await applied(v14, bruce, '2026-07-01');
+    const v15 = await animal('V-15', SEX.FEMALE, '2026-03-01');
+    await applied(v15, bruce, '2026-07-01', { voided: true });
+    // Intervalo: vencida, próxima en el último día de la ventana, fuera de la ventana, fecha
+    // editada y tres el mismo día.
+    const i1 = await animal('I-01', SEX.MALE, '2020-01-01');
+    await applied(i1, clostri, '2025-09-24');
+    const i2 = await animal('I-02', SEX.MALE, '2020-01-01');
+    await applied(i2, clostri, '2025-10-10'); // vence el 10/10/2026
+    const i3 = await animal('I-03', SEX.MALE, '2020-01-01');
+    await applied(i3, clostri, '2025-10-11');
+    const i4 = await animal('I-04', SEX.MALE, '2020-01-01');
+    await applied(i4, clostri, '2026-01-01', { nextDueOn: '2026-09-20' });
+    const i5 = await animal('I-05', SEX.MALE, '2020-01-01');
+    await applied(i5, clostri, '2026-01-10', { nextDueOn: '2026-09-01' });
+    await applied(i5, clostri, '2026-01-10', { nextDueOn: '2027-01-10' });
+    await applied(i5, clostri, '2026-01-10', { nextDueOn: null });
+
+    // Pesos: justo en el umbral (0,2995 → 0,300) y por debajo (0,2994 → 0,299), levante.
+    const w1 = await animal('W-01', SEX.MALE, '2025-08-01');
+    await weighed(w1, '2026-03-09', '200.00');
+    await weighed(w1, '2026-09-25', '259.90');
+    const w2 = await animal('W-02', SEX.MALE, '2025-08-01');
+    await weighed(w2, '2026-03-09', '200.00');
+    await weighed(w2, '2026-09-25', '259.88');
+    // Ancla a 180 días del inicio de la ventana (sirve) y a 181 (no sirve).
+    const w3 = await animal('W-03', SEX.MALE, '2025-06-01');
+    await weighed(w3, '2025-12-29', '150.00');
+    await weighed(w3, '2026-09-15', '220.00');
+    const w4 = await animal('W-04', SEX.MALE, '2025-06-01');
+    await weighed(w4, '2025-12-28', '150.00');
+    await weighed(w4, '2026-09-15', '220.00');
+    // Regresión con varios puntos, peso al nacer, un anulado y dos el mismo día.
+    const w5 = await animal('W-05', SEX.MALE, '2025-05-01');
+    await weighed(w5, '2025-05-01', '33.50', { birth: true });
+    await weighed(w5, '2026-06-01', '250.00');
+    await weighed(w5, '2026-07-01', '262.50');
+    await weighed(w5, '2026-08-01', '999.00', { voided: true });
+    await weighed(w5, '2026-09-01', '270.00');
+    await weighed(w5, '2026-09-01', '268.40');
+    // Perdió exactamente el 5 % (sin alerta) y un poco más (con alerta).
+    const w6 = await animal('W-06', SEX.FEMALE, '2021-01-01');
+    await weighed(w6, '2026-06-15', '400.00');
+    await weighed(w6, '2026-09-15', '380.00');
+    const w7 = await animal('W-07', SEX.FEMALE, '2021-01-01');
+    await weighed(w7, '2026-06-15', '400.00');
+    await weighed(w7, '2026-09-15', '379.99');
+    // Menos de 30 días entre los pesajes: sin ganancia de 90 días.
+    const w8 = await animal('W-08', SEX.MALE, '2025-08-01');
+    await weighed(w8, '2026-09-01', '250.00');
+    await weighed(w8, '2026-09-25', '260.00');
+
+    setToday(SEED_TODAY);
+    expect(await vaccineDifferences(edge, SEED_TODAY)).toEqual([]);
+    expect(await differences(edge, SEED_TODAY)).toEqual([]);
+
+    // No es una coincidencia en cero: los casos dan lo que se esperaba.
+    const shared = await expectedByShared(edge, SEED_TODAY);
+    expect(shared.get(w1)).toMatchObject({ gain90Milli: 300, lowGain: false });
+    expect(shared.get(w2)).toMatchObject({ gain90Milli: 299, lowGain: true });
+    expect(shared.get(w3)?.gain90Milli).not.toBeNull();
+    expect(shared.get(w4)?.gain90Milli).toBeNull();
+    expect(shared.get(w5)?.gainBirthMilli).not.toBeNull();
+    expect(shared.get(w6)).toMatchObject({ weightLoss: false });
+    expect(shared.get(w7)).toMatchObject({ weightLoss: true });
+    expect(shared.get(w8)?.gain90Milli).toBeNull();
+    const statuses = await app
+      .get(VaccineStatusService)
+      .statusesFor(
+        { farmId: edge, userId: adminId, role: ROLE.ADMIN },
+        { today: SEED_TODAY, settings: DEFAULT_FARM_SETTINGS },
+        [i1, i2, i3, i5],
+      );
+    const clostridial = (id: string) =>
+      statuses.get(id)?.find((status) => status.vaccineId === clostri);
+    expect(clostridial(i1)).toMatchObject({ status: 'OVERDUE' });
+    expect(clostridial(i2)).toMatchObject({ status: 'UPCOMING', dueOn: '2026-10-10' });
+    expect(clostridial(i3)).toMatchObject({ status: 'UP_TO_DATE' });
+    expect(clostridial(i5)).toMatchObject({ status: 'UP_TO_DATE', dueOn: '2027-01-10' });
+
+    // Con el ciclo en curso cerrado, otra vez.
+    setToday(toIsoDate('2026-11-15'));
+    expect(await vaccineDifferences(edge, toIsoDate('2026-11-15'))).toEqual([]);
+    expect(await differences(edge, toIsoDate('2026-11-15'))).toEqual([]);
+    setToday(SEED_TODAY);
   });
 });

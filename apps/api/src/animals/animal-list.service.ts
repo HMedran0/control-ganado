@@ -15,6 +15,8 @@ import {
   type Sex,
   type VaccineStatusView,
   type WeightMethod,
+  type WeightRecordLike,
+  type WeightSummary,
 } from '@hato/shared';
 
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
@@ -22,7 +24,7 @@ import { encodeCursor, parsePagination, type CursorPayload } from '../common/pag
 import { Prisma } from '../generated/prisma/client.js';
 import { fromPrismaDate, fromPrismaDateOrNull } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
-import { deriveView } from './animal-views.js';
+import { WEIGHT_LIKE_SELECT, deriveView, toWeightLike } from './animal-views.js';
 import { DERIVED_TAG_COLUMN, classificationCtes } from './classification.sql.js';
 import {
   FarmContextService,
@@ -32,7 +34,7 @@ import {
 import { VaccineStatusService } from './vaccine-status.service.js';
 
 /** Fila del listado tal como sale de la consulta. */
-type ListRow = {
+export type ListRow = {
   id: string;
   code: string;
   name: string | null;
@@ -95,12 +97,20 @@ const SORTS: Readonly<Record<AnimalSort, SortSpec>> = {
   },
 };
 
-/** Alertas que se resuelven con columnas de `classified` (alias `c`). Lista cerrada. */
-const SQL_ALERT_COLUMN: Readonly<Partial<Record<AnimalAlert, Prisma.Sql>>> = {
+/**
+ * Columna de `classified` (alias `c`) de cada alerta. Lista cerrada: desde M6 todas se resuelven
+ * en SQL, también las de vacunas (`vaccine-status.sql.ts`) y las de peso (`weight-gain.sql.ts`).
+ * La usan el listado y la página de Alertas.
+ */
+export const ALERT_COLUMN: Readonly<Record<AnimalAlert, Prisma.Sql>> = {
+  [ANIMAL_ALERT.VACCINE_OVERDUE]: Prisma.sql`c.vaccine_overdue`,
+  [ANIMAL_ALERT.VACCINE_DUE]: Prisma.sql`c.vaccine_due`,
   [ANIMAL_ALERT.CALVING_SOON]: Prisma.sql`c.calving_soon`,
   [ANIMAL_ALERT.WITHDRAWAL]: Prisma.sql`c.withdrawal`,
   [ANIMAL_ALERT.UNCONFIRMED_SERVICE]: Prisma.sql`c.unconfirmed_service`,
   [ANIMAL_ALERT.CALVING_OVERDUE]: Prisma.sql`c.calving_overdue`,
+  [ANIMAL_ALERT.LOW_GAIN]: Prisma.sql`c.low_gain`,
+  [ANIMAL_ALERT.WEIGHT_LOSS]: Prisma.sql`c.weight_loss`,
 };
 
 /** Tope de filas de la exportación: más que cualquier hato real, menos que un abuso. */
@@ -146,14 +156,7 @@ export class AnimalListService {
       : parsePagination(query);
     const context = await this.farmContext.load(scope);
 
-    const wantsVaccineAlerts = (query.alerts ?? []).some(
-      (alert) => alert === ANIMAL_ALERT.VACCINE_OVERDUE || alert === ANIMAL_ALERT.VACCINE_DUE,
-    );
-    const farmVaccineStatuses = wantsVaccineAlerts
-      ? await this.vaccineStatus.statusesFor(scope, context, 'ALL_ACTIVE')
-      : null;
-
-    const conditions = this.conditions(scope, query, farmVaccineStatuses);
+    const conditions = this.conditions(scope, query);
     const sort = SORTS[query.sort];
     const direction = sort.descending ? Prisma.sql`DESC` : Prisma.sql`ASC`;
     const cursorCondition = cursorSql(pagination.cursor, sort);
@@ -189,7 +192,7 @@ export class AnimalListService {
     const hasMore = rows.length > pagination.limit;
     const page = hasMore ? rows.slice(0, pagination.limit) : rows;
     const total = page[0]?.total ?? (await this.countWithoutPage(scope, context, conditions));
-    const items = await this.toItems(scope, context, page, farmVaccineStatuses);
+    const items = await this.toItems(scope, context, page);
     const last = page.at(-1);
 
     return {
@@ -219,11 +222,8 @@ export class AnimalListService {
     return rows[0]?.total ?? 0;
   }
 
-  private conditions(
-    scope: FarmScope,
-    query: ListAnimalsQuery,
-    farmVaccineStatuses: ReadonlyMap<string, readonly VaccineStatusView[]> | null,
-  ): Prisma.Sql[] {
+  /** Condiciones del listado, sobre `classified c` y `animals a`. También las usa la exportación. */
+  conditions(scope: FarmScope, query: ListAnimalsQuery): Prisma.Sql[] {
     const conditions: Prisma.Sql[] = [Prisma.sql`a.farm_id = ${scope.farmId}::uuid`];
 
     if (query.status === ANIMAL_LIST_STATUS.ACTIVE) {
@@ -273,41 +273,56 @@ export class AnimalListService {
       // Solo los activos tienen alertas.
       conditions.push(Prisma.sql`a.deleted_at IS NULL AND a.exit_type IS NULL`);
     }
-    for (const alert of alerts) {
-      const column = SQL_ALERT_COLUMN[alert];
-      if (column !== undefined) {
-        conditions.push(column);
-        continue;
-      }
-      const wanted =
-        alert === ANIMAL_ALERT.VACCINE_OVERDUE
-          ? (kind: string) => kind === 'OVERDUE'
-          : (kind: string) => kind === 'PENDING' || kind === 'UPCOMING';
-      const ids = [...(farmVaccineStatuses ?? new Map<string, VaccineStatusView[]>())]
-        .filter(([, statuses]) => statuses.some((status) => wanted(status.status)))
-        .map(([animalId]) => animalId);
-      conditions.push(Prisma.sql`a.id = ANY(${ids}::uuid[])`);
-    }
+    for (const alert of alerts) conditions.push(ALERT_COLUMN[alert]);
 
     return conditions;
   }
 
-  private async toItems(
+  /**
+   * Filas listas para mostrar, calculadas con shared (RN-27): categoría, etiquetas, alertas de
+   * vacunas (con `vaccineStatus`) y de peso (con `weightAlerts`). También las usa la página de
+   * Alertas, que agrega el detalle de cada alerta.
+   */
+  async toItems(
     scope: FarmScope,
     context: FarmContext,
     rows: readonly ListRow[],
-    farmVaccineStatuses: ReadonlyMap<string, readonly VaccineStatusView[]> | null,
   ): Promise<AnimalListItem[]> {
+    return (await this.toDetailedItems(scope, context, rows)).map(({ item }) => item);
+  }
+
+  /** `toItems` con lo que se usó para calcular cada fila (vacunas y resumen de peso). */
+  async toDetailedItems(
+    scope: FarmScope,
+    context: FarmContext,
+    rows: readonly ListRow[],
+  ): Promise<
+    {
+      item: AnimalListItem;
+      vaccines: readonly VaccineStatusView[];
+      weight: WeightSummary | null;
+    }[]
+  > {
     if (rows.length === 0) return [];
     const ids = rows.map((row) => row.id);
-    const [tagLinks, vaccineStatuses] = await Promise.all([
+    const [tagLinks, vaccineStatuses, weightRows] = await Promise.all([
       this.prisma.animalTag.findMany({
         where: { animalId: { in: ids }, removedAt: null, tag: { farmId: scope.farmId } },
         include: { tag: { select: { id: true, key: true, label: true } } },
         orderBy: { tag: { label: 'asc' } },
       }),
-      farmVaccineStatuses ?? this.vaccineStatus.statusesFor(scope, context, ids),
+      this.vaccineStatus.statusesFor(scope, context, ids),
+      this.prisma.weightRecord.findMany({
+        where: { farmId: scope.farmId, animalId: { in: ids } },
+        select: WEIGHT_LIKE_SELECT,
+      }),
     ]);
+    const weightsByAnimal = new Map<string, WeightRecordLike[]>();
+    for (const weight of weightRows) {
+      const list = weightsByAnimal.get(weight.animalId) ?? [];
+      list.push(toWeightLike(weight));
+      weightsByAnimal.set(weight.animalId, list);
+    }
 
     return rows.map((row) => {
       const derived = deriveView(
@@ -330,8 +345,9 @@ export class AnimalListService {
         },
         context,
         vaccineStatuses.get(row.id) ?? [],
+        weightsByAnimal.get(row.id) ?? [],
       );
-      return {
+      const item: AnimalListItem = {
         id: row.id,
         code: row.code,
         name: row.name,
@@ -360,6 +376,7 @@ export class AnimalListService {
         alerts: derived.alerts,
         expectedCalvingDate: derived.expectedCalvingDate,
       };
+      return { item, vaccines: vaccineStatuses.get(row.id) ?? [], weight: derived.weight };
     });
   }
 }

@@ -80,7 +80,13 @@ export function tallyVaccine(
   for (const animal of animals) {
     const status = vaccineStatus({
       vaccine,
-      animal: { sex: animal.sex, birthDate: animal.birthDate, entryDate: animal.entryDate },
+      animal: {
+        sex: animal.sex,
+        birthDate: animal.birthDate,
+        entryDate: animal.entryDate,
+        // El seed no tiene fechas de ingreso estimadas: solo las crea la importación (M4d).
+        entryDateEstimated: false,
+      },
       records: recordsFor(animal.id, vaccine.key),
       currentCycle: current,
       lastClosedCycle: lastClosed,

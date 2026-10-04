@@ -42,5 +42,9 @@ export function classificationParams(scope: FarmScope, context: FarmContext): Cl
     calvingAlertDays: context.settings.calvingAlertDays,
     unconfirmedServiceAlertDays: context.settings.unconfirmedServiceAlertDays,
     overdueCalvingAlertDays: context.settings.overdueCalvingAlertDays,
+    vaccineAlertDays: context.settings.vaccineAlertDays,
+    weightGainAlertKgPerDay: context.settings.weightGainAlertKgPerDay,
+    weightLossAlertPercent: context.settings.weightLossAlertPercent,
+    weightGainAnchorMaxDays: context.settings.weightGainAnchorMaxDays,
   };
 }

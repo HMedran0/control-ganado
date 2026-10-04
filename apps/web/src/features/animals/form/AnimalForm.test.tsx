@@ -74,6 +74,8 @@ function detail(patch: Partial<AnimalDetail> = {}): AnimalDetail {
     reproduction: null,
     vaccines: [],
     withdrawalUntil: null,
+    withdrawals: { meatUntil: null, milkUntil: null },
+    weight: null,
     codeHistory: { previousHolder: null, currentHolder: null },
     archive: null,
     qrUrl: 'http://localhost:5173/a/0199a1b2-0000-7000-8000-000000000001',

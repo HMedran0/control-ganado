@@ -179,7 +179,7 @@ function ExitDialog({
   const needsConfirmation = exitNeedsWithdrawalConfirmation({
     type,
     date,
-    withdrawalUntil: animal.withdrawalUntil,
+    meatWithdrawalUntil: animal.withdrawals.meatUntil,
   });
   const name = animal.name ?? animal.code;
 
@@ -263,10 +263,10 @@ function ExitDialog({
           error={errors.reason?.message}
           {...register('reason')}
         />
-        {needsConfirmation && animal.withdrawalUntil !== null ? (
+        {needsConfirmation && animal.withdrawals.meatUntil !== null ? (
           <div className="flex flex-col gap-2 rounded-control border-2 border-aviso bg-aviso-claro p-3 text-aviso-intenso">
             <p className="font-bold">
-              Está en retiro de medicamento hasta el {formatDate(animal.withdrawalUntil)}.
+              Está en retiro de carne hasta el {formatDate(animal.withdrawals.meatUntil)}.
             </p>
             <Checkbox
               label="Confirmo la salida aunque esté en retiro"
