@@ -40,6 +40,8 @@ export const ALERT_LABEL: Readonly<Record<AnimalAlert, string>> = {
   withdrawal: 'En retiro',
   unconfirmed_service: 'Servida sin diagnóstico',
   calving_overdue: 'Parto vencido sin registrar',
+  low_gain: 'Ganancia baja',
+  weight_loss: 'Perdió peso',
 };
 
 export const STATUS_LABEL: Readonly<Record<AnimalStatus, string>> = {

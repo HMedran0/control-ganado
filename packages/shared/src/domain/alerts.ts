@@ -61,12 +61,15 @@ export type AnimalAlertsInput = {
   readonly unconfirmedServiceAlertDays: number;
   /** `Farm.settings.overdueCalvingAlertDays`, 15 por defecto [Validar]. */
   readonly overdueCalvingAlertDays: number;
+  /** Alertas de peso ya calculadas con `weightAlerts` (PES-05, M6). */
+  readonly weight: { readonly lowGain: boolean; readonly weightLoss: boolean };
   readonly today: IsoDate;
 };
 
 /**
  * Alertas activas del animal, en orden fijo: vacuna vencida, vacuna pendiente o próxima,
- * parto próximo, parto vencido sin registrar, retiro, servida sin diagnóstico.
+ * parto próximo, parto vencido sin registrar, retiro, servida sin diagnóstico, ganancia baja y
+ * pérdida de peso.
  */
 export function animalAlerts(input: AnimalAlertsInput): AnimalAlert[] {
   const alerts: AnimalAlert[] = [];
@@ -121,6 +124,9 @@ export function animalAlerts(input: AnimalAlertsInput): AnimalAlert[] {
   ) {
     alerts.push(ANIMAL_ALERT.UNCONFIRMED_SERVICE);
   }
+
+  if (input.weight.lowGain) alerts.push(ANIMAL_ALERT.LOW_GAIN);
+  if (input.weight.weightLoss) alerts.push(ANIMAL_ALERT.WEIGHT_LOSS);
 
   return alerts;
 }

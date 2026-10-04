@@ -12,11 +12,13 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 42 códigos de error de 05-api.md implementados hasta M5', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(42);
+  it('tiene los 44 códigos de error de 05-api.md implementados hasta M6', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(44);
+    expect(ERROR_CATALOG.SCALE_FILE_INVALID.status).toBe(422);
+    expect(ERROR_CATALOG.SYSTEM_TEMPLATE_READONLY.status).toBe(409);
   });
 
-  it('tiene las 11 advertencias de 05-api.md', () => {
+  it('tiene las 12 advertencias de 05-api.md implementadas hasta M6', () => {
     expect(Object.keys(WARNING_CATALOG)).toEqual([
       'WEIGHT_OUTLIER',
       'RFID_FOREIGN_COUNTRY',
@@ -29,6 +31,7 @@ describe('catálogo', () => {
       'VACCINE_IN_ACTIVE_CYCLE',
       'IDENTIFIER_NOT_RESTORED',
       'EXPECTED_CALVING_RECALCULATED',
+      'SCALE_DUPLICATE_READING',
     ]);
   });
 

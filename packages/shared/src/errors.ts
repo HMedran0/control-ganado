@@ -90,6 +90,16 @@ export const ERROR_CATALOG = {
   IMPORT_FILE_INVALID: { status: 422, detail: 'El archivo no tiene el formato de la plantilla.' },
   IMPORT_TOO_MANY_ROWS: { status: 413, detail: 'El archivo supera las 5.000 filas.' },
   IMPORT_FILE_TOO_LARGE: { status: 413, detail: 'El archivo supera los 5 MB.' },
+  /** PES-04: el archivo de la báscula no se pudo leer con el perfil elegido. */
+  SCALE_FILE_INVALID: {
+    status: 422,
+    detail: 'No pudimos leer el archivo de la báscula. Revisa el formato o el perfil de báscula.',
+  },
+  /** PES-04: las plantillas del sistema no se editan; se duplican. */
+  SYSTEM_TEMPLATE_READONLY: {
+    status: 409,
+    detail: 'Esta plantilla es del sistema y no se edita. Duplícala para ajustarla a tu báscula.',
+  },
   /** ADR-012 §1: el `id` que envió el cliente ya existe con otros datos o en otra finca. */
   CLIENT_ID_CONFLICT: {
     status: 409,
@@ -141,6 +151,9 @@ export const WARNING_CATALOG = {
     'El identificador {value} ya lo tiene el animal {code}: quedó retirado en este animal.',
   /** Cambió la gestación de una raza, de la finca o la raza de una madre (RN-04, M5). */
   EXPECTED_CALVING_RECALCULATED: 'Se recalculó el parto estimado de {count} preñeces abiertas.',
+  /** PES-04: el mismo animal dos veces el mismo día en el archivo; se conserva el último. */
+  SCALE_DUPLICATE_READING:
+    'El animal {code} aparece {count} veces el {date}: se guarda el último peso ({weight} kg).',
 } as const satisfies Record<string, string>;
 
 /** Código de advertencia estable. */

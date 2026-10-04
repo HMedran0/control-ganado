@@ -12,4 +12,7 @@ export * from './identifiers.js';
 export * from './pregnancy.js';
 export * from './qr.js';
 export * from './reproduction.js';
+export * from './scale-import.js';
+export * from './treatments.js';
 export * from './vaccination.js';
+export * from './weights.js';

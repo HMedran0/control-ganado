@@ -50,6 +50,7 @@ describe('animalAlerts', () => {
     calvingAlertDays: 30,
     unconfirmedServiceAlertDays: 90,
     overdueCalvingAlertDays: 15,
+    weight: { lowGain: false, weightLoss: false },
     today: HOY,
   };
 

@@ -10,17 +10,20 @@ const WITHDRAWAL_SENSITIVE_EXITS: readonly ExitType[] = [EXIT_TYPE.SALE, EXIT_TY
 
 /**
  * ¿La salida exige confirmar el retiro vigente (ANI-04 CA3, RN-22)? Solo en venta o sacrificio, y
- * solo si el retiro llega hasta la fecha de salida o después (el último día de retiro cuenta).
+ * solo si el retiro **de carne** llega hasta la fecha de salida o después (el último día de retiro
+ * cuenta). Desde M6 el retiro de leche no cuenta aquí: vender el animal en pie no vende su leche
+ * (`treatments.ts`).
  */
 export function exitNeedsWithdrawalConfirmation(input: {
   readonly type: ExitType;
   readonly date: IsoDate;
-  readonly withdrawalUntil: IsoDate | null;
+  /** Fin del retiro de carne más lejano (`animalWithdrawals(...).meatUntil`). */
+  readonly meatWithdrawalUntil: IsoDate | null;
 }): boolean {
   return (
     WITHDRAWAL_SENSITIVE_EXITS.includes(input.type) &&
-    input.withdrawalUntil !== null &&
-    input.withdrawalUntil >= input.date
+    input.meatWithdrawalUntil !== null &&
+    input.meatWithdrawalUntil >= input.date
   );
 }
 

@@ -17,7 +17,27 @@ describe('DEFAULT_FARM_SETTINGS (03-modelo-datos.md §2.1)', () => {
       pricePerKgByCategory: {},
       codeReuse: false,
       codeSuggestion: 'PATTERN',
+      weightGainAlertKgPerDay: { YOUNG_MALE: 0.3 },
+      weightLossAlertPercent: 5,
+      weightGainAnchorMaxDays: 180,
     });
+  });
+});
+
+describe('parámetros de peso (PES-05, ADR-015)', () => {
+  it('acepta umbrales por categoría con hasta tres decimales', () => {
+    const settings = parseFarmSettings({
+      weightGainAlertKgPerDay: { YOUNG_MALE: 0.355, HEIFER: 0.25 },
+    });
+    expect(settings.weightGainAlertKgPerDay).toEqual({ YOUNG_MALE: 0.355, HEIFER: 0.25 });
+  });
+
+  it('rechaza más de tres decimales, categorías desconocidas y porcentajes fuera de rango', () => {
+    expect(() => parseFarmSettings({ weightGainAlertKgPerDay: { YOUNG_MALE: 0.3005 } })).toThrow();
+    expect(() => parseFarmSettings({ weightGainAlertKgPerDay: { BUEY: 0.3 } })).toThrow();
+    expect(() => parseFarmSettings({ weightLossAlertPercent: 0 })).toThrow();
+    expect(() => parseFarmSettings({ weightLossAlertPercent: 5.5 })).toThrow();
+    expect(() => parseFarmSettings({ weightGainAnchorMaxDays: 400 })).toThrow();
   });
 });
 

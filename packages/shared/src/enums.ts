@@ -152,6 +152,66 @@ export const WEIGHT_METHOD = {
 } as const;
 export type WeightMethod = (typeof WEIGHT_METHOD)[keyof typeof WEIGHT_METHOD];
 
+/**
+ * Cómo se identificó al animal al registrar el evento (PES-01, PIL-05; M6). `null` en la base
+ * cuando nadie lo identificó: pesajes del seed, peso al nacer del parto y peso inicial del alta.
+ */
+export const IDENTIFIED_BY = {
+  /** Lector RFID (modo teclado en la web, Bluetooth en el móvil). */
+  RFID_READER: 'RFID_READER',
+  /** QR del sistema escaneado. */
+  QR: 'QR',
+  /** Búsqueda por código, nombre o chapeta. */
+  SEARCH: 'SEARCH',
+  /** Importación de un archivo (sesión de la báscula, PES-04). */
+  IMPORT: 'IMPORT',
+} as const;
+export type IdentifiedBy = (typeof IDENTIFIED_BY)[keyof typeof IDENTIFIED_BY];
+
+/** De dónde salió el peso (PES-01, PIL-05; M6). */
+export const WEIGHT_SOURCE = {
+  /** Digitado por una persona. */
+  MANUAL: 'MANUAL',
+  /** Archivo exportado por el indicador de la báscula (PES-04). */
+  SCALE_FILE: 'SCALE_FILE',
+  /** Indicador conectado en vivo (PES-03, fase 2). */
+  SCALE_LIVE: 'SCALE_LIVE',
+} as const;
+export type WeightSource = (typeof WEIGHT_SOURCE)[keyof typeof WEIGHT_SOURCE];
+
+/** Formato del archivo que exporta la báscula (PES-04). */
+export const SCALE_FILE_FORMAT = {
+  CSV: 'CSV',
+  XLSX: 'XLSX',
+} as const;
+export type ScaleFileFormat = (typeof SCALE_FILE_FORMAT)[keyof typeof SCALE_FILE_FORMAT];
+
+/** Unidad del peso en el archivo de la báscula (PES-04). Las libras se convierten a kilos. */
+export const SCALE_UNIT = {
+  KG: 'KG',
+  LB: 'LB',
+} as const;
+export type ScaleUnit = (typeof SCALE_UNIT)[keyof typeof SCALE_UNIT];
+
+/** Qué importó un lote de importación (ANI-09 o PES-04). */
+export const IMPORT_KIND = {
+  ANIMALS: 'ANIMALS',
+  WEIGHTS: 'WEIGHTS',
+} as const;
+export type ImportKind = (typeof IMPORT_KIND)[keyof typeof IMPORT_KIND];
+
+/** Actividad de una jornada de manejo (JOR-01). La importación de la báscula crea `WEIGHT`. */
+export const WORK_SESSION_ACTIVITY = {
+  VACCINATION: 'VACCINATION',
+  WEIGHT: 'WEIGHT',
+  DIAGNOSIS: 'DIAGNOSIS',
+  TREATMENT: 'TREATMENT',
+  LOT_CHANGE: 'LOT_CHANGE',
+  TAG: 'TAG',
+} as const;
+export type WorkSessionActivity =
+  (typeof WORK_SESSION_ACTIVITY)[keyof typeof WORK_SESSION_ACTIVITY];
+
 /** Tipo de gasto. */
 export const EXPENSE_TYPE = {
   PURCHASE: 'PURCHASE',
@@ -258,6 +318,13 @@ export const ANIMAL_ALERT = {
    * `overdueCalvingAlertDays` (M5).
    */
   CALVING_OVERDUE: 'calving_overdue',
+  /**
+   * Ganancia de los últimos 90 días menor que el umbral de su categoría (PES-05 CA2, M6;
+   * ADR-015).
+   */
+  LOW_GAIN: 'low_gain',
+  /** El último pesaje es menor que el anterior en más de `weightLossAlertPercent` (PES-05 CA3). */
+  WEIGHT_LOSS: 'weight_loss',
 } as const;
 export type AnimalAlert = (typeof ANIMAL_ALERT)[keyof typeof ANIMAL_ALERT];
 

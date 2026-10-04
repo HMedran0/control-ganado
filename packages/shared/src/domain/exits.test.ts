@@ -9,13 +9,17 @@ describe('exitNeedsWithdrawalConfirmation (RN-22)', () => {
   it('pide confirmar la venta o el sacrificio de un animal en retiro', () => {
     for (const type of ['SALE', 'SLAUGHTER'] as const) {
       expect(
-        exitNeedsWithdrawalConfirmation({ type, date, withdrawalUntil: toIsoDate('2026-09-25') }),
+        exitNeedsWithdrawalConfirmation({
+          type,
+          date,
+          meatWithdrawalUntil: toIsoDate('2026-09-25'),
+        }),
       ).toBe(true);
     }
   });
 
   it('el último día de retiro todavía cuenta', () => {
-    expect(exitNeedsWithdrawalConfirmation({ type: 'SALE', date, withdrawalUntil: date })).toBe(
+    expect(exitNeedsWithdrawalConfirmation({ type: 'SALE', date, meatWithdrawalUntil: date })).toBe(
       true,
     );
   });
@@ -25,17 +29,19 @@ describe('exitNeedsWithdrawalConfirmation (RN-22)', () => {
       exitNeedsWithdrawalConfirmation({
         type: 'SALE',
         date,
-        withdrawalUntil: toIsoDate('2026-09-19'),
+        meatWithdrawalUntil: toIsoDate('2026-09-19'),
       }),
     ).toBe(false);
-    expect(exitNeedsWithdrawalConfirmation({ type: 'SALE', date, withdrawalUntil: null })).toBe(
+    expect(exitNeedsWithdrawalConfirmation({ type: 'SALE', date, meatWithdrawalUntil: null })).toBe(
       false,
     );
   });
 
   it('no aplica a muerte, robo, traslado ni otra salida', () => {
     for (const type of ['DEATH', 'THEFT', 'TRANSFER', 'OTHER'] as const) {
-      expect(exitNeedsWithdrawalConfirmation({ type, date, withdrawalUntil: date })).toBe(false);
+      expect(exitNeedsWithdrawalConfirmation({ type, date, meatWithdrawalUntil: date })).toBe(
+        false,
+      );
     }
   });
 });

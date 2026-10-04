@@ -52,7 +52,22 @@ export type AnimalForVaccine = {
    * vacunarse en un ciclo oficial (RN-13, ADR-004).
    */
   readonly entryDate: IsoDate;
+  /**
+   * La importación no traía la fecha de ingreso y tomó la de nacimiento (ANI-09 CA2, M4d). Se trata
+   * como presente desde que nació: la fecha de ingreso no se usa (M6, ADR-004).
+   */
+  readonly entryDateEstimated: boolean;
 };
+
+/**
+ * Desde cuándo está el animal en la finca, para los ciclos oficiales (RN-13, ADR-004): el máximo
+ * de nacimiento e ingreso; con el ingreso estimado, el nacimiento.
+ */
+export function inFarmSince(animal: AnimalForVaccine): IsoDate {
+  return animal.entryDateEstimated
+    ? animal.birthDate
+    : maxIsoDate(animal.birthDate, animal.entryDate);
+}
 
 /** Estado de la vacuna en un animal. */
 export const VACCINE_STATUS = {
@@ -175,8 +190,7 @@ function officialCycleStatus(input: VaccineStatusInput): VaccineStatus {
 
   // Un animal que no estaba en la finca cuando cerró el ciclo no pudo vacunarse en él:
   // ni el nacido después, ni el comprado después (RN-13, ADR-004).
-  const inFarmSince = maxIsoDate(animal.birthDate, animal.entryDate);
-  if (inFarmSince > cycle.endsOn) {
+  if (inFarmSince(animal) > cycle.endsOn) {
     return status(
       VACCINE_STATUS.NOT_APPLICABLE,
       VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE,
@@ -401,4 +415,97 @@ export function vaccineSexBlockedParams(
   sex: Sex,
 ): Readonly<Record<string, string>> {
   return { vaccine: vaccineName, sex: SEX_LABEL[sex] };
+}
+
+// ---------------------------------------------------------------------------------------------
+// Vacunación por lote (SAN-03, M6)
+// ---------------------------------------------------------------------------------------------
+
+/** Por qué un animal de la selección no se vacuna en un registro por lote. */
+export const BULK_VACCINATION_SKIP = {
+  /** El animal salió o está archivado. */
+  NOT_ACTIVE: 'NOT_ACTIVE',
+  /** La vacuna no se aplica a su sexo (RN-26, brucelosis en machos). */
+  SEX_BLOCKED: 'SEX_BLOCKED',
+  /** La fecha es anterior a su nacimiento o a su ingreso a la finca (RN-14). */
+  BEFORE_BIRTH_OR_ENTRY: 'BEFORE_BIRTH_OR_ENTRY',
+  /** Vacuna de ciclo oficial que ya tiene en el ciclo de esa fecha. */
+  ALREADY_IN_CYCLE: 'ALREADY_IN_CYCLE',
+  /** Ya tiene esa vacuna registrada ese mismo día. */
+  ALREADY_ON_DATE: 'ALREADY_ON_DATE',
+} as const;
+export type BulkVaccinationSkip =
+  (typeof BULK_VACCINATION_SKIP)[keyof typeof BULK_VACCINATION_SKIP];
+
+/** Entrada de `bulkVaccinationDecision`. */
+export type BulkVaccinationDecisionInput = {
+  readonly vaccine: VaccineSchedule;
+  readonly vaccineName: string;
+  readonly animal: AnimalForVaccine & { readonly active: boolean };
+  /** Registros de esa vacuna en ese animal, anulados incluidos. */
+  readonly records: readonly VaccinationRecordLike[];
+  /** Ciclo oficial activo que incluye la vacuna y contiene la fecha; `null` si no hay. */
+  readonly cycle: VaccinationCycleLike | null;
+  readonly date: IsoDate;
+};
+
+/** Resultado de `bulkVaccinationDecision`: se omite con un motivo, o se aplica con advertencias. */
+export type BulkVaccinationDecision =
+  | { readonly apply: false; readonly skip: BulkVaccinationSkip }
+  | { readonly apply: true; readonly warnings: readonly Warning[] };
+
+/**
+ * ¿Se registra la vacuna en este animal de la selección? (SAN-03, M6). Se omiten, con su motivo,
+ * los que no aplican (inactivos, sexo bloqueado, fecha antes de nacer o de ingresar) y los que ya
+ * la tienen (en el ciclo de esa fecha, o ese mismo día). Fuera de la edad recomendada no se omite:
+ * se aplica con la advertencia `VACCINE_AGE_OUTSIDE_WINDOW` y la persona puede desmarcarlo.
+ */
+export function bulkVaccinationDecision(
+  input: BulkVaccinationDecisionInput,
+): BulkVaccinationDecision {
+  const { vaccine, animal, date } = input;
+  if (!animal.active) return { apply: false, skip: BULK_VACCINATION_SKIP.NOT_ACTIVE };
+
+  const check = canApplyVaccine({
+    vaccine,
+    animal,
+    vaccineName: input.vaccineName,
+    appliedOn: date,
+  });
+  if (check.blocked) return { apply: false, skip: BULK_VACCINATION_SKIP.SEX_BLOCKED };
+
+  if (date < inFarmSince(animal)) {
+    return { apply: false, skip: BULK_VACCINATION_SKIP.BEFORE_BIRTH_OR_ENTRY };
+  }
+
+  const valid = validRecords(input.records);
+  if (valid.some((record) => record.appliedOn === date)) {
+    return { apply: false, skip: BULK_VACCINATION_SKIP.ALREADY_ON_DATE };
+  }
+  const cycle = input.cycle;
+  if (
+    vaccine.scheduleType === VACCINE_SCHEDULE_TYPE.OFFICIAL_CYCLE &&
+    cycle !== null &&
+    valid.some((record) => isWithin(record.appliedOn, cycle.startsOn, cycle.endsOn))
+  ) {
+    return { apply: false, skip: BULK_VACCINATION_SKIP.ALREADY_IN_CYCLE };
+  }
+
+  return { apply: true, warnings: check.warnings };
+}
+
+/**
+ * Ciclo oficial que contiene la fecha, entre los que incluyen la vacuna: el de inicio más reciente
+ * si se cruzan. Es el `cycle_id` que la API guarda en la vacunación (SAN-06).
+ */
+export function cycleContaining<T extends VaccinationCycleLike>(
+  cycles: readonly T[],
+  date: IsoDate,
+): T | null {
+  let found: T | null = null;
+  for (const cycle of cycles) {
+    if (!isWithin(date, cycle.startsOn, cycle.endsOn)) continue;
+    if (found === null || cycle.startsOn > found.startsOn) found = cycle;
+  }
+  return found;
 }

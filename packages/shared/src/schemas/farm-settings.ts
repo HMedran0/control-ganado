@@ -11,9 +11,27 @@ import { z } from 'zod';
 
 import { DEFAULT_CALF_CODE_PATTERN, isValidCalfCodePattern } from '../domain/codes.js';
 import { DEFAULT_FARM_GESTATION_DAYS } from '../domain/pregnancy.js';
+import { DEFAULT_WEIGHT_GAIN_ANCHOR_MAX_DAYS } from '../domain/weights.js';
+import { MANAGEMENT_CATEGORY, type ManagementCategory } from '../enums.js';
 
 /** «Parto vencido sin registrar» a los 15 días del parto estimado [Validar] (M5). */
 export const DEFAULT_OVERDUE_CALVING_ALERT_DAYS = 15;
+
+/** «Ganancia baja» en Levante por debajo de 0,30 kg/día [Validar] (PES-05 CA2, 08 §3.7). */
+export const DEFAULT_WEIGHT_GAIN_ALERT_KG_PER_DAY: Partial<Record<ManagementCategory, number>> = {
+  [MANAGEMENT_CATEGORY.YOUNG_MALE]: 0.3,
+};
+/** «Perdió peso» si el último pesaje baja más de 5 % [Validar] (PES-05 CA3, 08 §3.7). */
+export const DEFAULT_WEIGHT_LOSS_ALERT_PERCENT = 5;
+
+/** Umbral de ganancia en kg/día: de 0 a 3 kg/día, con hasta tres decimales (ADR-015). */
+const gainThresholdSchema = z
+  .number({ message: 'Escribe la ganancia en kg/día.' })
+  .min(0, { message: 'La ganancia no puede ser negativa.' })
+  .max(3, { message: 'Máximo 3 kg/día.' })
+  .refine((value) => Math.abs(Math.round(value * 1000) - value * 1000) < 1e-6, {
+    message: 'Máximo tres decimales.',
+  });
 
 /**
  * Cómo sugiere la finca el código de un animal nuevo (ANI-10): con el patrón de las crías o con
@@ -65,6 +83,27 @@ const settingsFields = {
   }),
   /** Precio por kilo para avalúos, por categoría de manejo. Montos como cadena decimal. */
   pricePerKgByCategory: z.record(z.string(), z.string()),
+  /**
+   * Umbral de «Ganancia baja» por categoría de manejo, en kg/día (PES-05 CA2). Una categoría sin
+   * umbral no genera la alerta.
+   */
+  weightGainAlertKgPerDay: z.partialRecord(
+    z.enum(Object.values(MANAGEMENT_CATEGORY) as [ManagementCategory, ...ManagementCategory[]]),
+    gainThresholdSchema,
+  ),
+  /** «Perdió peso»: porcentaje entero de baja respecto al pesaje anterior (PES-05 CA3). */
+  weightLossAlertPercent: z
+    .int({ message: 'Escribe un porcentaje sin decimales.' })
+    .min(1, { message: 'Entre 1 % y 50 %.' })
+    .max(50, { message: 'Entre 1 % y 50 %.' }),
+  /**
+   * Días máximos entre el ancla de la ganancia de 90 días y el inicio de la ventana (ADR-015,
+   * 180 [Validar]). Con un ancla más vieja no hay ganancia de 90 días ni alerta.
+   */
+  weightGainAnchorMaxDays: z
+    .int({ message: 'Escribe los días sin decimales.' })
+    .min(0, { message: 'Entre 0 y 365 días.' })
+    .max(365, { message: 'Entre 0 y 365 días.' }),
 };
 
 /** Esquema de `Farm.settings`. Rechaza claves desconocidas para que una errata no pase callada. */
@@ -84,6 +123,15 @@ export const farmSettingsSchema = z
     pricePerKgByCategory: settingsFields.pricePerKgByCategory.default({}),
     codeReuse: settingsFields.codeReuse.default(false),
     codeSuggestion: settingsFields.codeSuggestion.default(CODE_SUGGESTION.PATTERN),
+    weightGainAlertKgPerDay: settingsFields.weightGainAlertKgPerDay.default(
+      DEFAULT_WEIGHT_GAIN_ALERT_KG_PER_DAY,
+    ),
+    weightLossAlertPercent: settingsFields.weightLossAlertPercent.default(
+      DEFAULT_WEIGHT_LOSS_ALERT_PERCENT,
+    ),
+    weightGainAnchorMaxDays: settingsFields.weightGainAnchorMaxDays.default(
+      DEFAULT_WEIGHT_GAIN_ANCHOR_MAX_DAYS,
+    ),
   })
   .strict();
 

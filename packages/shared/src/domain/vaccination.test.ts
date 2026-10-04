@@ -3,10 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { toIsoDate, type IsoDate } from '../date.js';
 import { SEX, VACCINE_SCHEDULE_TYPE } from '../enums.js';
 import {
+  BULK_VACCINATION_SKIP,
   VACCINE_STATUS,
   VACCINE_STATUS_REASON,
+  bulkVaccinationDecision,
   canApplyVaccine,
+  cycleContaining,
   cyclesAt,
+  inFarmSince,
   nextDueOnFromInterval,
   vaccineStatus,
   vaccineSexBlockedParams,
@@ -66,7 +70,12 @@ const CICLO_2026_2: VaccinationCycleLike = {
 function estado(overrides: Partial<VaccineStatusInput>) {
   const base: VaccineStatusInput = {
     vaccine: AFTOSA,
-    animal: { sex: SEX.FEMALE, birthDate: d('2020-01-15'), entryDate: d('2020-01-15') },
+    animal: {
+      sex: SEX.FEMALE,
+      birthDate: d('2020-01-15'),
+      entryDate: d('2020-01-15'),
+      entryDateEstimated: false,
+    },
     records: [],
     currentCycle: null,
     lastClosedCycle: CICLO_2026_1,
@@ -144,7 +153,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
 
   it('un animal nacido después del cierre del ciclo no queda vencido', () => {
     const resultado = estado({
-      animal: { sex: SEX.FEMALE, birthDate: d('2026-07-01'), entryDate: d('2026-07-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2026-07-01'),
+        entryDate: d('2026-07-01'),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE);
@@ -159,7 +173,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
   describe('animales que no estaban en la finca durante el ciclo (RN-13, ADR-004)', () => {
     it('un animal comprado que ingresó después del cierre no queda vencido', () => {
       const resultado = estado({
-        animal: { sex: SEX.FEMALE, birthDate: d('2023-04-10'), entryDate: d('2026-08-01') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2023-04-10'),
+          entryDate: d('2026-08-01'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE);
@@ -167,7 +186,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
 
     it('un animal comprado antes del cierre sí queda vencido', () => {
       const resultado = estado({
-        animal: { sex: SEX.FEMALE, birthDate: d('2023-04-10'), entryDate: d('2026-05-10') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2023-04-10'),
+          entryDate: d('2026-05-10'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.OVERDUE);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.CLOSED_CYCLE);
@@ -175,7 +199,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
 
     it('el día del cierre cuenta como estar en la finca', () => {
       const resultado = estado({
-        animal: { sex: SEX.FEMALE, birthDate: d('2023-04-10'), entryDate: d('2026-06-23') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2023-04-10'),
+          entryDate: d('2026-06-23'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.OVERDUE);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.CLOSED_CYCLE);
@@ -183,7 +212,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
 
     it('el día siguiente al cierre ya no', () => {
       const resultado = estado({
-        animal: { sex: SEX.FEMALE, birthDate: d('2023-04-10'), entryDate: d('2026-06-24') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2023-04-10'),
+          entryDate: d('2026-06-24'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE);
@@ -193,7 +227,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
       // Nacido después de que cerró el ciclo, con un ingreso anterior por dato inconsistente:
       // igual no pudo vacunarse, porque no había nacido.
       const resultado = estado({
-        animal: { sex: SEX.FEMALE, birthDate: d('2026-07-01'), entryDate: d('2026-05-10') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2026-07-01'),
+          entryDate: d('2026-05-10'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE);
@@ -203,7 +242,12 @@ describe('OFFICIAL_CYCLE (RN-13)', () => {
       const resultado = estado({
         currentCycle: CICLO_2026_2,
         today: d('2026-11-10'),
-        animal: { sex: SEX.FEMALE, birthDate: d('2023-04-10'), entryDate: d('2026-11-05') },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: d('2023-04-10'),
+          entryDate: d('2026-11-05'),
+          entryDateEstimated: false,
+        },
       });
       expect(resultado.kind).toBe(VACCINE_STATUS.PENDING);
       expect(resultado.reason).toBe(VACCINE_STATUS_REASON.CURRENT_CYCLE);
@@ -221,7 +265,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('macho: no aplica nunca', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.MALE, birthDate: nacidaHaceDias(200), entryDate: nacidaHaceDias(200) },
+      animal: {
+        sex: SEX.MALE,
+        birthDate: nacidaHaceDias(200),
+        entryDate: nacidaHaceDias(200),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NOT_ELIGIBLE_SEX);
@@ -230,7 +279,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('ternera de 2 meses: todavía no le toca', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(60), entryDate: nacidaHaceDias(60) },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: nacidaHaceDias(60),
+        entryDate: nacidaHaceDias(60),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.BEFORE_AGE_WINDOW);
@@ -239,7 +293,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('ternera de 8 meses sin aplicación: pendiente', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(240), entryDate: nacidaHaceDias(240) },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: nacidaHaceDias(240),
+        entryDate: nacidaHaceDias(240),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.PENDING);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.IN_AGE_WINDOW);
@@ -249,7 +308,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('ternera de 10 meses sin aplicación: vencida, fuera de edad', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(300), entryDate: nacidaHaceDias(300) },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: nacidaHaceDias(300),
+        entryDate: nacidaHaceDias(300),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.OVERDUE);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.AFTER_AGE_WINDOW);
@@ -263,6 +327,7 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
           sex: SEX.FEMALE,
           birthDate: nacidaHaceDias(días),
           entryDate: nacidaHaceDias(días),
+          entryDateEstimated: false,
         },
       });
       expect(resultado.kind, String(días)).toBe(VACCINE_STATUS.PENDING);
@@ -270,13 +335,23 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
     expect(
       estado({
         vaccine: BRUCELOSIS,
-        animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(89), entryDate: nacidaHaceDias(89) },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: nacidaHaceDias(89),
+          entryDate: nacidaHaceDias(89),
+          entryDateEstimated: false,
+        },
       }).kind,
     ).toBe(VACCINE_STATUS.NOT_APPLICABLE);
     expect(
       estado({
         vaccine: BRUCELOSIS,
-        animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(271), entryDate: nacidaHaceDias(271) },
+        animal: {
+          sex: SEX.FEMALE,
+          birthDate: nacidaHaceDias(271),
+          entryDate: nacidaHaceDias(271),
+          entryDateEstimated: false,
+        },
       }).kind,
     ).toBe(VACCINE_STATUS.OVERDUE);
   });
@@ -284,7 +359,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('una aplicación cierra la alerta para siempre', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(300), entryDate: nacidaHaceDias(300) },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: nacidaHaceDias(300),
+        entryDate: nacidaHaceDias(300),
+        entryDateEstimated: false,
+      },
       records: [{ appliedOn: d('2026-04-01'), nextDueOn: null, voided: false }],
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.UP_TO_DATE);
@@ -293,7 +373,12 @@ describe('AGE_WINDOW: brucelosis (RN-13, 08 §1.5)', () => {
   it('una aplicación anulada no cierra la alerta (RN-13)', () => {
     const resultado = estado({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: nacidaHaceDias(240), entryDate: nacidaHaceDias(240) },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: nacidaHaceDias(240),
+        entryDate: nacidaHaceDias(240),
+        entryDateEstimated: false,
+      },
       records: [{ appliedOn: d('2026-04-01'), nextDueOn: null, voided: true }],
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.PENDING);
@@ -304,7 +389,12 @@ describe('INTERVAL (RN-12, RN-13)', () => {
   it('sin aplicación y con edad suficiente: pendiente', () => {
     const resultado = estado({
       vaccine: CLOSTRIDIAL,
-      animal: { sex: SEX.FEMALE, birthDate: d('2025-01-01'), entryDate: d('2025-01-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2025-01-01'),
+        entryDate: d('2025-01-01'),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.PENDING);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.NO_RECORD);
@@ -313,7 +403,12 @@ describe('INTERVAL (RN-12, RN-13)', () => {
   it('sin aplicación y demasiado joven: no aplica', () => {
     const resultado = estado({
       vaccine: CLOSTRIDIAL,
-      animal: { sex: SEX.FEMALE, birthDate: d('2026-09-01'), entryDate: d('2026-09-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2026-09-01'),
+        entryDate: d('2026-09-01'),
+        entryDateEstimated: false,
+      },
     });
     expect(resultado.kind).toBe(VACCINE_STATUS.NOT_APPLICABLE);
     expect(resultado.reason).toBe(VACCINE_STATUS_REASON.BEFORE_AGE_WINDOW);
@@ -435,7 +530,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('bloquea brucelosis en macho, que es norma del ICA', () => {
     const resultado = canApplyVaccine({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.MALE, birthDate: d('2026-03-01'), entryDate: d('2026-03-01') },
+      animal: {
+        sex: SEX.MALE,
+        birthDate: d('2026-03-01'),
+        entryDate: d('2026-03-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Brucelosis RB51',
       appliedOn: HOY,
     });
@@ -447,7 +547,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('permite brucelosis en hembra dentro de la ventana, sin advertencias', () => {
     const resultado = canApplyVaccine({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: d('2026-03-01'), entryDate: d('2026-03-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2026-03-01'),
+        entryDate: d('2026-03-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Brucelosis RB51',
       appliedOn: HOY,
     });
@@ -458,7 +563,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('advierte sin bloquear si la hembra está fuera de la ventana de edad', () => {
     const resultado = canApplyVaccine({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: d('2024-01-01'), entryDate: d('2024-01-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2024-01-01'),
+        entryDate: d('2024-01-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Brucelosis RB51',
       appliedOn: HOY,
     });
@@ -471,7 +581,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('advierte si todavía es muy joven', () => {
     const resultado = canApplyVaccine({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: d('2026-09-01'), entryDate: d('2026-09-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2026-09-01'),
+        entryDate: d('2026-09-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Brucelosis RB51',
       appliedOn: HOY,
     });
@@ -481,7 +596,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('evalúa la edad el día de la aplicación, no hoy', () => {
     const resultado = canApplyVaccine({
       vaccine: BRUCELOSIS,
-      animal: { sex: SEX.FEMALE, birthDate: d('2024-01-01'), entryDate: d('2024-01-01') },
+      animal: {
+        sex: SEX.FEMALE,
+        birthDate: d('2024-01-01'),
+        entryDate: d('2024-01-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Brucelosis RB51',
       appliedOn: d('2024-06-01'),
     });
@@ -491,7 +611,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('no bloquea si la vacuna no lo pide, aunque el sexo no sea el elegible', () => {
     const resultado = canApplyVaccine({
       vaccine: { ...BRUCELOSIS, blockIneligibleSex: false },
-      animal: { sex: SEX.MALE, birthDate: d('2026-03-01'), entryDate: d('2026-03-01') },
+      animal: {
+        sex: SEX.MALE,
+        birthDate: d('2026-03-01'),
+        entryDate: d('2026-03-01'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Vacuna de la finca',
       appliedOn: HOY,
     });
@@ -501,7 +626,12 @@ describe('canApplyVaccine (RN-26)', () => {
   it('aftosa se aplica a cualquier animal', () => {
     const resultado = canApplyVaccine({
       vaccine: AFTOSA,
-      animal: { sex: SEX.MALE, birthDate: d('2026-09-20'), entryDate: d('2026-09-20') },
+      animal: {
+        sex: SEX.MALE,
+        birthDate: d('2026-09-20'),
+        entryDate: d('2026-09-20'),
+        entryDateEstimated: false,
+      },
       vaccineName: 'Aftosa',
       appliedOn: HOY,
     });
@@ -543,5 +673,104 @@ describe('cyclesAt', () => {
 
   it('antes de todo ciclo, nada', () => {
     expect(at('2025-01-01')).toEqual([null, null]);
+  });
+});
+
+describe('fecha de ingreso estimada (ADR-004, M6)', () => {
+  it('un animal con el ingreso estimado se trata como presente desde que nació', () => {
+    const comprada = { sex: SEX.FEMALE, birthDate: d('2020-03-01'), entryDate: d('2026-08-01') };
+    expect(inFarmSince({ ...comprada, entryDateEstimated: false })).toBe('2026-08-01');
+    expect(inFarmSince({ ...comprada, entryDateEstimated: true })).toBe('2020-03-01');
+
+    // Ingreso real después del cierre del 2026-1: no aplica. Estimado: aplica y quedó vencida.
+    const real = estado({
+      vaccine: AFTOSA,
+      animal: { ...comprada, entryDateEstimated: false },
+      lastClosedCycle: CICLO_2026_1,
+    });
+    expect(real.reason).toBe(VACCINE_STATUS_REASON.NOT_IN_FARM_DURING_CYCLE);
+    const estimada = estado({
+      vaccine: AFTOSA,
+      animal: { ...comprada, entryDateEstimated: true },
+      lastClosedCycle: CICLO_2026_1,
+    });
+    expect(estimada.kind).toBe(VACCINE_STATUS.OVERDUE);
+  });
+});
+
+describe('bulkVaccinationDecision (SAN-03, M6)', () => {
+  const hembra = {
+    sex: SEX.FEMALE,
+    birthDate: d('2026-01-10'),
+    entryDate: d('2026-01-10'),
+    entryDateEstimated: false,
+    active: true,
+  };
+  const base = {
+    vaccine: AFTOSA,
+    vaccineName: 'Aftosa',
+    animal: hembra,
+    records: [],
+    cycle: CICLO_2026_2,
+    date: d('2026-11-10'),
+  };
+
+  it('se aplica si nada lo impide', () => {
+    expect(bulkVaccinationDecision(base)).toEqual({ apply: true, warnings: [] });
+  });
+
+  it('omite a los inactivos, al sexo bloqueado y a los que no habían nacido o ingresado', () => {
+    expect(bulkVaccinationDecision({ ...base, animal: { ...hembra, active: false } })).toEqual({
+      apply: false,
+      skip: BULK_VACCINATION_SKIP.NOT_ACTIVE,
+    });
+    expect(
+      bulkVaccinationDecision({
+        ...base,
+        vaccine: BRUCELOSIS,
+        vaccineName: 'Brucelosis',
+        animal: { ...hembra, sex: SEX.MALE },
+      }),
+    ).toEqual({ apply: false, skip: BULK_VACCINATION_SKIP.SEX_BLOCKED });
+    expect(
+      bulkVaccinationDecision({ ...base, animal: { ...hembra, entryDate: d('2026-11-20') } }),
+    ).toEqual({ apply: false, skip: BULK_VACCINATION_SKIP.BEFORE_BIRTH_OR_ENTRY });
+  });
+
+  it('omite a los que ya la tienen en el ciclo o ese mismo día; las anuladas no cuentan', () => {
+    const enCiclo = { appliedOn: d('2026-11-02'), nextDueOn: null, voided: false };
+    expect(bulkVaccinationDecision({ ...base, records: [enCiclo] })).toEqual({
+      apply: false,
+      skip: BULK_VACCINATION_SKIP.ALREADY_IN_CYCLE,
+    });
+    expect(bulkVaccinationDecision({ ...base, records: [{ ...enCiclo, voided: true }] })).toEqual({
+      apply: true,
+      warnings: [],
+    });
+    expect(
+      bulkVaccinationDecision({
+        ...base,
+        vaccine: CLOSTRIDIAL,
+        vaccineName: 'Clostridial',
+        cycle: null,
+        records: [{ appliedOn: d('2026-11-10'), nextDueOn: null, voided: false }],
+      }),
+    ).toEqual({ apply: false, skip: BULK_VACCINATION_SKIP.ALREADY_ON_DATE });
+  });
+
+  it('fuera de la edad recomendada se aplica con advertencia', () => {
+    const result = bulkVaccinationDecision({
+      ...base,
+      vaccine: BRUCELOSIS,
+      vaccineName: 'Brucelosis RB51',
+      animal: { ...hembra, birthDate: d('2024-01-10'), entryDate: d('2024-01-10') },
+    });
+    expect(result).toMatchObject({ apply: true });
+    expect(result.apply && result.warnings[0]?.code).toBe('VACCINE_AGE_OUTSIDE_WINDOW');
+  });
+
+  it('cycleContaining elige el ciclo que contiene la fecha', () => {
+    expect(cycleContaining([CICLO_2026_1, CICLO_2026_2], d('2026-11-15'))).toBe(CICLO_2026_2);
+    expect(cycleContaining([CICLO_2026_1, CICLO_2026_2], d('2026-09-25'))).toBeNull();
   });
 });

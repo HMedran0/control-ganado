@@ -39,6 +39,7 @@ import type { MoneyString } from '../money.js';
 import { isoDateSchema, versionSchema } from './catalogs.js';
 import { clientIdSchema } from './offline.js';
 import type { CalvingIntervalView, PregnancyView } from './reproduction.js';
+import type { WeightSummary } from './weights.js';
 
 // ---------------------------------------------------------------------------------------------
 // Piezas
@@ -597,7 +598,15 @@ export type AnimalDetail = AnimalListItem & {
   readonly identifiers: readonly IdentifierView[];
   readonly reproduction: ReproductiveSummary | null;
   readonly vaccines: readonly VaccineStatusView[];
+  /** El retiro más lejano entre carne y leche: «En retiro» (`withdrawal_until`). */
   readonly withdrawalUntil: IsoDate | null;
+  /**
+   * Los dos retiros por separado (M6): la ficha muestra «Carne hasta X · Leche hasta Y» y la
+   * salida usa el de carne (RN-22).
+   */
+  readonly withdrawals: { readonly meatUntil: IsoDate | null; readonly milkUntil: IsoDate | null };
+  /** Ganancias y alertas de peso (PES-05, M6); `null` si el animal no está activo. */
+  readonly weight: WeightSummary | null;
   /** Número anterior (ANI-11). */
   readonly codeHistory: CodeHistory;
   /** Archivo (ANI-03): instante y motivo; `null` si no está archivado. */
