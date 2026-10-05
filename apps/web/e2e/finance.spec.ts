@@ -206,7 +206,9 @@ test.describe.serial('finanzas', () => {
     await expect(costs.getByText('-$ 100.000')).toBeVisible();
     await expect(costs.getByText('Subasta de San Juan', { exact: false })).toBeVisible();
     await page.getByRole('tab', { name: 'Cambios' }).click();
-    await expect(page.getByText(`Álvaro Pérez Castro corrigió la venta de ${steer.code}`)).toBeVisible();
+    await expect(
+      page.getByText(`Álvaro Pérez Castro corrigió la venta de ${steer.code}`),
+    ).toBeVisible();
     await expect(page.getByText('Precio: $ 3.200.000 → $ 2.800.000')).toBeVisible();
     await expectNoViolations(page);
     await api.context.dispose();
