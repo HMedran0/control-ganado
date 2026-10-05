@@ -16,6 +16,7 @@ import { HealthModule } from './health/health.module.js';
 import { ImportsModule } from './imports/imports.module.js';
 import { InfraModule } from './infra/infra.module.js';
 import { ReproductionModule } from './reproduction/reproduction.module.js';
+import { SanitaryModule } from './sanitary/sanitary.module.js';
 import { UsersModule } from './users/users.module.js';
 
 /**
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module.js';
     CatalogsModule,
     AnimalsModule,
     ReproductionModule,
+    SanitaryModule,
     ImportsModule,
     AuditModule,
     HealthModule,
