@@ -14,6 +14,7 @@ import {
   EXPECTED_RETIRO,
   EXPECTED_VACCINES_AT_SECOND_DATE,
   EXPECTED_VACCINES_TODAY,
+  EXPECTED_WEIGHT_ALERTS,
   SECOND_EVALUATION,
   type VaccineTally,
 } from '../prisma/seed/expected.js';
@@ -497,6 +498,57 @@ describe('seed de la finca de referencia', () => {
   });
 
   describe('pesos, gastos y auditoría de las reglas', () => {
+    it('cuenta las alertas de peso de M6 con SQL propio (PES-05, ADR-015)', async () => {
+      const today = Prisma.sql`${SEED_TODAY}::date`;
+      // «Perdió peso»: el último pesaje (fecha y orden de creación) baja más del 5 % del anterior
+      // de una fecha anterior. Solo activos.
+      const loss = await prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`
+        WITH ranked AS (
+          SELECT w.animal_id, w.weighed_on, w.weight_kg,
+            row_number() OVER (PARTITION BY w.animal_id ORDER BY w.weighed_on DESC, w.id DESC) AS n
+          FROM weight_records w JOIN animals a ON a.id = w.animal_id
+          WHERE w.farm_id = ${farmId}::uuid AND w.voided_at IS NULL AND ${active}
+        ),
+        last AS (SELECT * FROM ranked WHERE n = 1),
+        prev AS (
+          SELECT DISTINCT ON (r.animal_id) r.animal_id, r.weight_kg
+          FROM ranked r JOIN last l ON l.animal_id = r.animal_id AND r.weighed_on < l.weighed_on
+          ORDER BY r.animal_id, r.weighed_on DESC
+        )
+        SELECT count(*)::bigint AS total FROM last l JOIN prev p ON p.animal_id = l.animal_id
+        WHERE 100 * (p.weight_kg - l.weight_kg) > 5 * p.weight_kg`);
+      expect(Number(loss[0]?.total)).toBe(EXPECTED_WEIGHT_ALERTS.weightLoss);
+
+      // «Ganancia baja» en levante (machos activos de 7 a 23 meses): pendiente de los pesajes de
+      // los últimos 90 días más el último anterior (a lo sumo 180 días antes), con regr_slope y
+      // redondeada a milésimas, menor que 0,300 kg/día.
+      const low = await prisma.$queryRaw<{ total: bigint }[]>(Prisma.sql`
+        WITH levante AS (
+          SELECT a.id FROM animals a
+          WHERE a.farm_id = ${farmId}::uuid AND ${active} AND a.sex = 'MALE'
+            AND ${monthsBetween('a.birth_date', `'${SEED_TODAY}'::date`)} BETWEEN 7 AND 23
+        ),
+        points AS (
+          SELECT w.animal_id, w.weighed_on, w.weight_kg, true AS in_window
+          FROM weight_records w JOIN levante l ON l.id = w.animal_id
+          WHERE w.voided_at IS NULL AND w.weighed_on BETWEEN ${today} - 90 AND ${today}
+          UNION ALL
+          (SELECT DISTINCT ON (w.animal_id) w.animal_id, w.weighed_on, w.weight_kg, false
+          FROM weight_records w JOIN levante l ON l.id = w.animal_id
+          WHERE w.voided_at IS NULL AND w.weighed_on < ${today} - 90
+            AND (${today} - 90) - w.weighed_on <= 180
+          ORDER BY w.animal_id, w.weighed_on DESC)
+        ),
+        slopes AS (
+          SELECT animal_id,
+            round(regr_slope(weight_kg::float8, (weighed_on - DATE '2000-01-01')::float8)::numeric, 3) AS gain
+          FROM points GROUP BY animal_id
+          HAVING bool_or(in_window) AND count(*) >= 2 AND max(weighed_on) - min(weighed_on) >= 30
+        )
+        SELECT count(*)::bigint AS total FROM slopes WHERE gain < 0.3`);
+      expect(Number(low[0]?.total)).toBe(EXPECTED_WEIGHT_ALERTS.lowGain);
+    });
+
     it('pesa con cinta, nunca con báscula (08 §1.7)', async () => {
       const rows = await prisma.$queryRaw<{ method: string }[]>(Prisma.sql`
         SELECT DISTINCT method::text FROM weight_records WHERE farm_id = ${farmId}::uuid`);

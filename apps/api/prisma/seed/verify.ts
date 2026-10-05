@@ -31,6 +31,8 @@ import {
   SEX,
   sumMoney,
   vaccineStatus,
+  weightAlerts,
+  type WeightRecordLike,
   VACCINE_STATUS,
   type IsoDate,
   type VaccinationRecordLike,
@@ -44,6 +46,7 @@ import {
   EXPECTED_INVENTORY,
   EXPECTED_LOTS,
   EXPECTED_REPRODUCTION,
+  EXPECTED_WEIGHT_ALERTS,
   EXPECTED_VACCINES_AT_SECOND_DATE,
   EXPECTED_VACCINES_TODAY,
   SECOND_EVALUATION,
@@ -149,6 +152,21 @@ export function verifyHerd(
   let dueSoon = 0;
   let overdue = 0;
   let forSale = 0;
+  let lowGain = 0;
+  let weightLoss = 0;
+
+  const weightsByAnimal = new Map<string, WeightRecordLike[]>();
+  for (const weight of history.weights) {
+    const list = weightsByAnimal.get(weight.animalId) ?? [];
+    list.push({
+      id: weight.id,
+      weighedOn: weight.weighedOn,
+      weightKg: Number(weight.weightKg),
+      isBirthWeight: weight.isBirthWeight,
+      voided: false,
+    });
+    weightsByAnimal.set(weight.animalId, list);
+  }
 
   for (const animal of active) {
     const damCalvings = calvings.get(animal.id) ?? [];
@@ -161,6 +179,14 @@ export function verifyHerd(
       today,
     });
     categories.set(category, (categories.get(category) ?? 0) + 1);
+    const weight = weightAlerts({
+      records: weightsByAnimal.get(animal.id) ?? [],
+      category,
+      settings: catalog.settings,
+      today,
+    });
+    if (weight.lowGain) lowGain += 1;
+    if (weight.weightLoss) weightLoss += 1;
     if (animal.sex === SEX.MALE) males += 1;
     if (animal.forSale) forSale += 1;
 
@@ -224,6 +250,8 @@ export function verifyHerd(
   check('Partos próximos', dueSoon, EXPECTED_REPRODUCTION.calvingsDueSoon);
   check('Partos vencidos sin registrar', overdue, EXPECTED_REPRODUCTION.calvingsOverdue);
   check('Disponibles para venta', forSale, EXPECTED_EXITS.forSale);
+  check('Ganancia baja (PES-05)', lowGain, EXPECTED_WEIGHT_ALERTS.lowGain);
+  check('Perdió peso (PES-05)', weightLoss, EXPECTED_WEIGHT_ALERTS.weightLoss);
 
   const withCalfAtFoot = active.filter((cow) =>
     active.some(

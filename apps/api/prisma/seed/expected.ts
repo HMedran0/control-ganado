@@ -100,6 +100,18 @@ export const EXPECTED_BIRTHS_2026 = {
   stillborn: 2,
 } as const;
 
+/**
+ * Alertas de peso (PES-05, M6; ADR-015), el 25/09/2026. Decisión del seed (`WEIGHT_ALERT_CASES`):
+ * tres levantes que ganaron 15 kg entre el 15/06 y el 15/09 (0,163 kg/día) y dos que perdieron
+ * el 8 %. Los que perdieron peso también tienen ganancia baja (es negativa): por eso son 5 y 2.
+ * Con el pesaje trimestral, el del 15/06 es el ancla de la ventana de 90 días. Ningún otro levante
+ * baja de 0,30 kg/día. Agregadas en M6; las demás cifras no cambian.
+ */
+export const EXPECTED_WEIGHT_ALERTS = {
+  lowGain: 5,
+  weightLoss: 2,
+} as const;
+
 /** Salidas y disponibilidad (08 §3.2). */
 export const EXPECTED_EXITS = {
   sold: 10,

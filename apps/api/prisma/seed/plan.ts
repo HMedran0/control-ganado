@@ -225,6 +225,21 @@ export const WEIGHING_DAYS: readonly IsoDate[] = [
   toIsoDate('2026-09-15'),
 ];
 
+/**
+ * Casos de las alertas de peso de M6 (PES-05), aplicados al último pesaje trimestral (15/09/2026)
+ * de los primeros levantes por código que también se pesaron el 15/06/2026. Decisión del seed:
+ * tres que ganaron solo 15 kg en esos 92 días (0,163 kg/día, menos que 0,30) y dos que perdieron
+ * el 8 %.
+ */
+export const WEIGHT_ALERT_CASES = {
+  previousDay: toIsoDate('2026-06-15'),
+  lastDay: toIsoDate('2026-09-15'),
+  lowGain: 3,
+  lowGainKg: 15,
+  weightLoss: 2,
+  weightLossFactor: 0.92,
+} as const;
+
 /** Proporción de servicios por monta natural; el resto es inseminación (08 §3.2). */
 export const NATURAL_SERVICE_SHARE = 0.85;
 

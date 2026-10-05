@@ -39,6 +39,7 @@ import {
   MISSED_OFFICIAL_CYCLE,
   VACCINATION_DAYS,
   WEIGHING_DAYS,
+  WEIGHT_ALERT_CASES,
 } from './plan.js';
 import type { SeededRandom } from './random.js';
 
@@ -497,4 +498,50 @@ export function lastWeightByAnimal(weights: readonly SeedWeight[]): Map<string, 
     }
   }
   return new Map([...latest].map(([animalId, value]) => [animalId, value.kg]));
+}
+
+/**
+ * Casos de «Ganancia baja» y «Perdió peso» (PES-05, M6): cambia el último pesaje de unos levantes
+ * elegidos por código, sin consumir el generador aleatorio ni crear registros nuevos. Se aplica
+ * **después** de la economía, así que ningún identificador, gasto ni avalúo del seed cambia: solo
+ * el peso de esos cinco pesajes (`WEIGHT_ALERT_CASES`).
+ */
+export function applyWeightAlertCases(history: History, animals: readonly SeedAnimal[]): History {
+  const { previousDay, lastDay } = WEIGHT_ALERT_CASES;
+  const weightOn = (animalId: string, day: IsoDate) =>
+    history.weights.find((weight) => weight.animalId === animalId && weight.weighedOn === day);
+  const candidates = animals
+    .filter(
+      (animal) =>
+        animal.exitType === null &&
+        animal.sex === SEX.MALE &&
+        animal.lotKey === 'LEVANTE' &&
+        weightOn(animal.id, previousDay) !== undefined &&
+        weightOn(animal.id, lastDay) !== undefined,
+    )
+    .sort((a, b) => (a.code < b.code ? -1 : a.code > b.code ? 1 : 0));
+  const lowGain = candidates.slice(0, WEIGHT_ALERT_CASES.lowGain);
+  const weightLoss = candidates.slice(
+    WEIGHT_ALERT_CASES.lowGain,
+    WEIGHT_ALERT_CASES.lowGain + WEIGHT_ALERT_CASES.weightLoss,
+  );
+
+  const replaced = new Map<string, string>();
+  for (const animal of lowGain) {
+    const previous = Number(weightOn(animal.id, previousDay)?.weightKg ?? 0);
+    replaced.set(animal.id, (previous + WEIGHT_ALERT_CASES.lowGainKg).toFixed(2));
+  }
+  for (const animal of weightLoss) {
+    const previous = Number(weightOn(animal.id, previousDay)?.weightKg ?? 0);
+    const lower = Math.round(previous * WEIGHT_ALERT_CASES.weightLossFactor * 2) / 2;
+    replaced.set(animal.id, lower.toFixed(2));
+  }
+
+  return {
+    ...history,
+    weights: history.weights.map((weight) => {
+      const kg = weight.weighedOn === lastDay ? replaced.get(weight.animalId) : undefined;
+      return kg === undefined ? weight : { ...weight, weightKg: kg };
+    }),
+  };
 }
