@@ -71,7 +71,7 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Vacuna | `Vaccine` | Catálogo de vacunas con intervalo de refuerzo. |
 | Vacunación | `VaccinationRecord` | Aplicación de una vacuna a un animal. |
 | Tratamiento | `TreatmentRecord` | Aplicación de medicamento con período de retiro. |
-| Período de retiro | `TreatmentRecord.withdrawalUntil` | Fecha hasta la cual el animal no debe venderse para consumo. |
+| Período de retiro | `TreatmentRecord.withdrawalUntil` | Fecha hasta la cual el animal está «En retiro»: la más lejana entre el retiro de carne (no venderlo ni sacrificarlo para consumo, RN-22) y el de leche (no vender su leche, M9b). Desde M6 la ficha muestra las dos. |
 | Pesaje | `WeightRecord` | Registro de peso en kg. |
 | Gasto | `Expense` | Egreso de dinero, directo a un animal o repartido entre varios. |
 | Asignación | `ExpenseAllocation` | Porción de un gasto cargada a un animal. |
@@ -79,7 +79,7 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Numeración reutilizable | `Farm.settings.codeReuse` | La finca le da el número de un animal que salió a uno nuevo. El historial sigue siendo de cada animal (RN-33). |
 | Número anterior | derivado | El animal que tuvo antes el mismo número; la ficha lo muestra con enlace (ANI-11). |
 | Perfil de báscula | `ScaleProfile` | Mapeo de columnas del archivo que exporta el indicador de pesaje de la finca, guardado para reutilizarlo (PES-04). |
-| Ganancia diaria | derivado | Kilos ganados por día entre dos pesajes (PES-02, PES-05). |
+| Ganancia diaria | derivado | Kilos ganados por día (PES-02, PES-05): entre los dos últimos pesajes, desde el nacimiento y la de 90 días, por regresión con un ancla (ADR-015). |
 | Indicador de pesaje | `ScaleAdapter` | Equipo electrónico conectado a las celdas de carga de la báscula que muestra y transmite el peso, y a veces el chip leído (Tru-Test XR5000, ID5000…; PES-03). |
 | Peso estable | derivado | Lectura que el indicador marca como estable o que varía menos de `scaleStableToleranceKg` durante `scaleStableSeconds`; solo esa se guarda en el pesaje en vivo (PES-03 CA2). |
 | Sistema productivo | `Farm.settings.productionSystem` | Cría, levante y ceba, lechería, doble propósito o ciclo completo. Cambia qué se destaca, no los datos (CFG-03). |
@@ -268,7 +268,7 @@ Un único campo de búsqueda, disponible en toda la aplicación, que acepta: có
 - CA3: Un lector RFID en modo teclado que "escribe" 15 dígitos seguidos de Enter abre la ficha del animal (o ofrece asociar el código si no existe).
 
 **ANI-06 — Listado con filtros** · M · F1
-Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada, servida, parida, cotero, disponible para venta), lote, rango de edad, estado (activo, vendido/retirado, archivado), alertas (vacuna vencida, parto próximo, parto vencido sin registrar desde M5, en retiro).
+Filtros combinables: sexo, raza, categoría/etiqueta (ternero, ternera, preñada, servida, parida, cotero, disponible para venta), lote, rango de edad, estado (activo, vendido/retirado, archivado), alertas (vacuna vencida o pendiente, parto próximo, parto vencido sin registrar desde M5, en retiro, ganancia baja y perdió peso desde M6).
 - CA1: Los filtros se reflejan en la URL (se pueden compartir y volver a abrir).
 - CA2: El listado muestra: chapeta con código, nombre, sexo, raza, edad legible ("2 a 4 m"), etiquetas, último peso y alertas.
 - CA3: Paginación por cursor; ordenable por código, edad y último peso.
@@ -412,6 +412,7 @@ Campos: animal, vacuna, fecha, dosis aplicada, lote/serie del biológico (opcion
 - CA1: El usuario elige vacuna, fecha, responsable y selecciona animales por filtros (lote, categoría, todos) o por lectura sucesiva de identificadores.
 - CA2: Muestra el conteo antes de confirmar y crea un registro por animal en una sola transacción.
 - CA3: Permite excluir animales individuales de la selección.
+- CA4 (M6): Se revisa antes de guardar, sin guardar nada. Se omiten, y se listan con su motivo, los que no aplican (salió o está archivado, sexo bloqueado por RN-26, fecha anterior a su nacimiento o a su ingreso) y los que ya la tienen (en el ciclo oficial de esa fecha, o ese mismo día). Fuera de la edad recomendada no se omite: queda con advertencia y se puede desmarcar. La confirmación lleva `Idempotency-Key` (ADR-012).
 
 **SAN-04 — Alertas de vacunación** · M · F1
 - CA1: Lista de vacunas pendientes y vencidas por animal y vacuna, calculadas según el tipo de programación (RN-13): ciclo oficial en curso o cerrado sin aplicación; ventana de edad (por ejemplo, terneras de 3 a 9 meses sin brucelosis); intervalo vencido o próximo (ventana configurable, por defecto 15 días).
@@ -421,17 +422,20 @@ Campos: animal, vacuna, fecha, dosis aplicada, lote/serie del biológico (opcion
 **SAN-05 — Registrar tratamiento** · S · F1
 Campos: animal, fecha, diagnóstico o motivo, medicamento, dosis, días de tratamiento, días de retiro (carne y leche), responsable, costo (solo ADMIN, crea gasto), observaciones.
 - CA1: Calcula la fecha de fin de retiro; mientras esté vigente, el animal muestra la alerta "En retiro hasta dd/mm".
+- CA2 (M6): Retiro de carne = inicio + días de tratamiento + días de retiro de carne; igual el de leche. La ficha muestra «Carne hasta X · Leche hasta Y». Vender o sacrificar exige confirmar solo con retiro de **carne** vigente (RN-22); el de leche lo usa el control de leche (M9b). Anular el tratamiento anula también su gasto.
 
 **SAN-06 — Ciclos oficiales de vacunación** · M · F1
 - CA1: El ADMIN registra los ciclos oficiales (nombre, fecha de inicio y de fin) y qué vacunas aplican en ellos. Se entregan precargados los ciclos 2025-2 y 2026-1 reales (08 §3.3).
 - CA2: Durante un ciclo abierto, el tablero muestra "Ciclo 2026-2: 212 de 284 vacunados contra aftosa" y el listado de pendientes.
 - CA3: Desde un ciclo se puede iniciar una vacunación masiva o una jornada con las vacunas del ciclo.
+- CA4 (M6): El avance cuenta, por vacuna, los vacunados en el ciclo entre los animales activos que podían vacunarse en él (sexo elegible y en la finca antes del cierre, ADR-004). Quitar una vacuna de un ciclo no borra la fila (ADR-012).
 
 ### 3.8 Pesos (PES)
 
 **PES-01 — Registrar pesaje** · M · F1
 - CA1: Individual o dentro de una jornada. Campos: animal, fecha, peso en kg, método (báscula, cinta, estimado), observaciones. Desde M6 cada pesaje registra además cómo se identificó el animal (`identified_by`: lector RFID, QR, búsqueda o importación) y de dónde salió el peso (`weight_source`: digitado, archivo de la báscula o báscula en vivo), para el informe del piloto (PIL-05).
 - CA2: Advierte si el peso difiere más de 30 % del último registro (posible error de digitación), sin bloquear.
+- CA3 (M6): `identified_by` es nulo cuando nadie identificó al animal (peso al nacer del parto, peso inicial del alta, seed). En el formulario se propone según cómo se abrió la ficha: búsqueda (`SEARCH`), lector de chip (`RFID_READER`) o QR (`QR`), y la persona lo puede cambiar. El peso digitado es `weight_source = MANUAL`. Quien registró el pesaje lo anula en 24 horas; después, el ADMIN.
 
 **PES-02 — Evolución de peso** · M · F1
 - CA1: Gráfica de peso en el tiempo en la ficha; ganancia diaria promedio (kg/día) entre los dos últimos pesajes y desde el nacimiento.
@@ -471,12 +475,16 @@ El pesaje periódico se hace en báscula electrónica, y digitar cada peso es le
 - CA2: Simulación primero, como ANI-09: filas asociadas (por RFID y, si no hay, por chapeta visual), filas con chip desconocido, duplicados (mismo animal el mismo día: se conserva el último y se avisa) y pesos atípicos (PES-01, diferencia mayor a 30 %).
 - CA3: Los chips desconocidos se pueden asociar a un animal existente o dejar sin importar.
 - CA4: Al confirmar, se crea una jornada de pesaje (`WorkSession` con actividad `WEIGHT`) con un `WeightRecord` por animal, método `SCALE`, en una transacción.
+- CA5 (M6): La asociación es por chip activo y, si no hay, por chapeta visual activa y luego por código interno (normalizado, RN-30), solo de animales activos; la simulación dice en cada fila cómo se asoció. Un chip desconocido asociado a mano se guarda por defecto como RFID del animal (con las reglas de RN-19 y RN-32); si el animal ya tiene otro chip activo, no se guarda y se avisa «Este animal ya tiene el chip X: revisa la asociación».
+- CA6 (M6): El perfil tiene unidad (`KG` o `LB`); las libras se convierten a kilos al importar (redondeo a 0,1 kg) y la simulación lo muestra. La plantilla Tru-Test provisional usa kilos.
+- CA7 (M6): La importan todos los roles, con la misma seguridad e idempotencia que ANI-09 (ADR-011): una sola vez por clave del archivo elegido, `expectedRows` y aviso si el mismo archivo ya se importó.
 
 **PES-05 — Ganancia de peso y alertas** · S · F1 (M6 cálculo y ficha, M8 tablero)
 - CA1: Para cada animal: ganancia diaria promedio (kg/día) entre los dos últimos pesajes, en los últimos 90 días y desde el nacimiento.
 - CA2: Alerta "Ganancia baja" si la ganancia de los últimos 90 días es menor que el umbral de su categoría (`weightGainAlertKgPerDay`, por categoría de manejo; por defecto 0,30 kg/día para Levante [Validar]).
 - CA3: Alerta "Perdió peso" si el último pesaje es menor que el anterior en más de `weightLossAlertPercent` (por defecto 5 % [Validar]).
 - CA4: Listado filtrable por estas alertas y resumen por lote.
+- CA5 (M6, ADR-015): La ganancia de 90 días es la pendiente de la regresión lineal de los pesajes de la ventana más el último anterior (ancla) si está a lo sumo `weightGainAnchorMaxDays` (180 [Validar]) antes del inicio de la ventana; exige un pesaje dentro de la ventana, dos puntos y 30 días entre el primero y el último. Se redondea a milésimas de kg/día antes de comparar con el umbral, en shared y en SQL con la misma aritmética entera. «Perdió peso» compara el último pesaje con el último de una fecha anterior. Un umbral en el límite exacto no alerta.
 
 **PES-06 — Peso objetivo de venta** · S · F1 (M8)
 - CA1: La finca define un peso objetivo de venta por sexo o categoría (`targetSaleWeightKg`; por defecto 450 kg en machos de Levante [Validar]).
@@ -665,7 +673,7 @@ Decisión del product owner (29/09/2026): se termina la fase 1 tal como está pl
 | RN-10 | Una salida por venta exige precio de venta y genera el ingreso correspondiente. |
 | RN-11 | No hay borrado físico de datos de negocio desde la aplicación. Archivar = `deletedAt` + motivo. Los eventos erróneos se anulan (`voidedAt` + motivo), no se borran. |
 | RN-12 | Solo para vacunas `INTERVAL`: próxima fecha = fecha de aplicación + intervalo; editable por el usuario. |
-| RN-13 | Pendiente/vencida según el tipo: **`OFFICIAL_CYCLE`**: animal activo elegible sin aplicación de esa vacuna entre inicio y fin del ciclo en curso → pendiente; del último ciclo cerrado → vencida. **No aplica** (ni pendiente ni vencida) si el animal no estaba en la finca cuando el ciclo cerró, es decir si `max(fecha de nacimiento, fecha de ingreso) > fin del ciclo`: una cría nacida después del cierre o un animal comprado después no pudieron vacunarse en ese ciclo (el día del cierre sí cuenta como estar en la finca). Ver `docs/adr/004-elegibilidad-en-ciclos-oficiales.md`. **`AGE_WINDOW`**: animal elegible por sexo, dentro de la ventana de edad y sin ninguna aplicación → pendiente; pasó la edad máxima sin aplicación → vencida ("fuera de edad"). **`INTERVAL`**: próxima fecha ≤ hoy + ventana → próxima; < hoy → vencida. Un registro posterior válido resuelve la alerta. Registros anulados no cuentan. |
+| RN-13 | Pendiente/vencida según el tipo: **`OFFICIAL_CYCLE`**: animal activo elegible sin aplicación de esa vacuna entre inicio y fin del ciclo en curso → pendiente; del último ciclo cerrado → vencida. **No aplica** (ni pendiente ni vencida) si el animal no estaba en la finca cuando el ciclo cerró, es decir si `max(fecha de nacimiento, fecha de ingreso) > fin del ciclo` (con la fecha de ingreso marcada como estimada, M4d, se usa la de nacimiento: se trata como presente, M6): una cría nacida después del cierre o un animal comprado después no pudieron vacunarse en ese ciclo (el día del cierre sí cuenta como estar en la finca). Ver `docs/adr/004-elegibilidad-en-ciclos-oficiales.md`. **`AGE_WINDOW`**: animal elegible por sexo, dentro de la ventana de edad y sin ninguna aplicación → pendiente; pasó la edad máxima sin aplicación → vencida ("fuera de edad"). **`INTERVAL`**: próxima fecha ≤ hoy + ventana → próxima; < hoy → vencida. Un registro posterior válido resuelve la alerta. Registros anulados no cuentan. |
 | RN-14 | Las fechas de eventos no pueden ser futuras, excepto las fechas estimadas o programadas. Ningún evento puede ser anterior a la fecha de nacimiento del animal. |
 | RN-15 | Un servicio en una hembra menor a la edad mínima reproductiva genera advertencia, no bloqueo. |
 | RN-16 | La edad y las clasificaciones derivadas se calculan, nunca se almacenan. |
@@ -674,7 +682,7 @@ Decisión del product owner (29/09/2026): se termina la fase 1 tal como está pl
 | RN-19 | Un valor de identificador activo es único por finca y tipo. Un identificador reemplazado queda inactivo y no se reutiliza para otro animal sin confirmación del ADMIN. Excepción: con numeración reutilizable, las chapetas liberadas al salir (`EXITED`, IDN-06) se reutilizan sin confirmación. DIN y RFID nunca se reutilizan (RN-32). |
 | RN-20 | Los datos económicos (gastos, asignaciones, valores, ventas, inversión) solo son visibles y editables por ADMIN, tanto en la interfaz como en la API. |
 | RN-21 | Todo dato de negocio pertenece a una finca; ningún usuario accede a datos de una finca a la que no pertenece. |
-| RN-22 | Vender o sacrificar un animal en período de retiro exige confirmación explícita y queda registrado en auditoría. |
+| RN-22 | Vender o sacrificar un animal en período de retiro **de carne** exige confirmación explícita y queda registrado en auditoría. El retiro de leche no cuenta para la venta en pie (M6). |
 | RN-23 | Una cría no puede tener fecha de nacimiento anterior a la de su madre + edad mínima reproductiva (advertencia). |
 | RN-24 | Sincronización (F2): los eventos son de solo adición y no generan conflicto. Para datos editables (ficha del animal) gana la última escritura por registro, se conserva la versión perdida en auditoría y se notifica. |
 | RN-25 | Horra: vaca (categoría `COW`) sin preñez abierta y cuyo último parto fue hace ≥ edad de destete. |

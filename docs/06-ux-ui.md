@@ -83,7 +83,7 @@ Registrar (+)
   ├─ Control de leche · Jornada de ordeño · Secado (M9b)
   ├─ Gasto (A)
   └─ Jornada de manejo
-Alertas (vacunas, partos, servidas sin diagnóstico, retiros, ganancia baja, secar pronto)
+Alertas (vacunas, partos, servidas sin diagnóstico, retiros, ganancia baja, perdió peso; secar pronto en M9b)
 Reportes
 Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta (datos, correo, Sesiones, Google) · Salir
 Configuración(A) → Finca (incluye Numeración de los animales, M4c) · Archivados (M4c)
@@ -221,9 +221,9 @@ El código de la cría se sugiere con el patrón de la finca (por defecto año-c
 - Palpación: con preñez abierta, fecha, resultado (Preñada · Vacía) y «Quién palpó»; sin preñez abierta, «Meses de gestación» (1 a 9) para registrar una preñez confirmada sin servicio conocido.
 - Aborto: fecha y observaciones; sin preñez abierta, lo explica y ofrece registrar el servicio.
 
-**Registrar (M5).** Primero la hembra (código, nombre o chip) y luego tres botones grandes: Parto · Servicio · Palpación. Vacunas, pesajes y tratamientos llegan con M6.
+**Registrar (M5, M6).** Primero el animal (código, nombre o chip) y luego botones grandes: Vacuna · Peso · Tratamiento y, para hembras, Parto · Servicio · Palpación (sus pantallas explican si el animal no es hembra). Debajo, «Para muchos animales»: **Vacunación por lote** e **Importar pesaje de la báscula**.
 
-**Reportes → Nacimientos (NAC-01, M5).** Desde y hasta (por defecto el año en curso), cinco totales (nacidos vivos, machos, hembras, débiles, muertos al nacer), la tabla de crías con madre enlazada, padre, raza, peso y estado, y la lista de partos con muertos al nacer. La página de Alertas se llena en M6.
+**Reportes → Nacimientos (NAC-01, M5).** Desde y hasta (por defecto el año en curso), cinco totales (nacidos vivos, machos, hembras, débiles, muertos al nacer), la tabla de crías con madre enlazada, padre, raza, peso y estado, y la lista de partos con muertos al nacer. La página de Alertas se llenó en M6 (§5.17).
 
 ### 5.5 Jornada de manejo (pantalla de trabajo)
 ```
@@ -268,6 +268,14 @@ Campos "Usuario" (acepta también correo) y "Contraseña" con opción de mostrar
 
 ### 5.8 Vacunación masiva
 Paso 1: vacuna, fecha, dosis, responsable. Paso 2: selección por lote, categoría o todos, con conteo y lista para desmarcar. Paso 3: "Vas a registrar Aftosa a 52 animales" → **Registrar 52 vacunaciones**.
+
+**Implementado en M6.** El paso 2 tiene **Revisar la selección**, que simula sin guardar: arriba «Se omiten 3 animales» con cada código y su motivo («La vacuna no se aplica a su sexo», «Ya la tiene en este ciclo», «Ya la tiene registrada ese día», «No había nacido o no estaba en la finca en esa fecha», «Ya no está en la finca»), un aviso con los que están fuera de la edad recomendada, y la lista «Se vacunan (desmarca los que no)» con casillas. Al guardar: «52 vacunaciones registradas · 3 animales omitidos.». Desde el avance de un ciclo (Configuración → Ciclos) se llega con la vacuna elegida: «Vacunar pendientes».
+
+**Registrar vacuna, tratamiento y peso (M6).** Pantallas de un animal, con la ficha de vuelta al guardar («Vacuna registrada: Aftosa el 25/09/2026.»). Vacuna: lista de vacunas activas; si no se aplica a su sexo, el aviso en rojo y el botón deshabilitado antes de guardar; fuera de edad, aviso que deja guardar; RUV solo en las de ciclo oficial; «Próxima aplicación» solo en las de intervalo, con la fecha que se propondría. Tratamiento: diagnóstico, medicamento, dosis, días de tratamiento, retiro de carne y de leche, y en vivo «Queda en retiro: carne hasta el 21/10/2026 · leche hasta el 30/09/2026.»; el costo solo para el ADMIN. Peso: «Último peso: 452 kg el 03/09/2026», el peso con teclado numérico, el aviso «El peso se aleja más del 30 % del último (452 kg). Verifícalo antes de guardar.», **Cómo se pesó** (Báscula · Cinta · Estimado) y **Cómo se identificó al animal** (Búsqueda · Lector de chip · QR), propuesto según cómo se abrió la ficha.
+
+**Sanidad y Pesos en la ficha (M6).** Acciones rápidas bajo el encabezado de un animal activo: **Vacuna · Peso · Tratamiento**. Sanidad: cada vacuna con su estado (Vencida, Pendiente, Próxima, Al día, No aplica) y «Registrar Aftosa» cuando hace falta; «Retiro de medicamentos» con «Carne hasta … · Leche hasta …»; vacunaciones y tratamientos con «Anular» para ADMIN y VET. Pesos (se carga al abrir la pestaña): la gráfica de la evolución, la ganancia diaria (entre los dos últimos, en 90 días y desde el nacimiento, o «Sin dato»), los avisos de ganancia baja y pérdida, y la tabla de pesajes con «Anular» para quien lo registró o el ADMIN. Los avisos de la ficha suman «Ganancia baja: 0,163 kg/día en los últimos 90 días» y «Perdió peso: bajó 8 % desde el pesaje anterior» con **Registrar peso**, y los de vacunas traen **Registrar vacuna**.
+
+**Gráfica de peso (M6).** SVG propio, sin librería: una serie, así que sin leyenda; línea de 2 px y puntos de 8 px en `--color-potrero`, rejilla en `--color-cerca`, etiquetas en `--color-texto-2`. Al pasar el dedo o el puntero, una línea vertical punteada y el pesaje más cercano debajo («15/06/2026 · 240 kg»); los puntos se enfocan con el teclado y dicen lo mismo. La tabla de pesajes es la vista accesible de los mismos datos.
 
 ### 5.9 Mi cuenta (AUT-11 en M4d; correo y Google en M10a)
 ```
@@ -322,6 +330,8 @@ El enlace del correo abre `/invitacion#token=…`. La página lee el token del f
 - Enlace vencido o usado: "El enlace ya no es válido o venció. Pide uno nuevo." con el botón para pedirlo.
 
 ### 5.12 Importar pesaje de la báscula (PES-04, M6)
+**Implementado en M6.** El perfil viene elegido en la plantilla Tru-Test (marcada «provisional»); «Otro formato: reconocer las columnas» deja que la API proponga el mapeo, y el ADMIN lo puede guardar como perfil de la finca. La simulación dice las columnas usadas, avisa si el archivo está en libras («se convierten a kilos, redondeados a 0,1 kg») o si ya se importó, y en la tabla cada fila dice **Cómo se asoció** (Por chip · Por chapeta · Por código · Asociado a mano) y su estado. Cada chip desconocido tiene el buscador «Asociar el chip … a un animal», la casilla **Guardar este chip como RFID del animal** (marcada) y **No importar este chip**; si el animal ya tiene otro chip, la casilla queda desmarcada con «Este animal ya tiene el chip X: revisa la asociación». El chip asociado sigue a la vista para cambiarlo.
+
 Mismo patrón de simulación que §5.6. Paso 1: elegir el perfil de báscula o, la primera vez, subir el archivo y confirmar el mapeo propuesto (qué columna es el chip, el número visual, el peso y la fecha), que se guarda con un nombre ("Báscula del corral"). Paso 2 (simulación): contadores **Asociados**, **Chips desconocidos**, **Repetidos** y **Pesos atípicos**; cada chip desconocido tiene **Asociar a un animal** o **No importar**. Paso 3: **Guardar 48 pesajes** → crea la jornada de pesaje y muestra "48 pesajes guardados · 3 chips sin asociar".
 
 ### 5.13 Jornada de ordeño (LEC-01, M9b)
@@ -393,6 +403,9 @@ Boceto del flujo, no diseño final: el diseño detallado se hace en M15 y depend
 - Chip desconocido: diálogo con **Asociar a un animal**, **Registrar animal nuevo** y **Omitir**; el peso queda retenido mientras tanto. El mismo animal dos veces: **Reemplazar el peso** o **Conservar ambos**. Peso atípico: aviso de PES-01.
 - Siempre a mano: **Anular el último** (con motivo) y **Digitar peso** si la báscula falla.
 
+
+### 5.17 Alertas (M6)
+Una fila de botones por grupo (Vacunas · Reproducción · Retiros · Pesos), cada uno con el tipo y su conteo («Ganancia baja 5»); se marcan varios (se combinan con «o») y el filtro de lote va al lado. Los filtros van en la URL. «23 animales con alertas» y una tarjeta por animal: la chapeta, el código enlazado a la ficha, la categoría y el lote, y una línea por alerta con lo que pasa y su acción («Aftosa vencida (16/12/2025) · Registrar vacuna», «parto estimado el 01/10/2026 (en 6 días) · Registrar parto», «Carne hasta el 21/10/2026», «0,163 kg/día en 90 días (lo esperado: 0,3 kg/día) · Registrar peso»). **Mostrar más** pagina; **Quitar los filtros** vuelve a todas. Sin alertas, el estado vacío explica qué aparece aquí.
 ## 6. Componentes del sistema de diseño
 
 | Componente | Descripción y reglas |

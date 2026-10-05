@@ -63,7 +63,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | GET/POST/PATCH | /breeds, /breeds/:id | T lee, A escribe | Catálogo de razas |
 | GET/POST/PATCH | /vaccines, /vaccines/:id | T lee, A/V escribe | Catálogo de vacunas (incluye `scheduleType` y elegibilidad) |
 | GET/POST/PATCH | /vaccination-cycles, /vaccination-cycles/:id | T lee, A escribe | Ciclos oficiales y sus vacunas (SAN-06) |
-| GET | /vaccination-cycles/:id/progress | T | Vacunados y pendientes por vacuna del ciclo |
+| GET | /vaccination-cycles/:id/progress | T | Vacunados y pendientes por vacuna del ciclo (M6): `{ cycle, state: CURRENT|CLOSED|UPCOMING, vaccines: [{ vaccineId, name, eligible, vaccinated, pending }] }`. El denominador son los activos de sexo elegible que estaban en la finca antes del cierre (ADR-004) |
 | GET/POST/PATCH | /lots, /lots/:id | T lee, A escribe | Lotes |
 | GET/POST/PATCH | /tags, /tags/:id | T lee, A escribe | Etiquetas manuales. La `key` se genera al crear y no cambia al renombrar; `COTERO` no se desactiva ni se renombra (`SYSTEM_TAG_PROTECTED`) |
 | GET | /lots/:id/deactivation-warnings | A | Lo que advertiría desactivar el lote (`LOT_HAS_ACTIVE_ANIMALS`), para mostrarlo antes de confirmar |
@@ -123,7 +123,8 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
   - `POST /animals/:id/revert-exit` responde `CODE_REASSIGNED` (con el animal que lo tiene en `context`) si su código ya lo tiene otro animal activo; se reintenta con `{ newCode }`. Una chapeta ocupada no bloquea: queda retirada con `IDENTIFIER_NOT_RESTORED`.
 - M5, reproducción (RN-39): el filtro `alerts` acepta `calving_overdue` (parto vencido sin registrar). La ficha trae en `reproduction` la preñez abierta completa (`openPregnancy`, con días de gestación, toro, quién palpó y si el parto estimado se corrigió a mano), `calvingInterval: { lastDays, averageDays }` (RN-38) e `history` con todas las preñeces, anuladas incluidas.
 - M5: `PATCH /breeds/:id`, `PATCH /farm` y `PATCH /animals/:id` pueden traer la advertencia `EXPECTED_CALVING_RECALCULATED` cuando el cambio recalculó el parto estimado de preñeces abiertas (RN-04).
-- M6, pesos (PES-05): el filtro `alerts` de `GET /animals` acepta además `low_gain` (ganancia baja) y `weight_loss` (perdió peso).
+- M6, pesos (PES-05): el filtro `alerts` de `GET /animals` acepta además `low_gain` (ganancia baja) y `weight_loss` (perdió peso). Desde M6 todas las alertas del filtro, también las de vacunas, se resuelven en SQL (ADR-009 decisión 8).
+- M6: la palpación (`POST /pregnancies/:id/diagnosis`) acepta `notes`, y la preñez confirmada sin servicio, `diagnosisNotes`; la vista de la preñez trae `diagnosisNotes`.
 - M9b, leche (LEC-02, LEC-03): `tags` acepta `LACTATING` y `DRIED_OFF`, y `alerts` acepta `dry_off_soon` (secar pronto). La ficha trae `lactation: { daysInMilk, startedOn } | null` en las vacas.
 
 ## Identificadores
@@ -158,24 +159,38 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | /vaccinations | T | Filtros: `animalId, vaccineId, from, to` |
-| POST | /vaccinations | T | Individual (SAN-02) |
-| POST | /vaccinations/bulk | T | `{ vaccineId, date, dose?, responsible?, batchNumber?, animalIds | filter }` → `{ created, skipped }` |
-| GET | /vaccinations/due | T | Alertas: `status=overdue,due`, `vaccineId?` |
+| POST | /vaccinations | T | Individual (SAN-02): `{ id?, animalId, vaccineId, date, dose?, batchNumber?, ruvNumber?, responsible?, nextDueOn?, notes? }` → vista con `warnings` |
+| POST | /vaccinations/bulk | T | `{ vaccineId, date, dose?, responsible?, batchNumber?, ruvNumber?, notes?, animalIds | filter, excludeIds? }` → `{ dryRun, selected, toApply, created, skipped: [{ animal, reason }], warnings, cycle }`. `?dryRun=true` no guarda. `Idempotency-Key` |
 | POST | /vaccinations/:id/void | A/V | Anular |
-| GET/POST | /treatments | T | Tratamientos (SAN-05); `cost` solo A |
-| POST | /treatments/:id/void | A/V | Anular |
+| GET/POST | /treatments | T | Tratamientos (SAN-05); `cost` solo A (crea un gasto `MEDICATION` directo) |
+| POST | /treatments/:id/void | A/V | Anular (también su gasto). `Idempotency-Key` |
+| GET | /alerts | T | Página de Alertas (M6): `types` (alertas de `ANIMAL_ALERT`, combinadas con «o»), `lotId`, `limit`, `cursor` → `{ counts, items, nextCursor, total }`. Reemplaza a `GET /vaccinations/due` |
+
+**Detalles de M6 (sanidad).**
+- Vacunación individual: `id` del cliente; el animal debe estar activo; fecha no futura ni anterior al nacimiento (RN-14); vacuna activa de la finca. Sexo no elegible con bloqueo → `VACCINE_SEX_BLOCKED` (RN-26); fuera de la edad recomendada → advertencia `VACCINE_AGE_OUTSIDE_WINDOW`. `nextDueOn` solo en vacunas `INTERVAL`: sin valor se propone con el intervalo (RN-12), `null` es «sin próxima fecha» y debe ser posterior a la aplicación; en otra vacuna → `VALIDATION_FAILED`. Una vacuna de ciclo oficial queda con el `cycleId` del ciclo activo que la incluye y contiene la fecha. Sin dosis, la de la vacuna.
+- Vacunación por lote: `filter` son los filtros de `GET /animals` (como cadenas), hasta 5.000 animales; ids de otra finca → 404. Motivos de `skipped`: `NOT_ACTIVE`, `SEX_BLOCKED`, `BEFORE_BIRTH_OR_ENTRY`, `ALREADY_IN_CYCLE`, `ALREADY_ON_DATE`. La confirmación bloquea las filas de los animales y vuelve a decidir con los datos de ese momento, en una transacción.
+- Tratamiento: `durationDays` (1 a 365, 1 por defecto), `withdrawalMeatDays` y `withdrawalMilkDays` (0 a 365). La vista trae `meatWithdrawalUntil`, `milkWithdrawalUntil` y `withdrawalUntil` (el más lejano); `cost` solo en la respuesta de ADMIN. Un `cost` enviado por OPERATOR o VET → `FORBIDDEN_ROLE`.
+- La ficha (`GET /animals/:id`) trae además `withdrawals: { meatUntil, milkUntil }` y `weight` (ganancias y alertas de peso; `null` si el animal no está activo). La salida por venta o sacrificio pide confirmar solo con retiro de **carne** vigente (RN-22).
+- Alertas: `counts` trae todas las alertas con el filtro de lote (no el de tipo); cada fila es la del listado más `vaccines` (vencidas, pendientes o próximas), `withdrawals`, `pregnancy` y `weight`, ordenadas por código.
 
 ## Pesos y lotes
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | /animals/:id/weights | T | Serie y ganancia diaria: entre los dos últimos pesajes, en los últimos 90 días y desde el nacimiento (PES-02, PES-05), y fecha estimada para el peso objetivo de venta (PES-06, M8) |
-| POST | /weights | T | `{ animalId, date, weightKg, method, scaleSerial? }` (respuesta incluye `warning` si difiere >30 %). `scaleSerial` es el número de serie del indicador en el pesaje en vivo (PES-03 CA6, M15), que llega por la sincronización con el mismo campo |
-| POST | /weights/:id/void | T (propio, 24 h) / A | Anular |
+| POST | /weights | T | `{ id?, animalId, date, weightKg, method, identifiedBy?: SEARCH|RFID_READER|QR, notes? }` → vista con `warnings` (`WEIGHT_OUTLIER` si difiere más del 30 %). El peso digitado es `weightSource = MANUAL`; sin `identifiedBy`, `SEARCH`. `scaleSerial` llega con el pesaje en vivo (PES-03 CA6, M15) por la sincronización |
+| POST | /weights/:id/void | T (propio, 24 h) / A | Anular. Fuera de eso, `FORBIDDEN_ROLE` («Pídeselo al administrador»). `Idempotency-Key` |
 | GET | /scale-profiles | T | Plantillas del sistema y perfiles de la finca, juntos: `{ items: [{ id, name, system, templateKey?, version, provisional, fileFormat, columnMapping }] }`. `system: true` marca las plantillas del sistema (la primera, **Tru-Test**, provisional), que viven en `packages/shared` y no se editan (PES-04, M6; 09 v1.4) |
 | POST/PATCH | /scale-profiles, /scale-profiles/:id | A | Crear o editar un perfil de la finca. Una plantilla del sistema no se edita: `SYSTEM_TEMPLATE_READONLY` (409) |
 | POST | /scale-profiles/:templateKey/duplicate | A | Duplica una plantilla del sistema como perfil propio de la finca, editable, con `sourceTemplateKey` y `sourceTemplateVersion`. Quien no duplica recibe las correcciones de la plantilla (nueva `version`) sin hacer nada |
-| POST | /weights/import?dryRun=true | T | `multipart/form-data` con el archivo y `scaleProfileId` (el id de un perfil de la finca o la `key` de una plantilla del sistema, como `tru-test`) o el mapeo propuesto → `{ rows, matched, unknownChips: [...], duplicates: [...], warnings: [...] }`. No guarda nada. Asocia por RFID y, si no hay, por chapeta visual |
-| POST | /weights/import | T | El mismo archivo + `{ associations?: [{ chip, animalId }], skip?: [chip] }` → crea la jornada de pesaje (`WorkSession` con `WEIGHT`) y un pesaje por animal, en una transacción. Responde `{ workSessionId, created, skipped }` |
+| POST | /weights/import?dryRun=true | T | `multipart/form-data` con `file` y `scaleProfileId` (id de un perfil de la finca o `key` de una plantilla, como `tru-test`) o `mapping` (JSON); sin ninguno, la API propone el mapeo por los encabezados. Además `sessionDate` (archivos sin fecha), `associations` (JSON `[{ chip, animalId, saveChip }]`) y `skip` (chips separados por coma) → `{ fileName, totalRows, profile, mapping, columns, unit, rows, counts, unknownChips, warnings, importable, chipNotices, previousImport }`. No guarda nada |
+| POST | /weights/import | T | Lo mismo más `importKey` (UUID, obligatorio) y `expectedRows` → 201 `{ importBatchId, workSessionId, created, skipped, chipsSaved, replayed: false }`; con una `importKey` ya usada, 200 con `replayed: true` |
+
+**Detalles de M6 (pesos y báscula).**
+- `GET /animals/:id/weights` → `{ items, summary: { gains: { lastTwo, last90Days, sinceBirth }, gainThreshold, lowGain, weightLoss, lossPercent } }`, la serie de la más antigua a la más reciente y las ganancias en kg/día redondeadas a milésimas (ADR-015).
+- Importación (ADR-011, sección de la báscula): cada fila trae `status` (`MATCHED`, `DUPLICATE`, `UNKNOWN_CHIP`, `SKIPPED`, `ERROR`) y `via` (`RFID`, `VISUAL_TAG`, `CODE`, `ASSOCIATED`). Se asocia por chip activo, luego por chapeta visual activa y luego por código interno normalizado (RN-30), solo animales activos. El mismo animal el mismo día: se guarda la última fila y se avisa con `SCALE_DUPLICATE_READING`. Atípico: más del 30 % frente al pesaje anterior, de la base o del mismo archivo. Un chip asociado con `saveChip` se guarda como RFID del animal si pasa `checkIdentifier`; si el animal ya tiene otro chip, o el chip no se puede asignar, va en `chipNotices` y no se guarda. Al confirmar se crea una `WorkSession` `WEIGHT` cerrada y un pesaje por animal con `method = SCALE`, `identifiedBy = IMPORT` y `weightSource = SCALE_FILE`. Sin columna de peso, o sin chip ni número visual → `SCALE_FILE_INVALID`; un perfil de otra finca → `VALIDATION_FAILED` en `scaleProfileId`.
+- Libras: con `unit = LB` el peso se convierte a kilos con redondeo a 0,1 kg; la fila trae también `originalWeight`.
+- **Plantilla Tru-Test (provisional).** Encabezados aceptados: chip `EID`, `Electronic ID`, `RFID`, `Chip`; número `VID`, `Visual ID`, `ID visual`; peso `Weight`, `Weight (kg)`, `Peso`; fecha `Date`, `Fecha` (con la hora pegada o no); hora `Time`, `Hora`; fecha dd/mm/aaaa; kilos. **Hay que confirmar con un archivo real de la finca piloto:** los encabezados exactos y su idioma (el indicador se puede configurar en español); si el archivo trae filas de metadatos de la sesión antes de la tabla (hoy la primera fila debe ser la de encabezados); el formato de la fecha (depende de la configuración regional del indicador) y si la hora va aparte; el separador y el decimal del CSV; la unidad (kg o lb); si el EID viene con espacios o puntos («982 000123456789»; hoy se quitan); la codificación; y las columnas extra (Draft, Note, número de serie del indicador, que alimentaría `scale_serial`).
+- `/scale-profiles`: un nombre repetido (sin distinguir mayúsculas) → `CATALOG_NAME_TAKEN`; `PATCH` con `version`.
 
 ## Leche (M9b, alcance extendido)
 Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); en otra finca responde 404.

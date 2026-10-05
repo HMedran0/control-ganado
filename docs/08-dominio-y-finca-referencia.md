@@ -166,7 +166,7 @@ Todos los nombres, cifras y valores de esta sección son **ficticios**.
 
 Distribución de razas: Brahman comercial 40 %, Brahman × Pardo 30 %, Girolando 20 %, Romosinuano 10 %.
 Método reproductivo: 85 % monta natural, 15 % inseminación artificial (pajillas externas, `sireExternalRef`).
-Historial sembrado: 3 años (2024–2026) de partos, servicios, vacunas de ciclo con RUV, pesajes con cinta cada 3 meses en levante, 10 ventas y 3 muertes.
+Historial sembrado: 3 años (2024–2026) de partos, servicios, vacunas de ciclo con RUV, pesajes con cinta cada 3 meses en levante, 10 ventas y 3 muertes. Desde M6, cinco levantes con alertas de peso el 25/09/2026: tres ganaron solo 15 kg entre el 15/06 y el 15/09 (0,163 kg/día) y dos perdieron el 8 % (también cuentan como ganancia baja): 5 con «Ganancia baja» y 2 con «Perdió peso». Dos animales siguen en retiro de medicamento.
 
 ### 3.3 Plan sanitario de referencia
 | Vacuna | Tipo | Regla |
@@ -196,6 +196,7 @@ Valores por defecto de `Farm.settings`, confirmables con la finca o el veterinar
 - `dryOffBeforeCalvingDays = 60` (la práctica común es secar 45 a 60 días antes del parto) [Real].
 - `weightGainAlertKgPerDay`: 0,30 kg/día para Levante; por categoría de manejo.
 - `weightLossAlertPercent = 5`.
+- `weightGainAnchorMaxDays = 180` (M6, ADR-015): el último pesaje anterior a la ventana de 90 días completa la ganancia si está a lo sumo a 180 días del inicio de la ventana; así una finca que pesa cada tres meses tiene ganancia de 90 días. Confirmar con la finca y el veterinario.
 - `targetSaleWeightKg`: 450 kg en machos de Levante.
 - `overdueCalvingAlertDays = 15` (M5): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar» (RN-39). Decisión de la sesión de M5; confirmar con la finca y el veterinario.
 

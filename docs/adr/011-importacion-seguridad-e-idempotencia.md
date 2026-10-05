@@ -99,3 +99,19 @@ audit queda limpio para las dependencias nuevas.
   saneamiento puede simplificarse; el lector propio del ZIP se mantiene como defensa.
 - 5.000 filas válidas se confirman en unos 21 s en una máquina de desarrollo, lejos del máximo de
   60 s; lo cubre una prueba de integración.
+
+## La sesión de la báscula (M6, PES-04)
+
+La importación del archivo de la báscula usa este mismo camino, sin código propio de seguridad:
+`readSpreadsheet` (tipo real por contenido, ZIP medido y reempaquetado, CSV en UTF-8 o
+Windows-1252), simulación y confirmación con el mismo análisis, la confirmación otra vez dentro de
+su transacción con el mismo candado de importación de la finca, `expectedRows` y la clave del
+archivo elegido. Diferencias:
+
+- `import_batches` gana `kind` (`ANIMALS` o `WEIGHTS`) y `work_session_id`. La clave sigue siendo
+  única por finca; la huella SHA-256 avisa solo dentro del mismo tipo.
+- La importan todos los roles (SRS §2.3), no solo el ADMIN.
+- Los campos de texto del formulario llegan hasta 256 KiB (las asociaciones de chips viajan como
+  JSON) y un campo truncado responde `IMPORT_FILE_INVALID` en lugar de perderse en silencio.
+- Las reglas puras (mapeo de columnas, libras a kilos, asociación, repetidos, atípicos) viven en
+  `packages/shared/src/domain/scale-import.ts`.

@@ -48,7 +48,7 @@ TypeScript.
    Si alguien cambia una regla en shared y no en el SQL, o al revés, la prueba dice qué animal
    y qué campo difieren.
 
-6. **Las alertas de vacunas no se traducen a SQL.** `vaccineStatus` tiene cuatro tipos de
+6. **Las alertas de vacunas no se traducen a SQL.** _(Reemplazada por la decisión 8 en M6.)_ `vaccineStatus` tiene cuatro tipos de
    programación y ciclos oficiales (RN-13, ADR-004); duplicarlo sería el mayor riesgo de
    divergencia. El filtro `alerts=vaccine_overdue|vaccine_due` lo calcula con shared para los
    activos de la finca y le pasa al SQL la lista de animales que cumplen. Medido con el seed
@@ -58,6 +58,22 @@ TypeScript.
    `overdueCalvingAlertDays` leído de la finca, igual que las demás alertas reproductivas, y la
    prueba de equivalencia la compara con `isCalvingOverdue`, sobre el seed (que trae 2 casos) y
    sobre casos creados por la API.
+
+8. **Vacunas y pesos en SQL (M6, reemplaza la 6).** La página de Alertas cuenta todas las alertas
+   con el filtro de lote y las combina con «o», y traer los estados de vacunas de todo el hato a
+   memoria en cada consulta no escala. `vaccine-status.sql.ts` traduce `vaccineStatus` (los cuatro
+   tipos de programación, el ciclo en curso y el último cerrado con el mismo desempate de
+   `cyclesAt`, ADR-004 con la fecha de ingreso estimada como presente desde el nacimiento, las
+   vacunas quitadas de un ciclo ignoradas) a la CTE `vaccine_status` (estado, motivo y fecha límite
+   por animal activo y vacuna), y `weight-gain.sql.ts` traduce las ganancias de peso (ADR-015).
+   `classificationCtes` las incluye y expone `vaccine_overdue`, `vaccine_due`, `low_gain` y
+   `weight_loss`. La prueba de equivalencia compara además estado, motivo y fecha límite de cada
+   vacuna, las tres ganancias redondeadas y las dos alertas de peso, sobre el seed el 25/09 y el
+   15/11, con otros parámetros de la finca y sobre una finca de casos borde (ciclos en curso y
+   cerrados, ingreso el día del cierre y el siguiente, fecha estimada, extremos de la ventana de
+   brucelosis, intervalos vencidos y en el borde de la ventana, tres aplicaciones el mismo día,
+   anuladas, vacuna quitada del ciclo, umbrales de peso exactos y anclas a 180 y 181 días). Dos
+   aplicaciones del mismo día se ordenan por la próxima fecha más lejana en los dos caminos.
 
 ## Consecuencias
 
