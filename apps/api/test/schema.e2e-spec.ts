@@ -80,7 +80,7 @@ describe('Esquema de la base de datos', () => {
     },
   );
 
-  it('tiene las 17 restricciones CHECK (14 de la migración manual, la de M4d y dos de M5)', async () => {
+  it('tiene las 19 restricciones CHECK (14 de la migración manual, la de M4d, dos de M5 y dos de M6)', async () => {
     const rows = await prisma.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE contype = 'c' AND connamespace = 'public'::regnamespace
@@ -102,9 +102,11 @@ describe('Esquema de la base de datos', () => {
       'pregnancy_stillborn_ck',
       'sale_amount_positive_ck',
       'username_format_ck',
+      'vaccination_cycle_vaccines_removed_ck',
       'vaccine_age_window_ck',
       'vaccine_interval_ck',
       'weight_positive_ck',
+      'weight_records_scale_identified_ck',
     ]);
   });
 
@@ -118,12 +120,12 @@ describe('Esquema de la base de datos', () => {
     ).rejects.toThrow();
   });
 
-  it('las 28 tablas del modelo existen (idempotency_keys desde M5)', async () => {
+  it('las 29 tablas del modelo existen (idempotency_keys desde M5, scale_profiles desde M6)', async () => {
     const rows = await prisma.$queryRaw<{ total: bigint }[]>`
       SELECT count(*) AS total FROM information_schema.tables
       WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
         AND table_name <> '_prisma_migrations'
     `;
-    expect(Number(rows[0]?.total)).toBe(28);
+    expect(Number(rows[0]?.total)).toBe(29);
   });
 });
