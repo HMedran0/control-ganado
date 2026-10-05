@@ -19,7 +19,7 @@ import { isApiError } from '../../../lib/api/errors';
 import { FARM_TIME_ZONE } from '../../../lib/clock';
 import { useAnimalAudit, useGenealogy, useTimeline } from '../api';
 import { ORIGIN_LABEL, SEX_LABEL, STATUS_LABEL, WEIGHT_METHOD_LABEL } from '../labels';
-import { changeText, entryMeta, entryTitle } from './audit';
+import { changeText, entryChanges, entryMeta, entryTitle } from './audit';
 import { EXIT_TYPE_LABEL, toTimelineItem } from './history';
 import { IdentifiersSection } from './Identifiers';
 
@@ -296,11 +296,11 @@ export function ChangesTab({ animal }: { animal: AnimalDetail }) {
           <li key={entry.id} className="rounded-panel border border-cerca bg-superficie p-4">
             <p className="font-bold">{entryTitle(entry)}</p>
             <p className="text-aux text-texto-2">{entryMeta(entry, FARM_TIME_ZONE)}</p>
-            {entry.changes.length === 0 ? null : (
+            {entryChanges(entry).length === 0 ? null : (
               <ul className="mt-2 flex flex-col gap-1">
-                {entry.changes.map((change) => (
+                {entryChanges(entry).map((change) => (
                   <li key={change.field} className="break-words">
-                    {changeText(change)}
+                    {changeText(change, entry.entity)}
                   </li>
                 ))}
               </ul>

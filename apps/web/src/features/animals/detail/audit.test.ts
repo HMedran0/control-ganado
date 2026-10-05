@@ -1,7 +1,7 @@
 import type { AuditEntryView } from '@hato/shared';
 import { describe, expect, it } from 'vitest';
 
-import { changeText, entryMeta, entryTitle, valueText } from './audit';
+import { changeText, entryChanges, entryMeta, entryTitle, valueText } from './audit';
 
 const entry = (patch: Partial<AuditEntryView>): AuditEntryView => ({
   id: '1',
@@ -10,23 +10,95 @@ const entry = (patch: Partial<AuditEntryView>): AuditEntryView => ({
   entity: 'Animal',
   entityId: 'a',
   entityLabel: '5',
+  entityDate: null,
+  animalCode: '5',
   user: { id: 'u', name: 'Álvaro Pérez' },
   changes: [],
   ...patch,
 });
 
 describe('Cambios en lenguaje de finca (AUD-01 CA2)', () => {
-  it('título con la acción y el registro', () => {
-    expect(entryTitle(entry({ action: 'EXIT' }))).toBe('Salida · animal 5');
-    expect(entryTitle(entry({ action: 'UPDATE', entity: 'Identifier', entityLabel: '5' }))).toBe(
-      'Cambio · identificador 5',
+  it('una frase con quién, qué hizo y sobre qué', () => {
+    expect(entryTitle(entry({ action: 'EXIT' }))).toBe(
+      'Álvaro Pérez registró la salida del animal 5',
     );
-    expect(entryTitle(entry({ action: 'REVERT_EXIT' }))).toBe('Salida revertida · animal 5');
+    expect(entryTitle(entry({ action: 'UPDATE', entity: 'Identifier', entityLabel: '5' }))).toBe(
+      'Álvaro Pérez cambió el identificador 5',
+    );
+    expect(entryTitle(entry({ action: 'REVERT_EXIT' }))).toBe(
+      'Álvaro Pérez revirtió la salida del animal 5',
+    );
+    expect(entryTitle(entry({ user: null, action: 'CREATE' }))).toBe(
+      'El sistema registró el animal 5',
+    );
   });
 
-  it('fecha y hora en la zona de la finca, con quién lo hizo', () => {
-    expect(entryMeta(entry({}), 'America/Bogota')).toMatch(/^25\/09\/2026, 7:00.* · Álvaro Pérez$/);
-    expect(entryMeta(entry({ user: null }), 'America/Bogota')).toMatch(/· Sistema$/);
+  it('eventos de M5 y M6: la vacuna, el tratamiento, el pesaje, la preñez, la báscula', () => {
+    const voided = entry({
+      action: 'VOID',
+      entity: 'VaccinationRecord',
+      entityLabel: 'Aftosa',
+      entityDate: '2026-05-12' as AuditEntryView['entityDate'],
+      user: { id: 'w', name: 'Wilmer' },
+      changes: [{ field: 'reason', before: null, after: 'Era otra vaca' }],
+    });
+    expect(entryTitle(voided)).toBe(
+      'Wilmer anuló la vacuna Aftosa del 12/05/2026 · motivo: Era otra vaca',
+    );
+    // El motivo ya va en la frase: no se repite debajo.
+    expect(entryChanges(voided)).toEqual([]);
+
+    const day = '2026-09-20' as AuditEntryView['entityDate'];
+    expect(
+      entryTitle(
+        entry({
+          action: 'CREATE',
+          entity: 'TreatmentRecord',
+          entityLabel: 'Oxitetraciclina',
+          entityDate: day,
+        }),
+      ),
+    ).toBe('Álvaro Pérez registró el tratamiento con Oxitetraciclina del 20/09/2026');
+    expect(
+      entryTitle(
+        entry({ action: 'CREATE', entity: 'WeightRecord', entityLabel: '320.5', entityDate: day }),
+      ),
+    ).toBe('Álvaro Pérez registró el pesaje de 320,5 kg del 20/09/2026');
+    expect(
+      entryTitle(
+        entry({
+          entity: 'Pregnancy',
+          entityLabel: null,
+          entityDate: '2025-11-02' as AuditEntryView['entityDate'],
+          changes: [{ field: 'outcome', before: 'PENDING', after: 'CALVED' }],
+        }),
+      ),
+    ).toBe('Álvaro Pérez registró el parto de la preñez con servicio del 02/11/2025');
+    expect(
+      entryTitle(entry({ action: 'CREATE', entity: 'ScaleProfile', entityLabel: 'Corral' })),
+    ).toBe('Álvaro Pérez registró el perfil de báscula Corral');
+    expect(
+      entryTitle(entry({ action: 'IMPORT', entity: 'ImportBatch', entityLabel: 'pesaje.csv' })),
+    ).toBe('Álvaro Pérez importó el archivo pesaje.csv');
+  });
+
+  it('el mismo campo con su sentido en cada entidad', () => {
+    expect(changeText({ field: 'method', before: null, after: 'AI' }, 'Pregnancy')).toBe(
+      'Tipo de servicio: Inseminación',
+    );
+    expect(changeText({ field: 'method', before: null, after: 'TAPE' }, 'WeightRecord')).toBe(
+      'Método: Cinta',
+    );
+    expect(changeText({ field: 'outcome', before: 'PENDING', after: 'ABORTED' }, 'Pregnancy')).toBe(
+      'Desenlace: Abierta → Aborto',
+    );
+    expect(changeText({ field: 'weightKg', before: null, after: 320.5 }, 'WeightRecord')).toBe(
+      'Peso (kg): 320,5',
+    );
+  });
+
+  it('fecha y hora en la zona de la finca', () => {
+    expect(entryMeta(entry({}), 'America/Bogota')).toMatch(/^25\/09\/2026, 7:00/);
   });
 
   it('cambio con antes y después, y registro solo con el valor nuevo', () => {

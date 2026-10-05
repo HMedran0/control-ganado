@@ -175,8 +175,12 @@ test.describe.serial('numeración reutilizable (El Retiro)', () => {
     await page.goto(`/animals/${soldId}?tab=cambios`);
 
     const panel = page.getByRole('tabpanel');
-    await expect(panel.getByText(`Salida revertida · animal ${renamed}`)).toBeVisible();
-    await expect(panel.getByText(`Salida · animal ${renamed}`)).toBeVisible();
+    await expect(
+      panel.getByText(`Administración El Retiro revirtió la salida del animal ${renamed}`),
+    ).toBeVisible();
+    await expect(
+      panel.getByText(`Administración El Retiro registró la salida del animal ${renamed}`),
+    ).toBeVisible();
     await expect(panel.getByText('Tipo de salida: Venta', { exact: true })).toBeVisible();
     await expect(panel.getByText('Tipo de salida: Venta → —', { exact: true })).toBeVisible();
     await expect(panel.getByText(/Administración El Retiro/).first()).toBeVisible();

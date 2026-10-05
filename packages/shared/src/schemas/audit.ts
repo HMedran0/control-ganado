@@ -8,10 +8,15 @@
 
 import { z } from 'zod';
 
+import type { IsoDate } from '../date.js';
 import type { AuditAction } from '../enums.js';
 import { isoDateSchema } from './catalogs.js';
 
-/** Entidades que se pueden consultar. Las económicas no están: sus diferencias son montos. */
+/**
+ * Entidades que se pueden consultar. Las económicas no están: sus diferencias son montos.
+ * Desde M7 entran los eventos de M5 y M6: preñeces (los partos son cambios de la preñez),
+ * vacunaciones, tratamientos, pesajes, perfiles de báscula e importaciones.
+ */
 export const AUDIT_ENTITY = {
   ANIMAL: 'Animal',
   IDENTIFIER: 'Identifier',
@@ -22,6 +27,12 @@ export const AUDIT_ENTITY = {
   VACCINATION_CYCLE: 'VaccinationCycle',
   FARM: 'Farm',
   USER: 'User',
+  PREGNANCY: 'Pregnancy',
+  VACCINATION_RECORD: 'VaccinationRecord',
+  TREATMENT_RECORD: 'TreatmentRecord',
+  WEIGHT_RECORD: 'WeightRecord',
+  SCALE_PROFILE: 'ScaleProfile',
+  IMPORT_BATCH: 'ImportBatch',
 } as const;
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];
 
@@ -73,8 +84,19 @@ export type AuditEntryView = {
   readonly action: AuditAction;
   readonly entity: AuditEntity;
   readonly entityId: string;
-  /** Cómo nombrar el registro: código del animal, «Chapeta 123», nombre del lote… */
+  /**
+   * Cómo nombrar el registro: código del animal, valor del identificador, nombre del lote; en
+   * los eventos, la vacuna aplicada, el medicamento, los kilos del pesaje («320.5»), el nombre
+   * del perfil de báscula o del archivo importado. En una preñez, `null`.
+   */
   readonly entityLabel: string | null;
+  /**
+   * Fecha de negocio del evento, para nombrarlo («la vacuna Aftosa del 12/05/2026»): aplicación,
+   * inicio del tratamiento, pesaje o servicio de la preñez. `null` si no es un evento.
+   */
+  readonly entityDate: IsoDate | null;
+  /** Código del animal del evento (la madre, en una preñez); `null` si no es de un animal. */
+  readonly animalCode: string | null;
   readonly user: { readonly id: string; readonly name: string } | null;
   readonly changes: readonly AuditChangeView[];
 };

@@ -17,6 +17,8 @@ function api(url: string): Response {
           entity: 'Animal',
           entityId: FIXTURE_ANIMAL_ID,
           entityLabel: '5',
+          entityDate: null,
+          animalCode: '5',
           user: { id: 'u', name: 'Álvaro Pérez' },
           changes: [{ field: 'exitType', before: null, after: 'SALE' }],
         },
@@ -41,7 +43,9 @@ describe('Pestaña «Cambios» de la ficha (AUD-01 CA2)', () => {
     );
     const tabs = await screen.findAllByRole('tab');
     expect(tabs.at(-1)).toHaveTextContent('Cambios');
-    expect(await screen.findByText('Salida · animal 5')).toBeInTheDocument();
+    expect(
+      await screen.findByText('Álvaro Pérez registró la salida del animal 5'),
+    ).toBeInTheDocument();
     expect(screen.getByText('Tipo de salida: Venta')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Registrar salida' })).toBeInTheDocument();
   });
