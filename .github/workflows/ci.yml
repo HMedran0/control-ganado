@@ -113,6 +113,12 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # RNF-02: la carga inicial de la web (JS + CSS que pide index.html, en gzip) no pasa del
+      # tope de apps/web/package.json (hato.initialLoadBudgetKb). Detecta saltos; subir el tope
+      # se justifica en el mensaje del commit.
+      - name: Tamaño de la carga inicial de la web
+        run: pnpm --filter @hato/web size
+
       # Pruebas de extremo a extremo (M2): la web compilada con `vite preview` y la API
       # compilada, contra hato_test ya sembrada por el paso «Seed». Playwright levanta los dos
       # servidores; la web llega a la API por el proxy de /api (ADR-008).
