@@ -162,6 +162,7 @@ export function WeightChart({ points }: { points: readonly WeightPoint[] }) {
             stroke="var(--color-superficie)"
             strokeWidth={2}
             tabIndex={0}
+            role="img"
             aria-label={`${formatDate(point.date)}: ${formatWeight(point.kg)}`}
             className="outline-none focus-visible:stroke-[var(--color-chapeta)]"
             onFocus={() => {

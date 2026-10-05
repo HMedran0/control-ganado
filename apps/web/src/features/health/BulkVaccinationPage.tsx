@@ -58,7 +58,9 @@ export function BulkVaccinationPage({ vaccineId }: { vaccineId?: string | undefi
 
   const body = (): BulkVaccinationInput | null => {
     const filter = scope === 'LOT' ? { lotId } : scope === 'CATEGORY' ? { category } : {};
-    const parsed = bulkVaccinationSchema.safeParse({
+    // Se valida con el esquema de shared, pero se envía el cuerpo sin transformar: el filtro viaja
+    // como lo escribe la URL del listado (listas separadas por coma), no ya convertido.
+    const raw = {
       vaccineId: form.vaccineId === '' ? undefined : form.vaccineId,
       date: form.date,
       dose: optional(form.dose),
@@ -67,7 +69,8 @@ export function BulkVaccinationPage({ vaccineId }: { vaccineId?: string | undefi
       ruvNumber: optional(form.ruvNumber),
       filter,
       ...(excluded.size === 0 ? {} : { excludeIds: [...excluded] }),
-    });
+    };
+    const parsed = bulkVaccinationSchema.safeParse(raw);
     const problems: Record<string, string> = {};
     if (scope === 'LOT' && lotId === '') problems.lotId = 'Elige el lote.';
     if (scope === 'CATEGORY' && category === '') problems.category = 'Elige la categoría.';
@@ -78,7 +81,9 @@ export function BulkVaccinationPage({ vaccineId }: { vaccineId?: string | undefi
       }
     }
     setErrors(problems);
-    return parsed.success && Object.keys(problems).length === 0 ? parsed.data : null;
+    return parsed.success && Object.keys(problems).length === 0
+      ? (raw as BulkVaccinationInput)
+      : null;
   };
 
   const review = async () => {
@@ -104,7 +109,11 @@ export function BulkVaccinationPage({ vaccineId }: { vaccineId?: string | undefi
             {done.created === 1
               ? '1 vacunación registrada'
               : `${done.created} vacunaciones registradas`}
-            {done.skipped.length === 0 ? '.' : ` · ${done.skipped.length} animales omitidos.`}
+            {done.skipped.length === 0
+              ? '.'
+              : done.skipped.length === 1
+                ? ' · 1 animal omitido.'
+                : ` · ${done.skipped.length} animales omitidos.`}
           </p>
           <div className="flex flex-wrap gap-2">
             <Button

@@ -6,6 +6,7 @@ import {
   type AnimalRef,
   type ScaleAssociation,
   type ScaleColumnMapping,
+  type UnknownChip,
   type WeightImportDryRun,
 } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
@@ -62,6 +63,11 @@ export function ScaleImportPage() {
   const [file, setFile] = useState<File | null>(null);
   const [importKey, setImportKey] = useState<string>(() => uuidv7());
   const [choices, setChoices] = useState<Readonly<Record<string, ChipChoice>>>({});
+  /**
+   * Chips desconocidos del archivo. Se acumulan entre simulaciones: un chip asociado ya no sale como
+   * desconocido en la siguiente, pero su asociación tiene que seguir a la vista para cambiarla.
+   */
+  const [unknownChips, setUnknownChips] = useState<readonly UnknownChip[]>([]);
   const [shown, setShown] = useState(PAGE);
   const [profileName, setProfileName] = useState('');
 
@@ -92,6 +98,12 @@ export function ScaleImportPage() {
     confirm.reset();
     preview.mutate(requestFor(nextFile, nextProfile, nextChoices), {
       onSuccess: (result) => {
+        setUnknownChips((current) => [
+          ...current,
+          ...result.unknownChips.filter(
+            (chip) => !current.some((known) => known.chip === chip.chip),
+          ),
+        ]);
         // «Este animal ya tiene el chip X»: el chip no se guarda; la casilla queda desmarcada.
         if (result.chipNotices.length === 0) return;
         setChoices((current) => {
@@ -112,6 +124,7 @@ export function ScaleImportPage() {
     setFile(next);
     setImportKey(uuidv7());
     setChoices({});
+    setUnknownChips([]);
     setShown(PAGE);
     simulate(next, profileId, {});
   };
@@ -216,6 +229,7 @@ export function ScaleImportPage() {
         {result === undefined || file === null ? null : (
           <Simulation
             result={result}
+            unknownChips={unknownChips}
             choices={choices}
             shown={shown}
             onMore={() => {
@@ -303,12 +317,14 @@ export function ScaleImportPage() {
 
 function Simulation({
   result,
+  unknownChips,
   choices,
   shown,
   onMore,
   onChoose,
 }: {
   result: WeightImportDryRun;
+  unknownChips: readonly UnknownChip[];
   choices: Readonly<Record<string, ChipChoice>>;
   shown: number;
   onMore: () => void;
@@ -372,10 +388,10 @@ function Simulation({
         </p>
       ))}
 
-      {result.unknownChips.length === 0 ? null : (
+      {unknownChips.length === 0 ? null : (
         <div className="flex flex-col gap-3">
           <h3 className="font-bold">Chips desconocidos</h3>
-          {result.unknownChips.map((chip) => {
+          {unknownChips.map((chip) => {
             const choice = choices[chip.chip] ?? { animal: null, saveChip: true, skip: false };
             return (
               <div
@@ -426,7 +442,7 @@ function Simulation({
         </p>
       ))}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Filas del archivo">
         <table className="w-full text-left">
           <caption className="sr-only">Filas del archivo de la báscula</caption>
           <thead>

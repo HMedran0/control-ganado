@@ -109,7 +109,7 @@ export default function WeightsTab({ animal }: { animal: AnimalDetail }) {
         {items.length === 0 ? (
           <p className="text-texto-2">Sin pesajes registrados.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Tabla de pesajes">
             <table className="w-full text-left">
               <caption className="sr-only">
                 Pesajes del animal, del más reciente al más antiguo
