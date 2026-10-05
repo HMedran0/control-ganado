@@ -13,10 +13,17 @@ import { IDENTIFIED_BY, type IdentifiedBy } from '@hato/shared';
 const PREFIX = 'hato:identificado:';
 const MAX_AGE_MS = 30 * 60 * 1000;
 
-type Stored = { readonly by: IdentifiedBy; readonly at: number };
+/** Las tres formas de identificar al animal en el formulario; la importación es aparte. */
+export type ManualIdentification = Exclude<IdentifiedBy, 'IMPORT'>;
+
+type Stored = { readonly by: ManualIdentification; readonly at: number };
 
 /** Recuerda cómo se identificó al animal. */
-export function rememberIdentification(animalId: string, by: IdentifiedBy, now = Date.now()): void {
+export function rememberIdentification(
+  animalId: string,
+  by: ManualIdentification,
+  now = Date.now(),
+): void {
   try {
     sessionStorage.setItem(
       `${PREFIX}${animalId}`,
@@ -28,7 +35,7 @@ export function rememberIdentification(animalId: string, by: IdentifiedBy, now =
 }
 
 /** Cómo se identificó al animal en los últimos 30 minutos; si no se sabe, por búsqueda. */
-export function recalledIdentification(animalId: string, now = Date.now()): IdentifiedBy {
+export function recalledIdentification(animalId: string, now = Date.now()): ManualIdentification {
   try {
     const raw = sessionStorage.getItem(`${PREFIX}${animalId}`);
     if (raw === null) return IDENTIFIED_BY.SEARCH;
