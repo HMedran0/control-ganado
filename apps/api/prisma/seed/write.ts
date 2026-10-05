@@ -490,10 +490,16 @@ export async function writeSeed(
       amount: expense.amount,
       description: expense.description,
       allocationMethod: expense.allocationMethod,
+      lotId:
+        expense.lotKey === undefined ? null : required(catalog.lotIds, expense.lotKey, 'el lote'),
+      // Un gasto anulado (M7) cambió una vez: versión 2 y la marca del día de la anulación.
+      version: expense.voided === undefined ? 1 : 2,
+      voidedAt: expense.voided === undefined ? null : instantOf(expense.voided.on),
+      voidReason: expense.voided?.reason ?? null,
       createdById: author,
       updatedById: author,
       createdAt: instantOf(expense.occurredOn),
-      updatedAt: instantOf(expense.occurredOn),
+      updatedAt: instantOf(expense.voided?.on ?? expense.occurredOn),
     })),
   });
 
@@ -502,6 +508,7 @@ export async function writeSeed(
       expense.allocations.map((allocation) => ({
         expenseId: expense.id,
         occurredOn: expense.occurredOn,
+        voidedOn: expense.voided?.on ?? null,
         ...allocation,
       })),
     ),
@@ -514,7 +521,8 @@ export async function writeSeed(
           animalId: allocation.animalId,
           amount: allocation.amount,
           createdAt: instantOf(allocation.occurredOn),
-          updatedAt: instantOf(allocation.occurredOn),
+          updatedAt: instantOf(allocation.voidedOn ?? allocation.occurredOn),
+          voidedAt: allocation.voidedOn === null ? null : instantOf(allocation.voidedOn),
         })),
       }),
   );

@@ -486,6 +486,13 @@ export function verifyHerd(
 
   // --- Reparto exacto de los gastos (RN-17) ---
   for (const expense of expenses) {
+    // Un gasto general (M7) no se reparte: no puede tener asignaciones.
+    if (expense.allocationMethod === 'GENERAL') {
+      if (expense.allocations.length > 0) {
+        problems.push(`«${expense.description}» es general y tiene asignaciones.`);
+      }
+      continue;
+    }
     const total = sumMoney(expense.allocations.map((allocation) => allocation.amount));
     if (parseMoney(total) !== parseMoney(expense.amount)) {
       problems.push(

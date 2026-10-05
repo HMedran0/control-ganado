@@ -10,6 +10,7 @@ import type { SeedClient } from './client.js';
 import { buildEconomics, type Economics } from './economics.js';
 import { buildHerd, type Herd } from './herd.js';
 import { applyWeightAlertCases, buildHistory, type History } from './history.js';
+import { buildFinanceCases } from './finance-cases.js';
 import { createIdFactory } from './ids.js';
 import { hashSeedPassword } from './password.js';
 import { createRandom, REFERENCE_FARM_SEED } from './random.js';
@@ -38,9 +39,16 @@ export function buildReferenceSeed(today: IsoDate): ReferenceSeed {
   const catalog = buildCatalog(ids);
   const herd = buildHerd(catalog, random, ids, today);
   const generated = buildHistory(herd.animals, random, ids, today);
-  const economics = buildEconomics(herd.animals, generated.weights, random, ids, today);
+  const base = buildEconomics(herd.animals, generated.weights, random, ids, today);
   // Después de la economía, para que los casos de peso de M6 no muevan nada más (PES-05).
   const history = applyWeightAlertCases(generated, herd.animals);
+  // M7: casos de finanzas con su propio generador, al final, sin mover nada de lo anterior.
+  const finance = buildFinanceCases(herd.animals, history.weights);
+  const economics = {
+    expenses: [...base.expenses, ...finance.expenses],
+    sales: base.sales,
+    valuations: [...base.valuations, ...finance.valuations],
+  };
   const { problems } = verifyHerd(herd, history, economics.expenses, catalog, today);
 
   return { catalog, herd, history, economics, problems };

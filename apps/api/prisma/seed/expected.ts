@@ -239,3 +239,30 @@ export const EXPECTED_RETIRO = {
   lifelongOnSold: ['DIN', 'RFID'],
   users: 1,
 } as const;
+
+/**
+ * Finanzas (M7, ECO-06). Los casos nuevos (`finance-cases.ts`: desparasitación por peso, dos
+ * gastos generales, un bulto de sal anulado y un avalúo a mano) se suman a la economía de M0.3
+ * sin cambiar ninguna cifra anterior. El período del reporte es del 1.º de enero a hoy.
+ */
+export const EXPECTED_FINANCE = {
+  expenses: 29,
+  voidedExpenses: 1,
+  generalExpenses: 2,
+  /** Levantes con peso al 16/09/2026 que reciben parte de la desparasitación. */
+  byWeightAnimals: 54,
+  /** Asignaciones guardadas, vigentes y anuladas. */
+  allocations: 1038,
+  valuations: 15,
+  period: {
+    from: toIsoDate('2026-01-01'),
+    to: toIsoDate('2026-09-25'),
+    expensesTotal: '3735500.00',
+    expensesGeneral: '1130000.00',
+    expensesAllocated: '2605500.00',
+    sales: 5,
+    salesTotal: '13739000.00',
+  },
+  /** Inversión acumulada de los animales activos hoy (RN-18). */
+  herdInvestment: '36761389.00',
+} as const;

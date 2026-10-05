@@ -24,7 +24,7 @@ import {
   type ValuationMethod,
 } from '@hato/shared';
 
-import { PRICE_PER_KG } from './catalog.js';
+import { PRICE_PER_KG, type LotKey } from './catalog.js';
 import type { SeedAnimal } from './herd.js';
 import type { SeedWeight } from './history.js';
 import { lastWeightByAnimal } from './history.js';
@@ -40,6 +40,10 @@ export type SeedExpense = {
   readonly description: string;
   readonly allocationMethod: AllocationMethod;
   readonly allocations: readonly { id: string; animalId: string; amount: string }[];
+  /** Lote elegido al repartir (M7); los gastos de M0.3 no lo guardan. */
+  readonly lotKey?: LotKey;
+  /** Anulado ese día, con sus asignaciones (M7, RN-11). */
+  readonly voided?: { readonly on: IsoDate; readonly reason: string };
 };
 
 /** Venta lista para escribir. */

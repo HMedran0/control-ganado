@@ -7,6 +7,7 @@ import {
   EXPECTED_BIRTHS_2026,
   EXPECTED_CATALOG,
   EXPECTED_EXITS,
+  EXPECTED_FINANCE,
   EXPECTED_INVENTORY,
   EXPECTED_LOTS,
   EXPECTED_REPRODUCTION,
@@ -564,6 +565,82 @@ describe('seed de la finca de referencia', () => {
         GROUP BY e.id, e.description, e.amount
         HAVING sum(al.amount) <> e.amount`);
       expect(rows).toEqual([]);
+    });
+
+    it('cuenta las cifras de finanzas de M7 con SQL propio (ECO-06, RN-18)', async () => {
+      const { period } = EXPECTED_FINANCE;
+      const [counts] = await prisma.$queryRaw<
+        {
+          expenses: number;
+          voided: number;
+          general: number;
+          by_weight: number;
+          allocations: number;
+          valuations: number;
+        }[]
+      >(Prisma.sql`
+        SELECT
+          (SELECT count(*)::int FROM expenses WHERE farm_id = ${farmId}::uuid) AS expenses,
+          (SELECT count(*)::int FROM expenses
+            WHERE farm_id = ${farmId}::uuid AND voided_at IS NOT NULL) AS voided,
+          (SELECT count(*)::int FROM expenses
+            WHERE farm_id = ${farmId}::uuid AND allocation_method = 'GENERAL') AS general,
+          (SELECT count(*)::int FROM expense_allocations al JOIN expenses e ON e.id = al.expense_id
+            WHERE e.farm_id = ${farmId}::uuid AND e.allocation_method = 'BY_WEIGHT') AS by_weight,
+          (SELECT count(*)::int FROM expense_allocations WHERE farm_id = ${farmId}::uuid) AS allocations,
+          (SELECT count(*)::int FROM valuations WHERE farm_id = ${farmId}::uuid) AS valuations`);
+      expect(counts).toEqual({
+        expenses: EXPECTED_FINANCE.expenses,
+        voided: EXPECTED_FINANCE.voidedExpenses,
+        general: EXPECTED_FINANCE.generalExpenses,
+        by_weight: EXPECTED_FINANCE.byWeightAnimals,
+        allocations: EXPECTED_FINANCE.allocations,
+        valuations: EXPECTED_FINANCE.valuations,
+      });
+
+      const [money] = await prisma.$queryRaw<
+        {
+          total: string;
+          general: string;
+          allocated: string;
+          sales: number;
+          sales_total: string;
+          herd: string;
+        }[]
+      >(Prisma.sql`
+        WITH period AS (
+          SELECT * FROM expenses
+           WHERE farm_id = ${farmId}::uuid AND voided_at IS NULL
+             AND occurred_on BETWEEN ${period.from}::date AND ${period.to}::date
+        )
+        SELECT
+          (SELECT sum(amount)::text FROM period) AS total,
+          (SELECT sum(amount)::text FROM period WHERE allocation_method = 'GENERAL') AS general,
+          (SELECT sum(amount)::text FROM period WHERE allocation_method <> 'GENERAL') AS allocated,
+          (SELECT count(*)::int FROM sales WHERE farm_id = ${farmId}::uuid AND voided_at IS NULL
+             AND sold_on BETWEEN ${period.from}::date AND ${period.to}::date) AS sales,
+          (SELECT sum(amount)::text FROM sales WHERE farm_id = ${farmId}::uuid AND voided_at IS NULL
+             AND sold_on BETWEEN ${period.from}::date AND ${period.to}::date) AS sales_total,
+          (SELECT sum(al.amount)::text
+             FROM expense_allocations al
+             JOIN expenses e ON e.id = al.expense_id
+             JOIN animals a ON a.id = al.animal_id
+            WHERE e.farm_id = ${farmId}::uuid AND e.voided_at IS NULL AND al.voided_at IS NULL
+              AND ${active}) AS herd`);
+      expect(money).toEqual({
+        total: period.expensesTotal,
+        general: period.expensesGeneral,
+        allocated: period.expensesAllocated,
+        sales: period.sales,
+        sales_total: period.salesTotal,
+        herd: EXPECTED_FINANCE.herdInvestment,
+      });
+
+      // El gasto anulado y sus asignaciones están anulados juntos.
+      const [mismatch] = await prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
+        SELECT count(*)::int AS total FROM expense_allocations al JOIN expenses e ON e.id = al.expense_id
+         WHERE e.farm_id = ${farmId}::uuid AND (e.voided_at IS NULL) <> (al.voided_at IS NULL)`);
+      expect(mismatch?.total).toBe(0);
     });
 
     it('no deja ningún evento anterior al nacimiento ni posterior a hoy (RN-14)', async () => {
