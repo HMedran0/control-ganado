@@ -22,6 +22,7 @@ export const CATALOG_WHAT = {
   VaccinationCycle: 'un ciclo',
   Lot: 'un lote',
   Tag: 'una etiqueta',
+  ScaleProfile: 'un perfil de báscula',
 } as const;
 
 export type CatalogEntity = keyof typeof CATALOG_WHAT | 'Farm';

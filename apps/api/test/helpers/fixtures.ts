@@ -110,6 +110,8 @@ export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.vaccinationRecord.deleteMany();
   await prisma.identifier.deleteMany();
   await prisma.animalTag.deleteMany();
+  // La importación de la báscula apunta a su jornada de pesaje (M6).
+  await prisma.importBatch.deleteMany();
   await prisma.workSession.deleteMany();
   // Las referencias cruzadas entre animales y preñeces se sueltan antes de borrar.
   await prisma.animal.updateMany({
@@ -123,11 +125,11 @@ export async function cleanDatabase(prisma: PrismaService): Promise<void> {
   await prisma.lot.deleteMany();
   await prisma.tag.deleteMany();
   await prisma.breed.deleteMany();
-  await prisma.importBatch.deleteMany();
   await prisma.refreshToken.deleteMany();
   await prisma.loginAttempt.deleteMany();
   await prisma.membership.deleteMany();
   await prisma.user.deleteMany();
+  await prisma.scaleProfile.deleteMany();
   await prisma.farm.deleteMany();
 }
 

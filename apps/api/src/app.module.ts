@@ -18,6 +18,7 @@ import { InfraModule } from './infra/infra.module.js';
 import { ReproductionModule } from './reproduction/reproduction.module.js';
 import { SanitaryModule } from './sanitary/sanitary.module.js';
 import { UsersModule } from './users/users.module.js';
+import { WeightsModule } from './weights/weights.module.js';
 
 /**
  * Módulo raíz.
@@ -43,6 +44,7 @@ import { UsersModule } from './users/users.module.js';
     AnimalsModule,
     ReproductionModule,
     SanitaryModule,
+    WeightsModule,
     ImportsModule,
     AuditModule,
     HealthModule,

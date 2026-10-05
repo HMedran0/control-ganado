@@ -84,7 +84,10 @@ export async function resetFarmData(
   await prisma.vaccinationRecord.deleteMany({ where: { farmId } });
   await prisma.identifier.deleteMany({ where: { farmId } });
   await prisma.animalTag.deleteMany({ where });
+  // La importación de la báscula apunta a su jornada de pesaje (M6).
+  await prisma.importBatch.deleteMany({ where: { farmId } });
   await prisma.workSession.deleteMany({ where: { farmId } });
+  await prisma.scaleProfile.deleteMany({ where: { farmId } });
   // Primero se sueltan las referencias cruzadas entre animales y preñeces.
   await prisma.animal.updateMany({
     where: { farmId },
@@ -98,7 +101,6 @@ export async function resetFarmData(
   await prisma.lot.deleteMany({ where: { farmId } });
   await prisma.tag.deleteMany({ where: { farmId } });
   await prisma.breed.deleteMany({ where: { farmId } });
-  await prisma.importBatch.deleteMany({ where: { farmId } });
   // Sesiones e intentos de inicio de sesión de los usuarios de demostración: sin esto, el seed
   // no se podía repetir después de que alguien entrara (la clave foránea de refresh_tokens
   // impedía borrar los usuarios) y un bloqueo por intentos sobrevivía a la resiembra.

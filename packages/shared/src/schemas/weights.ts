@@ -224,7 +224,10 @@ export const weightImportFieldsSchema = z.object({
   /** Fecha de la sesión, para los archivos sin columna de fecha. Sin valor, hoy. */
   sessionDate: isoDateSchema.optional(),
   /** Asociaciones de chips desconocidos, en JSON. */
-  associations: z.string().max(400_000).optional(),
+  associations: z
+    .string()
+    .max(256 * 1024)
+    .optional(),
   /** Chips desconocidos que no se importan, separados por coma. */
   skip: z.string().max(100_000).optional(),
   /** Clave de la confirmación (ADR-011): la web la genera al elegir el archivo. */

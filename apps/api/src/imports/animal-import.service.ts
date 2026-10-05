@@ -88,7 +88,7 @@ export class AnimalImportService {
       { timeout: CONFIRM_TIMEOUT_MS, maxWait: 10_000 },
     );
     const previous = await this.prisma.importBatch.findFirst({
-      where: { farmId: scope.farmId, fileSha256: sha256(file.data) },
+      where: { farmId: scope.farmId, kind: 'ANIMALS', fileSha256: sha256(file.data) },
       orderBy: { createdAt: 'desc' },
     });
     const { result } = analyzed;

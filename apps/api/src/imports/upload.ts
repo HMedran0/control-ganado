@@ -24,7 +24,11 @@ export async function readUpload(
           throw new DomainError('IMPORT_FILE_INVALID', { detail: 'Sube un solo archivo.' });
         }
         file = { fileName: part.filename, mimeType: part.mimetype, data: await part.toBuffer() };
-      } else if (typeof part.value === 'string' && !part.valueTruncated) {
+      } else if (part.valueTruncated) {
+        throw new DomainError('IMPORT_FILE_INVALID', {
+          detail: 'Un campo del formulario es demasiado largo.',
+        });
+      } else if (typeof part.value === 'string') {
         fields[part.fieldname] = part.value;
       }
     }

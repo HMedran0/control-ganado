@@ -63,7 +63,9 @@ export async function configureSecurity(
       fileSize: IMPORT_MAX_BYTES,
       files: 1,
       fields: 10,
-      fieldSize: 1024,
+      // Las asociaciones de chips de la báscula (PES-04) viajan como JSON en un campo: hasta
+      // unas 2.500 con 256 KiB. Un campo más largo responde error, no se trunca (upload.ts).
+      fieldSize: 256 * 1024,
       parts: 11,
       headerPairs: 50,
     },
