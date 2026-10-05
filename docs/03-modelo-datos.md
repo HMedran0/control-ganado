@@ -218,14 +218,16 @@ La importación de la báscula (PES-04, M6) crea una `WorkSession` con actividad
 ### 2.6 Economía (solo ADMIN)
 
 **Expense**
-`id, farm_id, type enum (PURCHASE, FEED, MEDICATION, VACCINE, VETERINARY, TRANSPORT, OTHER), occurred_on date, amount numeric(14,2), description, allocation_method enum (DIRECT, EQUAL, BY_WEIGHT), voided_*, created_*`
+`id, farm_id, type enum (PURCHASE, FEED, MEDICATION, VACCINE, VETERINARY, TRANSPORT, OTHER), occurred_on date, amount numeric(14,2), description, allocation_method enum (DIRECT, EQUAL, BY_WEIGHT, GENERAL), lot_id?, version, updated_by_id, voided_*, created_*`
 
-**ExpenseAllocation** — `id, farm_id, expense_id, animal_id, amount numeric(14,2)`.
-Invariante (RN-17): suma de asignaciones = `expense.amount`. Se crean en la misma transacción que el gasto.
+`GENERAL` (M7): gasto de la finca sin asignaciones; `CHECK` sin lote. `lot_id` (M7): el lote elegido al repartir; el reparto se fija al guardar.
 
-**Sale** — `id, farm_id, animal_id (único mientras no esté anulada), sold_on date, amount numeric(14,2), buyer?, notes?, voided_*, created_*`.
+**ExpenseAllocation** — `id, farm_id, expense_id, animal_id, amount numeric(14,2), created_at, voided_at?`.
+Invariante (RN-17): suma de las asignaciones **vigentes** = `expense.amount`. Se crean en la misma transacción que el gasto. Desde M7 (ADR-016) no se editan: corregir el gasto anula las vigentes y crea las nuevas; anularlo las anula. A lo sumo una vigente por gasto y animal (índice único parcial `expense_allocations_active_uq`).
 
-**Valuation** — `id, farm_id, animal_id, valued_on date, amount numeric(14,2), method enum MANUAL/PRICE_PER_KG, created_*`.
+**Sale** — `id, farm_id, animal_id (único mientras no esté anulada), sold_on date, amount numeric(14,2), buyer?, notes?, version, updated_by_id, voided_*, created_*`. Desde M7 se corrigen `amount`, `buyer` y `notes` con `version`.
+
+**Valuation** — `id, farm_id, animal_id, valued_on date, amount numeric(14,2) > 0, method enum MANUAL/PRICE_PER_KG, voided_at?, void_reason?, created_*`. Desde M7 se anula (no se edita).
 
 ### 2.7 Jornadas y auditoría
 
@@ -317,7 +319,7 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 
 **Estado de vacunas en SQL** (M6, ADR-009 decisión 8): la CTE `vaccine_status` (`vaccine-status.sql.ts`) da estado, motivo y fecha límite por animal activo y vacuna con programación, y `classificationCtes` las resume en `vaccine_overdue` y `vaccine_due`. Reemplaza el cálculo en memoria del filtro de alertas de vacunas.
 
-**Inversión por animal**: `SUM(expense_allocations.amount)` uniendo con gastos no anulados.
+**Inversión por animal**: `SUM(expense_allocations.amount)` de las asignaciones vigentes de gastos no anulados (CTE `investment`, `apps/api/src/finance/investment.sql.ts`), igual a `animalInvestment` de shared animal por animal (prueba de equivalencia de M7, ADR-016).
 
 **Edad legible**: función compartida en `packages/shared` (`formatAge`), usada por web, móvil y reportes.
 

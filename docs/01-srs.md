@@ -502,17 +502,23 @@ El pesaje periódico se hace en báscula electrónica, y digitar cada peso es le
 **ECO-01 — Registrar gasto directo** · M · F1
 Tipos: compra, alimentación, medicamentos, vacunas, veterinario, transporte, otro. Campos: fecha, tipo, monto COP, descripción, animal.
 - CA1: El gasto se asigna 100 % al animal.
+- CA2 (M7): La compra se registra en el formulario del animal (ANI-01 CA2), no como gasto suelto; el costo de un tratamiento (SAN-05) es un gasto directo de medicamentos. Los dos siguen siendo de su animal al corregirlos.
+- CA3 (M7): Un gasto que no es de ningún animal (mano de obra, arriendo, cercas, 08 §1.12) se registra como **gasto general** de la finca: no entra en la inversión de ningún animal y sí en los gastos del período (ECO-06).
+- CA4 (M7): Un gasto se corrige (monto, fecha, tipo, descripción y a quién se carga) o se anula con motivo (RN-11). Corregir o anular deja anuladas las asignaciones anteriores, crea las nuevas si el reparto cambió y queda en la auditoría con la parte de cada animal (ADR-016). Corregir solo la descripción no cambia ninguna asignación.
 
 **ECO-02 — Registrar gasto compartido** · M · F1
 Ejemplo: un bulto de sal mineralizada para todo el lote.
 - CA1: El usuario elige los animales (por lote, filtro o selección) y el método de reparto: partes iguales (F1) o proporcional al peso (S).
 - CA2: El sistema crea una asignación por animal cuya suma es exactamente el monto total (el residuo por redondeo se asigna al primer animal, RN-17).
+- CA3 (M7): Antes de guardar, «Ver el reparto» muestra cuánto le toca a cada animal. El lote se reparte entre sus animales activos al guardar; la selección viene del listado (también «todo lo filtrado»); por peso usa el último pesaje de cada uno hasta la fecha del gasto y, si falta alguno, dice cuáles.
 
 **ECO-03 — Valor estimado actual** · S · F1
 - CA1: El ADMIN registra un avalúo por animal (fecha y valor). También puede calcularse como último peso × precio por kg configurado por categoría.
+- CA2 (M7): El precio por kilo por categoría se configura en Configuración → Finca (solo ADMIN). El valor por peso se redondea a pesos enteros. Un avalúo no se edita: se anula y se registra otro.
 
 **ECO-04 — Venta** · M · F1
 - CA1: Se registra desde ANI-04. Crea un ingreso con fecha, valor y comprador.
+- CA2 (M7): El ADMIN corrige el precio, el comprador y las observaciones de una venta (con control de versión); la fecha es la de la salida y se cambia revirtiéndola. Revertir la salida anula la venta. Al registrar la venta, la ficha abre la pestaña Costos con el resultado (CU-04).
 
 **ECO-05 — Resultado por animal** · M · F1
 - CA1: En la ficha (sección Costos): inversión total = compra + gastos directos + asignaciones; valor estimado; valor de venta si aplica; ganancia o pérdida = venta − inversión (RN-18).
@@ -520,6 +526,7 @@ Ejemplo: un bulto de sal mineralizada para todo el lote.
 
 **ECO-06 — Reporte económico** · S · F1
 - CA1: Inversión total del hato, por categoría y por período; ventas del período; resultado de animales vendidos en el período.
+- CA2 (M7): Sin fechas, el período va del 1.º de enero a hoy. La inversión del hato es la acumulada de los animales activos hoy, por su categoría actual; los gastos del período van por tipo y por mes, con los generales aparte. Se exporta a Excel con las mismas cifras y la protección contra fórmulas de ANI-06 CA4.
 
 ### 3.10 Jornadas de manejo (JOR)
 
@@ -677,10 +684,10 @@ Decisión del product owner (29/09/2026): se termina la fase 1 tal como está pl
 | RN-14 | Las fechas de eventos no pueden ser futuras, excepto las fechas estimadas o programadas. Ningún evento puede ser anterior a la fecha de nacimiento del animal. |
 | RN-15 | Un servicio en una hembra menor a la edad mínima reproductiva genera advertencia, no bloqueo. |
 | RN-16 | La edad y las clasificaciones derivadas se calculan, nunca se almacenan. |
-| RN-17 | La suma de las asignaciones de un gasto compartido es exactamente igual al monto del gasto; el residuo de redondeo se suma a la primera asignación. |
-| RN-18 | Inversión por animal = suma de asignaciones de gastos (incluida la compra). Resultado = valor de venta − inversión. Los gastos anulados no cuentan. |
+| RN-17 | La suma de las asignaciones de un gasto compartido es exactamente igual al monto del gasto; el residuo de redondeo se suma a la primera asignación. Desde M7, los animales se ordenan por id antes de repartir y el residuo va siempre al primero de ese orden (ADR-016). |
+| RN-18 | Inversión por animal = suma de asignaciones de gastos (incluida la compra). Resultado = valor de venta − inversión. Los gastos anulados no cuentan, ni las asignaciones anuladas al corregir un gasto (M7). Los gastos generales no se asignan a ningún animal. |
 | RN-19 | Un valor de identificador activo es único por finca y tipo. Un identificador reemplazado queda inactivo y no se reutiliza para otro animal sin confirmación del ADMIN. Excepción: con numeración reutilizable, las chapetas liberadas al salir (`EXITED`, IDN-06) se reutilizan sin confirmación. DIN y RFID nunca se reutilizan (RN-32). |
-| RN-20 | Los datos económicos (gastos, asignaciones, valores, ventas, inversión) solo son visibles y editables por ADMIN, tanto en la interfaz como en la API. |
+| RN-20 | Los datos económicos (gastos, asignaciones, valores, ventas, inversión) solo son visibles y editables por ADMIN, tanto en la interfaz como en la API. Desde M7, también en las exportaciones, la auditoría (solo del ADMIN, que ahí sí ve los montos) y las búsquedas; lo comprueba una prueba que recorre todas las respuestas de la API con OPERATOR y VET. |
 | RN-21 | Todo dato de negocio pertenece a una finca; ningún usuario accede a datos de una finca a la que no pertenece. |
 | RN-22 | Vender o sacrificar un animal en período de retiro **de carne** exige confirmación explícita y queda registrado en auditoría. El retiro de leche no cuenta para la venta en pie (M6). |
 | RN-23 | Una cría no puede tener fecha de nacimiento anterior a la de su madre + edad mínima reproductiva (advertencia). |

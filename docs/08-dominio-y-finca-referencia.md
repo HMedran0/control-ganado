@@ -82,7 +82,7 @@ Las fincas de doble propósito agrupan el ganado por estado productivo. Lotes se
 ### 1.12 Gastos que se siguen por animal — [Ficticio]
 - Directos: compra, medicamentos y tratamientos individuales, veterinario por caso, transporte de un animal.
 - Compartidos (repartidos): sal mineralizada, suplemento, vacunación de ciclo, desparasitación de lote.
-- **No se asigna a animales** en el MVP: mano de obra, arriendo, mantenimiento de cercas y pastos. Se pueden registrar como gasto general de la finca en el futuro.
+- **No se asigna a animales**: mano de obra, arriendo, mantenimiento de cercas y pastos. Desde M7 se registran como **gasto general** de la finca (ECO-01 CA3): no entran en la inversión de ningún animal y sí en los gastos del período.
 
 ---
 
@@ -180,6 +180,8 @@ Ciclos oficiales configurados: 2025-2 (27/10/2025–16/12/2025) [Real], 2026-1 (
 
 ### 3.4 Valores económicos de referencia
 Todos **ficticios**, solo para pruebas: compra de novilla $2.800.000; sal mineralizada $180.000 por bulto repartido en el lote; tratamiento individual $35.000–$120.000; precio de referencia en pie $7.800/kg.
+
+Desde M7 (`apps/api/prisma/seed/finance-cases.ts`, con su propio generador e identificadores para no mover nada anterior): desparasitación del lote de levante el 16/09/2026 por $312.000 repartida **según el peso** entre los 54 levantes con pesaje; arreglo de la cerca del potrero La Loma ($650.000, 20/08/2026) y jornales de vaquería ($480.000, 05/09/2026) como **gastos generales**; un bulto de sal del 08/07/2026 registrado dos veces y **anulado** al otro día; y un **avalúo a mano** del toro reproductor ($7.200.000, 01/09/2026). Las cifras están en `EXPECTED_FINANCE`.
 
 ### 3.5 Segunda finca de pruebas: Finca El Retiro — [Ficticio] (M4c)
 Finca pequeña para probar la numeración reutilizable (ANI-10, ANI-11, IDN-06). No cambia ninguna cifra de la finca de referencia.

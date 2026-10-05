@@ -68,14 +68,14 @@ describe('Finca y catálogos', () => {
       await prisma.farm.update({
         where: { id: esperanza.farmId },
         data: {
-          settings: { ...DEFAULT_FARM_SETTINGS, pricePerKgByCategory: { VACA: '9500.00' } },
+          settings: { ...DEFAULT_FARM_SETTINGS, pricePerKgByCategory: { COW: '9500.00' } },
         },
       });
     });
 
     it('el precio por kilo solo lo ve ADMIN (RN-20)', async () => {
       const asAdmin = await http().get('/api/v1/farm').set(admin).expect(200);
-      expect(asAdmin.body.settings.pricePerKgByCategory).toEqual({ VACA: '9500.00' });
+      expect(asAdmin.body.settings.pricePerKgByCategory).toEqual({ COW: '9500.00' });
 
       for (const headers of [operator, vet]) {
         const response = await http().get('/api/v1/farm').set(headers).expect(200);
@@ -97,7 +97,7 @@ describe('Finca y catálogos', () => {
         weaningAgeMonths: 8,
         gestationDays: 285,
         calfCodePattern: '{YY}-{NNN}',
-        pricePerKgByCategory: { VACA: '9500.00' },
+        pricePerKgByCategory: { COW: '9500.00' },
       });
       const log = await prisma.auditLog.findFirstOrThrow({ where: { entity: 'Farm' } });
       expect(log.diff).toMatchObject({

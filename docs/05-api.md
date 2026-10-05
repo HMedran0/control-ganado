@@ -207,14 +207,33 @@ Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); 
 | GET | /reports/milk?from&to&lotId | T | Producción diaria y mensual, por lote, ranking de vacas y vacas bajo el umbral (LEC-05), exportable |
 
 ## Finanzas (solo ADMIN)
+Todas las rutas responden 403 a OPERATOR y VET (RN-20, comprobado por rol en el controlador). Un registro de otra finca es 404.
+
 | Método | Ruta | Descripción |
 |---|---|---|
-| GET | /expenses | Filtros: `type, from, to, animalId` |
-| POST | /expenses | `{ type, date, amount, description, allocation: { method: DIRECT|EQUAL|BY_WEIGHT, animalIds | filter } }` |
-| POST | /expenses/:id/void | Anular (y sus asignaciones) |
+| GET | /expenses | Filtros: `type, from, to, animalId, lotId, q` (descripción), `voided=true` (incluye los anulados); de la fecha más reciente a la más antigua, paginado |
+| GET | /expenses/:id | El gasto con sus asignaciones vigentes, ordenadas por animal (ADR-016) |
+| POST | /expenses | `{ id?, type, date, amount, description, allocation: { method: DIRECT, animalId } \| { method: EQUAL\|BY_WEIGHT, lotId \| animalIds } \| { method: GENERAL }, dryRun? }` (M7) |
+| PATCH | /expenses/:id | Corregir, con `version`: `{ version, type?, date?, amount?, description?, allocation? }` (ADR-016) |
+| POST | /expenses/:id/void | Anular el gasto y sus asignaciones. `Idempotency-Key`; anular dos veces responde 200 |
+| GET | /sales?from&to | Ventas vigentes, de la más reciente a la más antigua (M7) |
+| PATCH | /sales/:id | Corregir precio, comprador u observaciones, con `version` (M7) |
+| POST | /valuations | `{ id?, animalId, date, method: MANUAL, amount }` o `{ id?, animalId, date, method: PRICE_PER_KG }` |
+| POST | /valuations/:id/void | Anular un avalúo. `Idempotency-Key` (M7) |
 | GET | /animals/:id/finance | Inversión, desglose, avalúo, venta, resultado |
-| POST | /valuations | Avalúo manual |
-| GET | /finance/summary | ECO-06 |
+| GET | /finance/summary?from&to | ECO-06 |
+| GET | /finance/summary/export.xlsx?from&to | ECO-06 en Excel (M7) |
+
+**Detalles de M7.**
+- `POST /expenses`: el tipo `PURCHASE` no se registra como gasto suelto (`EXPENSE_PURCHASE_FROM_ANIMAL`): va en el formulario del animal. La fecha no puede ser futura. `DIRECT` carga todo a `animalId`; `EQUAL` o `BY_WEIGHT` reparten entre los animales activos de `lotId` (al guardar) o entre `animalIds` (la selección del listado, hasta 5.000); `GENERAL` no se carga a animales. Un animal de otra finca, archivado o que salió antes de la fecha del gasto → `VALIDATION_FAILED` con los códigos en el campo. Un lote sin animales activos → `ALLOCATION_EMPTY`. `BY_WEIGHT` usa el último pesaje vigente de cada animal hasta la fecha del gasto; si falta alguno, `ALLOCATION_NO_WEIGHT` con los códigos en `detail`. Con `dryRun: true` responde 200 con `{ dryRun: true, amount, method, allocations }` sin guardar. El reparto lo hace `allocateExpense`: animales ordenados por id, pesos enteros y el residuo al primero (RN-17, ADR-016).
+- Respuesta de un gasto: `{ id, type, date, amount, description, method, lot, animalCount, animal (el del directo), treatmentId, voided, voidReason, version, createdBy, allocations: [{ animal, amount }] }`.
+- `PATCH /expenses/:id`: lo que no llega no cambia. Sin `allocation`, el reparto se vuelve a calcular solo si cambió el monto o la fecha, con los mismos animales; corregir solo la descripción o el tipo no toca ninguna asignación. Si el reparto cambia, las asignaciones vigentes quedan anuladas y se crean las nuevas. El gasto de un tratamiento o una compra no cambia de animal (`VALIDATION_FAILED` en `allocation`) y la compra no deja de ser compra. Un gasto anulado → `EXPENSE_VOIDED`.
+- `PATCH /sales/:id`: la fecha es la de la salida y no se cambia aquí (se revierte la salida). Una venta anulada por revertir la salida → `SALE_VOIDED`.
+- `POST /valuations` con `PRICE_PER_KG`: el último pesaje hasta la fecha × `settings.pricePerKgByCategory` de la categoría actual del animal, en pesos enteros. Sin precio para la categoría → `VALUATION_NO_PRICE`; sin pesajes → `VALUATION_NO_WEIGHT`. Un avalúo no se edita: se anula y se registra otro.
+- `GET /animals/:id/finance` → `{ animalId, investment: { total, byType }, lines: [{ expenseId, date, type, description, method, amount, expenseAmount, animalCount, lot }], valuations, sale, result: { basis: SALE|VALUATION, amount } | null }`. Inversión = asignaciones vigentes de gastos vigentes, compra incluida (RN-18); resultado = venta − inversión o, sin venta, último avalúo − inversión.
+- `GET /finance/summary` (sin fechas, del 1.º de enero a hoy) → `{ from, to, herd: { animals, investment, byCategory: [{ category, animals, investment }] }, expenses: { total, allocated, general, byType, byMonth: [{ month: YYYY-MM, amount }] }, sales: { count, total, investment, result, items: [{ saleId, animal, date, buyer, amount, investment, result }] } }`. La inversión del hato es la acumulada de los animales activos hoy por su categoría actual; los gastos y las ventas, los del período. Los agregados salen de SQL (CTE `investment`, ADR-016).
+- `GET /finance/summary/export.xlsx`: hojas «Resumen», «Inversión por categoría», «Gastos por tipo», «Gastos por mes» y «Ventas», con encabezados en español y fila fija, fechas como fechas de Excel, montos como números y los textos de la finca (comprador, nombre) con el apóstrofo delante si empiezan por `=`, `+`, `-`, `@`, tabulador o retorno (M4d).
+- `GET /farm` sigue mandando `settings.pricePerKgByCategory` solo al ADMIN; desde M7 el `PATCH /farm` lo valida: claves de categoría de manejo y montos positivos.
 
 ## Jornadas
 | Método | Ruta | Rol | Descripción |
@@ -245,7 +264,7 @@ Solo existe con `productionSystem` `LECHERIA` o `DOBLE_PROPOSITO` (CFG-03 CA2); 
 
 - `animalId` trae el animal, sus identificadores y, desde M7, sus eventos de M5 y M6: preñeces (como madre; un parto es un cambio de la preñez), vacunaciones, tratamientos y pesajes (pestaña «Cambios» de la ficha); no se combina con `entity`. `entityId` exige `entity`. `entity`: `Animal`, `Identifier`, `Breed`, `Lot`, `Tag`, `Vaccine`, `VaccinationCycle`, `Farm`, `User` y, desde M7, `Pregnancy`, `VaccinationRecord`, `TreatmentRecord`, `WeightRecord`, `ScaleProfile` e `ImportBatch`. `from` y `to` son días en la zona de la finca, ambos incluidos.
 - Respuesta `{ items, nextCursor }`; cada elemento: `{ id, at, action, entity, entityId, entityLabel, entityDate, animalCode, user: { id, name } | null, changes: [{ field, before, after }] }`. `entityLabel` es el código del animal, el valor del identificador o el nombre del registro; en los eventos, la vacuna, el medicamento, los kilos del pesaje, el perfil de báscula o el archivo importado (`null` en una preñez). `entityDate` es la fecha de negocio del evento (aplicación, inicio, pesaje o servicio) y `animalCode`, el animal del evento; ambos `null` cuando no aplican. Los ids de vacuna y ciclo también llegan como nombre. En `changes`, los ids de raza, lote, madre, padre y etiquetas llegan como nombre o código.
-- **Nunca** trae montos: no consulta gastos, ventas ni inicios de sesión, y descarta los campos con montos o precios (`amount`, `purchasePrice`, `pricePerKgByCategory`…). Un cambio de contraseña aparece como `password` sin valores.
+- Desde M7 (ADR-016) trae montos: la ruta es solo del ADMIN, que los ve en todas partes (RN-20). Reemplaza la decisión de M4c, que descartaba los campos con montos. `entity` admite también `Expense`, `Sale` y `Valuation`; con `animalId` vienen además su venta y los gastos en los que tuvo parte (no sus avalúos). El reparto de un gasto llega como `share` (la parte del animal, antes y después) en la consulta por animal y como `animalCount` en las demás. No consulta los inicios de sesión. Un cambio de contraseña aparece como `password` sin valores.
 
 ## Sincronización (F2)
 | Método | Ruta | Rol | Descripción |
@@ -303,7 +322,12 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `WITHDRAWAL_ACTIVE` | 409 | El animal está en retiro hasta {date}. Confirma para continuar. |
 | `SALE_AMOUNT_REQUIRED` | 422 | Indica el precio de venta. |
 | `ALLOCATION_EMPTY` | 422 | Selecciona al menos un animal para repartir el gasto. |
-| `ALLOCATION_NO_WEIGHT` | 422 | Hay animales sin peso registrado; usa reparto en partes iguales. |
+| `ALLOCATION_NO_WEIGHT` | 422 | Hay animales sin peso registrado; usa reparto en partes iguales. (Desde M7, el `detail` nombra los códigos) |
+| `EXPENSE_PURCHASE_FROM_ANIMAL` | 422 | El valor de compra se registra en la ficha del animal, al crearlo o editarlo. (M7) |
+| `EXPENSE_VOIDED` | 409 | Este gasto está anulado: registra uno nuevo. (M7) |
+| `SALE_VOIDED` | 409 | Esta venta está anulada porque se revirtió la salida del animal. (M7) |
+| `VALUATION_NO_PRICE` | 422 | No hay precio por kilo para la categoría {category}. Configúralo en Configuración → Finca. (M7) |
+| `VALUATION_NO_WEIGHT` | 422 | El animal no tiene pesajes: registra un peso o pon el valor a mano. (M7) |
 | `WORK_SESSION_CLOSED` | 409 | La jornada ya fue cerrada. |
 | `IMPORT_FILE_INVALID` | 422 | El archivo no tiene el formato de la plantilla. |
 | `IMPORT_TOO_MANY_ROWS` | 413 | El archivo supera las 5.000 filas. |
