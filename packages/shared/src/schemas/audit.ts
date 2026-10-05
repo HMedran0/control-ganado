@@ -1,9 +1,10 @@
 /**
  * Consulta de la auditoría (AUD-01 CA2, `GET /audit`). Solo ADMIN.
  *
- * La respuesta ya trae los identificadores resueltos a nombres (raza, lote, madre…) y **nunca**
- * trae montos: la API descarta los gastos, las ventas y los campos de precio antes de responder.
- * La web traduce los nombres de campo y las acciones a lenguaje de finca.
+ * La respuesta ya trae los identificadores resueltos a nombres (raza, lote, madre…). Desde M7
+ * trae también los montos (gastos, ventas, avalúos, valor de compra): la ruta es solo del ADMIN,
+ * que los ve en todas partes (RN-20). La web traduce los nombres de campo y las acciones a
+ * lenguaje de finca.
  */
 
 import { z } from 'zod';
@@ -13,9 +14,9 @@ import type { AuditAction } from '../enums.js';
 import { isoDateSchema } from './catalogs.js';
 
 /**
- * Entidades que se pueden consultar. Las económicas no están: sus diferencias son montos.
- * Desde M7 entran los eventos de M5 y M6: preñeces (los partos son cambios de la preñez),
- * vacunaciones, tratamientos, pesajes, perfiles de báscula e importaciones.
+ * Entidades que se pueden consultar. Desde M7 entran los eventos de M5 y M6 —preñeces (los partos
+ * son cambios de la preñez), vacunaciones, tratamientos, pesajes, perfiles de báscula e
+ * importaciones— y las económicas: gastos, ventas y avalúos.
  */
 export const AUDIT_ENTITY = {
   ANIMAL: 'Animal',
@@ -33,6 +34,9 @@ export const AUDIT_ENTITY = {
   WEIGHT_RECORD: 'WeightRecord',
   SCALE_PROFILE: 'ScaleProfile',
   IMPORT_BATCH: 'ImportBatch',
+  EXPENSE: 'Expense',
+  SALE: 'Sale',
+  VALUATION: 'Valuation',
 } as const;
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];
 

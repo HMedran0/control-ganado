@@ -53,6 +53,12 @@ import {
   requireAdmin,
   userOf,
 } from './animal-rules.js';
+import {
+  insertExpense,
+  lockExpense,
+  reviseExpense,
+  voidExpense,
+} from '../finance/expense-writes.js';
 import { assertCodeAvailable } from './code-availability.js';
 import { FarmContextService, type FarmContext } from './farm-context.service.js';
 import { checkIdentifier, type CheckedIdentifier } from './identifier-rules.js';
@@ -976,66 +982,45 @@ export class AnimalsService {
     );
   }
 
+  /** El gasto de compra del animal: directo, todo a él (ANI-01 CA2, ECO-01). */
   private async createPurchaseExpense(
     tx: Tx,
     scope: FarmScope,
     input: { animalId: string; code: string; amount: string; occurredOn: IsoDate; at: Date },
   ): Promise<void> {
-    const expenseId = uuidv7();
-    await tx.expense.create({
-      data: {
-        id: expenseId,
-        farmId: scope.farmId,
-        type: 'PURCHASE',
-        occurredOn: toPrismaDate(input.occurredOn),
-        amount: new Prisma.Decimal(input.amount),
-        description: `Compra del animal ${input.code}`,
-        allocationMethod: 'DIRECT',
-        createdById: userOf(scope),
-        updatedById: userOf(scope),
-        createdAt: input.at,
-        allocations: {
-          create: {
-            id: uuidv7(),
-            farmId: scope.farmId,
-            animalId: input.animalId,
-            amount: new Prisma.Decimal(input.amount),
-          },
-        },
-      },
-    });
-    await audit(tx, {
-      scope,
-      entity: 'Expense',
-      entityId: expenseId,
-      action: AUDIT_ACTION.CREATE,
+    const amount = new Prisma.Decimal(input.amount).toFixed(2);
+    await insertExpense(tx, scope, {
+      id: uuidv7(),
       at: input.at,
-      diff: {
-        after: {
-          type: 'PURCHASE',
-          amount: new Prisma.Decimal(input.amount).toFixed(2),
-          animalId: input.animalId,
-          occurredOn: input.occurredOn,
-        },
-      },
+      type: 'PURCHASE',
+      occurredOn: input.occurredOn,
+      amount,
+      description: `Compra del animal ${input.code}`,
+      method: 'DIRECT',
+      lotId: null,
+      allocations: [{ animalId: input.animalId, amount }],
     });
   }
 
-  /** Cambia, crea o anula (con `null`) el gasto de compra del animal. */
+  /**
+   * Cambia, crea o anula (con `null`) el gasto de compra del animal, con el mismo núcleo que
+   * Finanzas (ADR-016): cambiar el monto anula la asignación anterior y crea la nueva.
+   */
   private async setPurchasePrice(
     tx: Tx,
     scope: FarmScope,
     input: { animalId: string; code: string; amount: string | null; occurredOn: IsoDate; at: Date },
   ): Promise<void> {
-    const current = await tx.expense.findFirst({
+    const found = await tx.expense.findFirst({
       where: {
         farmId: scope.farmId,
         type: 'PURCHASE',
         voidedAt: null,
-        allocations: { some: { animalId: input.animalId } },
+        allocations: { some: { animalId: input.animalId, voidedAt: null } },
       },
-      include: { allocations: true },
+      select: { id: true },
     });
+    const current = found === null ? null : await lockExpense(tx, scope, found.id);
 
     if (current === null) {
       if (input.amount !== null) {
@@ -1043,40 +1028,23 @@ export class AnimalsService {
       }
       return;
     }
-
-    const before = current.amount.toFixed(2);
     if (input.amount === null) {
-      await tx.expense.update({
-        where: { id: current.id },
-        data: {
-          voidedAt: input.at,
-          voidReason: 'Se quitó el valor de compra de la ficha del animal.',
-        },
-      });
-      await audit(tx, {
+      await voidExpense(
+        tx,
         scope,
-        entity: 'Expense',
-        entityId: current.id,
-        action: AUDIT_ACTION.VOID,
-        at: input.at,
-        diff: { before: { amount: before } },
-      });
+        current,
+        'Se quitó el valor de compra de la ficha del animal.',
+        input.at,
+      );
       return;
     }
-
-    const amount = new Prisma.Decimal(input.amount);
-    await tx.expense.update({ where: { id: current.id }, data: { amount } });
-    await tx.expenseAllocation.updateMany({
-      where: { expenseId: current.id, animalId: input.animalId },
-      data: { amount },
-    });
-    await audit(tx, {
+    const amount = new Prisma.Decimal(input.amount).toFixed(2);
+    await reviseExpense(
+      tx,
       scope,
-      entity: 'Expense',
-      entityId: current.id,
-      action: AUDIT_ACTION.UPDATE,
-      at: input.at,
-      diff: changesBetween({ amount: before }, { amount: amount.toFixed(2) }, ['amount']),
-    });
+      current,
+      { ...current, amount, allocations: [{ animalId: input.animalId, amount }] },
+      input.at,
+    );
   }
 }

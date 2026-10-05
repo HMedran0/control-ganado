@@ -97,6 +97,41 @@ describe('Cambios en lenguaje de finca (AUD-01 CA2)', () => {
     );
   });
 
+  it('finanzas (M7): el ADMIN ve los montos en pesos y la corrección como frase', () => {
+    const sale = entry({
+      action: 'UPDATE',
+      entity: 'Sale',
+      entityLabel: null,
+      animalCode: '087',
+      user: { id: 'h', name: 'Héctor' },
+      changes: [{ field: 'amount', before: '3200000.00', after: '2800000.00' }],
+    });
+    expect(entryTitle(sale)).toBe('Héctor corrigió la venta de 087');
+    expect(changeText(sale.changes[0] as AuditEntryView['changes'][number], 'Sale')).toBe(
+      'Precio: $ 3.200.000 → $ 2.800.000',
+    );
+    expect(
+      entryTitle(
+        entry({
+          action: 'UPDATE',
+          entity: 'Expense',
+          entityLabel: 'Sal mineralizada',
+          entityDate: '2026-05-12' as AuditEntryView['entityDate'],
+          user: { id: 'h', name: 'Héctor' },
+        }),
+      ),
+    ).toBe('Héctor corrigió el gasto Sal mineralizada del 12/05/2026');
+    expect(changeText({ field: 'share', before: '4737.00', after: '4865.00' }, 'Expense')).toBe(
+      'Su parte: $ 4.737 → $ 4.865',
+    );
+    expect(changeText({ field: 'type', before: null, after: 'FEED' }, 'Expense')).toBe(
+      'Tipo de gasto: Alimentación',
+    );
+    expect(changeText({ field: 'purchasePrice', before: null, after: '2800000.00' })).toBe(
+      'Valor de compra: $ 2.800.000',
+    );
+  });
+
   it('fecha y hora en la zona de la finca', () => {
     expect(entryMeta(entry({}), 'America/Bogota')).toMatch(/^25\/09\/2026, 7:00/);
   });

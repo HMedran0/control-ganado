@@ -1,4 +1,8 @@
 import {
+  ALLOCATION_METHOD_LABEL,
+  EXPENSE_TYPE_LABEL,
+  VALUATION_METHOD_LABEL,
+  formatCop,
   formatDate,
   formatDecimalEsCo,
   formatWeight,
@@ -27,7 +31,7 @@ import { EXIT_TYPE_LABEL, FIELD_LABEL } from './history';
  * Redacción de la pestaña «Cambios» (AUD-01 CA2) en lenguaje de finca: cada entrada es una
  * frase con quién, qué hizo y sobre qué («Wilmer anuló la vacuna Aftosa del 12/05/2026»), y
  * debajo los campos que cambiaron, sin nombres de campos ni valores internos. La API ya cambió
- * los ids por nombres y nunca manda montos.
+ * los ids por nombres. Desde M7 trae montos (la pestaña es solo del ADMIN, RN-20): van en pesos.
  */
 
 /** Campos que no son del formulario del animal: salida, archivo e identificadores. */
@@ -85,12 +89,28 @@ const EXTRA_FIELD_LABEL: Readonly<Record<string, string>> = {
   sourceTemplateKey: 'plantilla',
   fileName: 'archivo',
   created: 'registros creados',
+  // Finanzas (M7). El ADMIN ve los montos también aquí (RN-20).
+  purchasePrice: 'valor de compra',
+  amount: 'monto',
+  description: 'descripción',
+  occurredOn: 'fecha',
+  animalCount: 'animales',
+  share: 'su parte',
+  buyer: 'comprador',
+  soldOn: 'fecha de venta',
+  valuedOn: 'fecha del avalúo',
 };
 
 /** El mismo campo con otro sentido según la entidad: `method` de la preñez o del pesaje. */
 const FIELD_LABEL_BY_ENTITY: Partial<Record<AuditEntity, Readonly<Record<string, string>>>> = {
   Pregnancy: { method: 'tipo de servicio' },
+  Expense: { type: 'tipo de gasto', method: 'reparto' },
+  Sale: { amount: 'precio' },
+  Valuation: { amount: 'valor', method: 'cálculo' },
 };
+
+/** Campos con montos: en pesos, sin decimales (RNF-13). */
+const MONEY_FIELDS = new Set(['amount', 'purchasePrice', 'share', 'cost']);
 
 const ENUM_LABELS: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   sex: SEX_LABEL,
@@ -108,6 +128,8 @@ const ENUM_LABELS_BY_ENTITY: Partial<
 > = {
   Pregnancy: { method: SERVICE_METHOD_LABEL },
   WeightRecord: { method: WEIGHT_METHOD_LABEL },
+  Expense: { type: EXPENSE_TYPE_LABEL, method: ALLOCATION_METHOD_LABEL },
+  Valuation: { method: VALUATION_METHOD_LABEL },
 };
 
 const IDENTIFIER_LIST_FIELDS = new Set([
@@ -138,6 +160,9 @@ function identifierLabel(text: string): string {
 export function valueText(field: string, value: AuditValue, entity?: AuditEntity): string {
   if (value === null || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'Sí' : 'No';
+  if (MONEY_FIELDS.has(field) && (typeof value === 'string' || typeof value === 'number')) {
+    return moneyText(value);
+  }
   if (typeof value === 'number') return formatDecimalEsCo(String(value), 2, true);
   if (Array.isArray(value)) {
     if (value.length === 0) return '—';
@@ -153,6 +178,16 @@ export function valueText(field: string, value: AuditValue, entity?: AuditEntity
   if (labels !== undefined && text in labels) return labels[text] ?? text;
   if (isIsoDate(text)) return formatDate(text);
   return text;
+}
+
+/** «$ 3.200.000»; si el valor no es un monto válido, tal cual. */
+function moneyText(value: string | number): string {
+  const text = typeof value === 'number' ? value.toFixed(2) : value;
+  try {
+    return formatCop(text);
+  } catch {
+    return text;
+  }
 }
 
 /** Una línea por cambio: «Lote: — → Levante», o solo el valor nuevo en un registro. */
@@ -245,11 +280,21 @@ export function entrySubject(entry: AuditEntryView): string {
       return `la finca ${label}`.trim();
     case 'User':
       return `el usuario ${label}`.trim();
+    case 'Expense':
+      return `el gasto ${label}${onDate(entry)}`.trim();
+    case 'Sale':
+      return `la venta de ${entry.animalCode ?? ''}`.trim();
+    case 'Valuation':
+      return `el avalúo de ${entry.animalCode ?? ''}${onDate(entry)}`.trim();
   }
 }
 
 /** El verbo: en una preñez, el desenlace nuevo dice si fue un parto, un aborto o vacía. */
 function entryVerb(entry: AuditEntryView): string {
+  // «Héctor corrigió la venta de 087»: en lo económico, cambiar es corregir.
+  if (entry.action === 'UPDATE' && (entry.entity === 'Expense' || entry.entity === 'Sale')) {
+    return 'corrigió';
+  }
   if (entry.entity === 'Pregnancy' && entry.action === 'UPDATE') {
     const outcome = entry.changes.find((change) => change.field === 'outcome')?.after;
     if (typeof outcome === 'string' && outcome in OUTCOME_VERB) return OUTCOME_VERB[outcome] ?? '';

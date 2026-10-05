@@ -662,7 +662,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
   });
 
   describe('GET /audit (AUD-01 CA2)', () => {
-    it('por animal: el animal y sus identificadores, con nombres en vez de ids y sin montos', async () => {
+    it('por animal: el animal, sus identificadores y su venta, con nombres en vez de ids y con montos (solo ADMIN, M7)', async () => {
       const lotId = uuidv7();
       await prisma.lot.create({ data: { id: lotId, farmId: retiro.farmId, name: 'Levante' } });
       const animal = await create(admin, retiro, {
@@ -682,6 +682,7 @@ describe('Salida, archivo y numeración reutilizable', () => {
       expect(page.items.map((item) => [item.entity, item.action])).toEqual([
         ['Animal', 'EXIT'],
         ['Identifier', 'UPDATE'],
+        ['Sale', 'CREATE'],
         ['Animal', 'UPDATE'],
         ['Animal', 'CREATE'],
       ]);
@@ -689,9 +690,11 @@ describe('Salida, archivo y numeración reutilizable', () => {
       expect(edit?.changes).toContainEqual({ field: 'lotId', before: null, after: 'Levante' });
       expect(edit?.entityLabel).toBe('5');
       expect(edit?.user?.name).toBe('Usuario de El Retiro');
-      const body = JSON.stringify(page);
-      expect(body).not.toContain('3500000');
-      expect(body).not.toContain('amount');
+      // M7: /audit es solo del ADMIN, que ve los montos (RN-20).
+      const sale = page.items.find((item) => item.entity === 'Sale');
+      expect(sale?.animalCode).toBe('5');
+      expect(sale?.entityDate).toBe('2026-09-20');
+      expect(sale?.changes).toContainEqual({ field: 'amount', before: null, after: '3500000.00' });
     });
 
     it('pagina y filtra por entidad y fechas', async () => {

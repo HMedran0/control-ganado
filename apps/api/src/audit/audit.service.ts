@@ -31,9 +31,6 @@ type AuditRow = {
   user_name: string | null;
 };
 
-/** Campos con montos: nunca salen de la API por aquí (RN-20, CLAUDE.md regla 2). */
-const MONEY_FIELD = /amount|price|cost/i;
-
 /** Campos internos que no le dicen nada a quien consulta. */
 const HIDDEN_FIELDS = new Set([
   'id',
@@ -42,7 +39,11 @@ const HIDDEN_FIELDS = new Set([
   'replacedById',
   'importBatchId',
   'workSessionId',
+  'treatmentId',
 ]);
+
+/** Campo de un gasto con su reparto: un mapa `animalId → monto` (ADR-016). */
+const ALLOCATIONS_FIELD = 'allocations';
 
 /** Campos que sobran en una entidad concreta: la madre de una preñez ya es su animal. */
 const HIDDEN_BY_ENTITY: Partial<Record<AuditEntity, ReadonlySet<string>>> = {
@@ -66,9 +67,12 @@ const ENTITIES = Object.values(AUDIT_ENTITY);
 /**
  * Consulta de la auditoría (AUD-01 CA2), solo ADMIN.
  *
- * Solo lee las entidades de `AUDIT_ENTITY`: los gastos, las ventas y los inicios de sesión no
- * salen por aquí, y de las demás se quitan los campos con montos. Los ids (raza, lote, madre,
- * etiquetas) se devuelven como nombre o código, para que la web los muestre en lenguaje de finca.
+ * Solo lee las entidades de `AUDIT_ENTITY` (los inicios de sesión no salen por aquí). Desde M7
+ * trae los montos: la ruta es solo del ADMIN, que ve los montos en todas partes (RN-20); que
+ * ningún otro rol los reciba lo garantizan el 403 y la prueba de barrido de RN-20. Los ids (raza,
+ * lote, madre, etiquetas…) se devuelven como nombre o código, para que la web los muestre en
+ * lenguaje de finca. El reparto de un gasto llega como el número de animales (`animalCount`) o,
+ * en la ficha de un animal, como su parte (`share`).
  */
 @Injectable()
 export class AuditService {
@@ -107,7 +111,12 @@ export class AuditService {
            WHERE t.farm_id = ${farm} AND t.animal_id = ${animalRef}))
         OR (l.entity = ${AUDIT_ENTITY.WEIGHT_RECORD} AND l.entity_id IN (
           SELECT w.id FROM weight_records w
-           WHERE w.farm_id = ${farm} AND w.animal_id = ${animalRef})))`);
+           WHERE w.farm_id = ${farm} AND w.animal_id = ${animalRef}))
+        OR (l.entity = ${AUDIT_ENTITY.SALE} AND l.entity_id IN (
+          SELECT s.id FROM sales s WHERE s.farm_id = ${farm} AND s.animal_id = ${animalRef}))
+        OR (l.entity = ${AUDIT_ENTITY.EXPENSE} AND l.entity_id IN (
+          SELECT ea.expense_id FROM expense_allocations ea
+           WHERE ea.farm_id = ${farm} AND ea.animal_id = ${animalRef})))`);
     }
     if (query.entity !== undefined) filters.push(Prisma.sql`l.entity = ${query.entity}`);
     if (query.entityId !== undefined) {
@@ -139,7 +148,7 @@ export class AuditService {
 
     const hasMore = rows.length > pagination.limit;
     const page = hasMore ? rows.slice(0, pagination.limit) : rows;
-    const changes = page.map((row) => rawChanges(row.diff, row.entity));
+    const changes = page.map((row) => rawChanges(row.diff, row.entity, query.animalId ?? null));
     const names = await this.resolveReferences(scope, changes.flat());
     const labels = await this.entityLabels(scope, page);
 
@@ -335,7 +344,19 @@ export class AuditService {
       UNION ALL
       SELECT b.id, b.file_name, NULL, NULL
         FROM import_batches b
-       WHERE b.farm_id = ${farm} AND b.id = ANY(${ids(AUDIT_ENTITY.IMPORT_BATCH)})`);
+       WHERE b.farm_id = ${farm} AND b.id = ANY(${ids(AUDIT_ENTITY.IMPORT_BATCH)})
+      UNION ALL
+      SELECT e.id, e.description, to_char(e.occurred_on, 'YYYY-MM-DD'), NULL
+        FROM expenses e
+       WHERE e.farm_id = ${farm} AND e.id = ANY(${ids(AUDIT_ENTITY.EXPENSE)})
+      UNION ALL
+      SELECT s.id, NULL, to_char(s.sold_on, 'YYYY-MM-DD'), a.code
+        FROM sales s JOIN animals a ON a.id = s.animal_id
+       WHERE s.farm_id = ${farm} AND s.id = ANY(${ids(AUDIT_ENTITY.SALE)})
+      UNION ALL
+      SELECT v.id, NULL, to_char(v.valued_on, 'YYYY-MM-DD'), a.code
+        FROM valuations v JOIN animals a ON a.id = v.animal_id
+       WHERE v.farm_id = ${farm} AND v.id = ANY(${ids(AUDIT_ENTITY.VALUATION)})`);
     return rows.map(
       (row) =>
         [
@@ -371,7 +392,7 @@ type RawChange = { field: string; before: unknown; after: unknown };
  * `{ changed, before, after }` (ediciones), `{ after }` (creación, salida, archivo) y
  * `{ before, after }` o `{ before }` (identificadores, reversiones, anulaciones).
  */
-function rawChanges(diff: unknown, entity: AuditEntity): RawChange[] {
+function rawChanges(diff: unknown, entity: AuditEntity, animalId: string | null): RawChange[] {
   if (typeof diff !== 'object' || diff === null || Array.isArray(diff)) return [];
   const { changed, before, after } = diff as {
     changed?: unknown;
@@ -386,8 +407,13 @@ function rawChanges(diff: unknown, entity: AuditEntity): RawChange[] {
 
   const result: RawChange[] = [];
   for (const field of fields) {
-    if (HIDDEN_FIELDS.has(field) || MONEY_FIELD.test(field)) continue;
+    if (HIDDEN_FIELDS.has(field)) continue;
     if (HIDDEN_BY_ENTITY[entity]?.has(field) === true) continue;
+    if (field === ALLOCATIONS_FIELD) {
+      const change = allocationChange(beforeRecord[field], afterRecord[field], animalId);
+      if (change !== null) result.push(change);
+      continue;
+    }
     // La contraseña cambió, pero su hash no le importa a nadie: se muestra sin valores.
     if (field === 'passwordHash') {
       result.push({ field: 'password', before: null, after: null });
@@ -399,6 +425,28 @@ function rawChanges(diff: unknown, entity: AuditEntity): RawChange[] {
     result.push({ field, before: beforeValue, after: afterValue });
   }
   return result;
+}
+
+/**
+ * El reparto de un gasto, legible: en la ficha de un animal, su parte antes y después (`share`);
+ * en las demás consultas, cuántos animales (`animalCount`). `null` si no cambió.
+ */
+function allocationChange(
+  before: unknown,
+  after: unknown,
+  animalId: string | null,
+): RawChange | null {
+  const beforeMap = asRecord(before);
+  const afterMap = asRecord(after);
+  const change: RawChange =
+    animalId === null
+      ? {
+          field: 'animalCount',
+          before: before === undefined ? null : Object.keys(beforeMap).length,
+          after: after === undefined ? null : Object.keys(afterMap).length,
+        }
+      : { field: 'share', before: beforeMap[animalId] ?? null, after: afterMap[animalId] ?? null };
+  return JSON.stringify(change.before) === JSON.stringify(change.after) ? null : change;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

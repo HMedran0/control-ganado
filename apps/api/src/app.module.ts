@@ -20,6 +20,7 @@ import { ReproductionModule } from './reproduction/reproduction.module.js';
 import { SanitaryModule } from './sanitary/sanitary.module.js';
 import { UsersModule } from './users/users.module.js';
 import { WeightsModule } from './weights/weights.module.js';
+import { FinanceModule } from './finance/finance.module.js';
 
 /**
  * Módulo raíz.
@@ -46,6 +47,7 @@ import { WeightsModule } from './weights/weights.module.js';
     ReproductionModule,
     SanitaryModule,
     WeightsModule,
+    FinanceModule,
     AlertsModule,
     ImportsModule,
     AuditModule,

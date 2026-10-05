@@ -26,6 +26,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, fromPrismaDateOrNull, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { insertExpense, lockExpense, voidExpense } from '../finance/expense-writes.js';
 import { assertEventDate, lockEventAnimal } from './event-rules.js';
 
 const include = {
@@ -164,46 +165,19 @@ export class TreatmentsService {
 
       let expenseId: string | null = null;
       if (input.cost !== undefined) {
+        // Gasto directo del animal tratado (SAN-05), con el núcleo de Finanzas (ADR-016).
         expenseId = uuidv7();
-        const amount = new Prisma.Decimal(input.cost);
-        await tx.expense.create({
-          data: {
-            id: expenseId,
-            farmId: scope.farmId,
-            type: 'MEDICATION',
-            occurredOn: toPrismaDate(input.startedOn),
-            amount,
-            description: `Tratamiento de ${animal.code}: ${input.medication}`,
-            allocationMethod: 'DIRECT',
-            createdById: userId,
-            updatedById: userId,
-            createdAt: at,
-            updatedAt: at,
-            allocations: {
-              create: {
-                id: uuidv7(),
-                farmId: scope.farmId,
-                animalId: animal.id,
-                amount,
-                updatedAt: at,
-              },
-            },
-          },
-        });
-        await audit(tx, {
-          scope,
-          entity: 'Expense',
-          entityId: expenseId,
-          action: AUDIT_ACTION.CREATE,
+        const amount = new Prisma.Decimal(input.cost).toFixed(2);
+        await insertExpense(tx, scope, {
+          id: expenseId,
           at,
-          diff: {
-            after: {
-              type: 'MEDICATION',
-              amount: amount.toFixed(2),
-              animalId: animal.id,
-              occurredOn: input.startedOn,
-            },
-          },
+          type: 'MEDICATION',
+          occurredOn: input.startedOn,
+          amount,
+          description: `Tratamiento de ${animal.code}: ${input.medication}`,
+          method: 'DIRECT',
+          lotId: null,
+          allocations: [{ animalId: animal.id, amount }],
         });
       }
 
@@ -271,10 +245,10 @@ export class TreatmentsService {
       });
       // El gasto del tratamiento deja de contar en la inversión del animal (RN-18).
       if (current.expenseId !== null) {
-        await tx.expense.updateMany({
-          where: { id: current.expenseId, voidedAt: null },
-          data: { voidedAt: at, voidReason: `Tratamiento anulado: ${input.reason}` },
-        });
+        const expense = await lockExpense(tx, scope, current.expenseId);
+        if (expense !== null) {
+          await voidExpense(tx, scope, expense, `Tratamiento anulado: ${input.reason}`, at);
+        }
       }
       await audit(tx, {
         scope,

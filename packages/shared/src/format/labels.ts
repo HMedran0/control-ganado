@@ -1,11 +1,14 @@
 import type {
+  AllocationMethod,
   AnimalAlert,
   AnimalStatus,
   DerivedTag,
+  ExpenseType,
   IdentifierType,
   ManagementCategory,
   Origin,
   Sex,
+  ValuationMethod,
 } from '../enums.js';
 
 /**
@@ -63,4 +66,29 @@ export const IDENTIFIER_TYPE_LABEL: Readonly<Record<IdentifierType, string>> = {
   QR: 'QR',
   BRAND: 'Hierro',
   OTHER: 'Otro',
+};
+
+/** Tipos de gasto (ECO-01). */
+export const EXPENSE_TYPE_LABEL: Readonly<Record<ExpenseType, string>> = {
+  PURCHASE: 'Compra',
+  FEED: 'Alimentación',
+  MEDICATION: 'Medicamentos',
+  VACCINE: 'Vacunas',
+  VETERINARY: 'Veterinario',
+  TRANSPORT: 'Transporte',
+  OTHER: 'Otro',
+};
+
+/** A quién se carga un gasto (ECO-01, ECO-02). */
+export const ALLOCATION_METHOD_LABEL: Readonly<Record<AllocationMethod, string>> = {
+  DIRECT: 'Un animal',
+  EQUAL: 'Partes iguales',
+  BY_WEIGHT: 'Según el peso',
+  GENERAL: 'Gasto general',
+};
+
+/** Cómo se calculó un avalúo (ECO-03). */
+export const VALUATION_METHOD_LABEL: Readonly<Record<ValuationMethod, string>> = {
+  MANUAL: 'A mano',
+  PRICE_PER_KG: 'Peso × precio por kilo',
 };

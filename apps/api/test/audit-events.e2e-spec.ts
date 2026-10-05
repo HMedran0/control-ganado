@@ -16,7 +16,7 @@ import {
 /**
  * `GET /audit` con los eventos de M5 y M6 (ajuste previo de M7): preñeces y partos,
  * vacunaciones, tratamientos, pesajes, perfiles de báscula e importaciones, nombrados en
- * lenguaje de finca. Sigue siendo solo del ADMIN y sin montos.
+ * lenguaje de finca. Sigue siendo solo del ADMIN; desde M7, con montos.
  */
 describe('GET /audit con los eventos de M5 y M6', () => {
   let app: NestFastifyApplication;
@@ -124,6 +124,7 @@ describe('GET /audit con los eventos de M5 y M6', () => {
       ['Pregnancy', 'CREATE'],
       ['WeightRecord', 'CREATE'],
       ['TreatmentRecord', 'CREATE'],
+      ['Expense', 'CREATE'],
       ['VaccinationRecord', 'VOID'],
       ['VaccinationRecord', 'CREATE'],
     ]);
@@ -163,10 +164,11 @@ describe('GET /audit con los eventos de M5 y M6', () => {
     // La madre de la preñez es el mismo animal: no se repite como cambio.
     expect(pregnancy?.changes.map((change) => change.field)).not.toContain('damId');
 
-    // RN-20: ni el costo del tratamiento ni su gasto salen por aquí.
-    const body = JSON.stringify(items);
-    expect(body).not.toContain('85000');
-    expect(body).not.toMatch(/"(cost|amount)"/);
+    // M7: el gasto del tratamiento aparece con su monto y la parte del animal (solo ADMIN).
+    const expense = items.find((item) => item.entity === 'Expense');
+    expect(expense?.entityLabel).toBe('Tratamiento de 087: Oxitetraciclina');
+    expect(expense?.changes).toContainEqual({ field: 'amount', before: null, after: '85000.00' });
+    expect(expense?.changes).toContainEqual({ field: 'share', before: null, after: '85000.00' });
   });
 
   it('perfiles de báscula e importaciones se consultan por entidad', async () => {
