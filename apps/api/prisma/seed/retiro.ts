@@ -300,6 +300,7 @@ export async function writeRetiroSeed(
             amount: new Prisma.Decimal(animal.sale.amount),
             buyer: animal.sale.buyer,
             createdById: seed.userId,
+            updatedById: seed.userId,
             createdAt: instantOf(animal.exit.date),
             updatedAt: instantOf(animal.exit.date),
           },

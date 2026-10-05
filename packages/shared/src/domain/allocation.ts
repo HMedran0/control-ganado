@@ -4,6 +4,11 @@
  * La suma de las asignaciones es **exactamente** el monto del gasto; el residuo del redondeo
  * se suma a la primera asignación.
  *
+ * **Orden determinista (ADR-016):** los animales se ordenan por `animalId` (el UUIDv7 en texto y
+ * minúsculas, el mismo orden que `ORDER BY id` de PostgreSQL sobre `uuid`) y el residuo va
+ * siempre al primero de ese orden. El mismo gasto con los mismos animales da siempre el mismo
+ * reparto, lleguen en el orden que lleguen.
+ *
  * El reparto se hace en **pesos enteros**: en Colombia no circulan centavos y RNF-13 muestra
  * los montos sin decimales, así que repartir $100.000 entre 3 da 33.334 + 33.333 + 33.333 y
  * no 33.333,34. Si el monto trae centavos, van completos a la primera asignación. Todo el
@@ -39,28 +44,39 @@ export type AllocateExpenseInput = {
 
 const WEIGHT_PATTERN = /^\d{1,7}(\.\d{1,2})?$/;
 
-/** Peso en gramos, como `bigint`, para repartir sin punto flotante. */
-function weightInGrams(target: AllocationTarget): bigint {
+/** Peso en gramos, como `bigint`, para repartir sin punto flotante; `null` si no sirve. */
+function weightInGrams(target: AllocationTarget): bigint | null {
   const raw = target.weightKg;
-  if (raw === null || raw === undefined || !WEIGHT_PATTERN.test(raw.trim())) {
-    throw new DomainError('ALLOCATION_NO_WEIGHT');
-  }
+  if (raw === null || raw === undefined || !WEIGHT_PATTERN.test(raw.trim())) return null;
   const [whole = '0', fraction = ''] = raw.trim().split('.');
   const grams = BigInt(whole) * 1000n + BigInt(fraction.padEnd(3, '0'));
-  if (grams === 0n) throw new DomainError('ALLOCATION_NO_WEIGHT');
-  return grams;
+  return grams === 0n ? null : grams;
+}
+
+/** Orden del reparto: por `animalId`, comparando unidades de código (sin configuración regional). */
+export function compareAllocationOrder(a: { animalId: string }, b: { animalId: string }): number {
+  return a.animalId < b.animalId ? -1 : a.animalId > b.animalId ? 1 : 0;
 }
 
 /**
- * Reparte un gasto entre animales (RN-17).
+ * Reparte un gasto entre animales (RN-17). Las asignaciones salen ordenadas por `animalId` y el
+ * residuo va a la primera.
  *
  * @throws {DomainError} `ALLOCATION_EMPTY` si no hay animales.
+ * @throws {DomainError} `VALIDATION_FAILED` si un animal aparece dos veces.
  * @throws {DomainError} `ALLOCATION_NO_WEIGHT` si el método es `BY_WEIGHT` y algún animal no
- *   tiene peso registrado o su peso es cero.
+ *   tiene peso registrado o su peso es cero; `context.animalIds` los lista separados por comas.
  */
 export function allocateExpense(input: AllocateExpenseInput): ExpenseAllocation[] {
-  const { animals } = input;
-  if (animals.length === 0) throw new DomainError('ALLOCATION_EMPTY');
+  if (input.animals.length === 0) throw new DomainError('ALLOCATION_EMPTY');
+  const animals = [...input.animals].sort(compareAllocationOrder);
+  for (let index = 1; index < animals.length; index += 1) {
+    if (animals[index]?.animalId === animals[index - 1]?.animalId) {
+      throw new DomainError('VALIDATION_FAILED', {
+        detail: 'Un animal aparece dos veces en el reparto del gasto.',
+      });
+    }
+  }
 
   const totalCents = parseMoney(input.totalAmount);
   const count = BigInt(animals.length);
@@ -86,7 +102,14 @@ function sharesEqually(totalCents: bigint, count: bigint, length: number): bigin
 }
 
 function sharesByWeight(totalCents: bigint, animals: readonly AllocationTarget[]): bigint[] {
-  const grams = animals.map(weightInGrams);
+  const weights = animals.map(weightInGrams);
+  const missing = animals.filter((_animal, index) => weights[index] === null);
+  if (missing.length > 0) {
+    throw new DomainError('ALLOCATION_NO_WEIGHT', {
+      context: { animalIds: missing.map((animal) => animal.animalId).join(',') },
+    });
+  }
+  const grams = weights.map((value) => value ?? 0n);
   const totalGrams = grams.reduce((sum, value) => sum + value, 0n);
   return grams.map(
     (value) => ((totalCents * value) / totalGrams / CENTS_PER_PESO) * CENTS_PER_PESO,

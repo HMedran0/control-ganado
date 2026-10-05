@@ -176,6 +176,7 @@ export class TreatmentsService {
             description: `Tratamiento de ${animal.code}: ${input.medication}`,
             allocationMethod: 'DIRECT',
             createdById: userId,
+            updatedById: userId,
             createdAt: at,
             updatedAt: at,
             allocations: {

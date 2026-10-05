@@ -229,6 +229,8 @@ export const ALLOCATION_METHOD = {
   DIRECT: 'DIRECT',
   EQUAL: 'EQUAL',
   BY_WEIGHT: 'BY_WEIGHT',
+  /** Gasto general de la finca (M7): sin asignaciones; no entra en la inversión por animal. */
+  GENERAL: 'GENERAL',
 } as const;
 export type AllocationMethod = (typeof ALLOCATION_METHOD)[keyof typeof ALLOCATION_METHOD];
 

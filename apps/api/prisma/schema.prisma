@@ -147,6 +147,8 @@ enum AllocationMethod {
   DIRECT
   EQUAL
   BY_WEIGHT
+  /// Gasto general de la finca (M7): no se asigna a animales ni entra en su inversión.
+  GENERAL
 }
 
 enum ValuationMethod {
@@ -312,8 +314,9 @@ model Lot {
   version     Int      @default(1)
   updatedAt   DateTime @default(now()) @map("updated_at") @db.Timestamptz
 
-  farm    Farm     @relation(fields: [farmId], references: [id])
-  animals Animal[]
+  farm     Farm      @relation(fields: [farmId], references: [id])
+  animals  Animal[]
+  expenses Expense[]
 
   @@unique([farmId, name])
   @@index([farmId, updatedAt])
@@ -633,13 +636,19 @@ model Expense {
   amount           Decimal          @db.Decimal(14, 2)
   description      String
   allocationMethod AllocationMethod @map("allocation_method")
+  /// Lote elegido al repartir (M7). Las asignaciones se fijan al guardar: los animales que
+  /// entren o salgan del lote después no cambian el reparto.
+  lotId            String?          @map("lot_id") @db.Uuid
+  version          Int              @default(1)
   createdById      String           @map("created_by_id") @db.Uuid
+  updatedById      String           @map("updated_by_id") @db.Uuid
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime         @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt         DateTime?        @map("voided_at") @db.Timestamptz
   voidReason       String?          @map("void_reason")
 
   farm        Farm                @relation(fields: [farmId], references: [id])
+  lot         Lot?                @relation(fields: [lotId], references: [id])
   allocations ExpenseAllocation[]
   treatments  TreatmentRecord[]
 
@@ -649,12 +658,15 @@ model Expense {
 }
 
 model ExpenseAllocation {
-  id        String   @id @db.Uuid
-  farmId    String   @map("farm_id") @db.Uuid
-  expenseId String   @map("expense_id") @db.Uuid
-  animalId  String   @map("animal_id") @db.Uuid
-  amount    Decimal  @db.Decimal(14, 2)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz
+  id        String    @id @db.Uuid
+  farmId    String    @map("farm_id") @db.Uuid
+  expenseId String    @map("expense_id") @db.Uuid
+  animalId  String    @map("animal_id") @db.Uuid
+  amount    Decimal   @db.Decimal(14, 2)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime  @default(now()) @map("updated_at") @db.Timestamptz
+  /// Anulada al anular el gasto o al corregirlo (M7, RN-11): la corrección crea las nuevas.
+  voidedAt  DateTime? @map("voided_at") @db.Timestamptz
 
   expense Expense @relation(fields: [expenseId], references: [id])
   animal  Animal  @relation(fields: [animalId], references: [id])
@@ -673,7 +685,9 @@ model Sale {
   amount      Decimal   @db.Decimal(14, 2)
   buyer       String?
   notes       String?
+  version     Int       @default(1)
   createdById String    @map("created_by_id") @db.Uuid
+  updatedById String    @map("updated_by_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime  @default(now()) @map("updated_at") @db.Timestamptz
   voidedAt    DateTime? @map("voided_at") @db.Timestamptz
@@ -697,6 +711,9 @@ model Valuation {
   createdById String          @map("created_by_id") @db.Uuid
   createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
   updatedAt   DateTime        @default(now()) @map("updated_at") @db.Timestamptz
+  /// Un avalúo no se edita: se anula y se registra otro (M7).
+  voidedAt    DateTime?       @map("voided_at") @db.Timestamptz
+  voidReason  String?         @map("void_reason")
 
   animal Animal @relation(fields: [animalId], references: [id])
 

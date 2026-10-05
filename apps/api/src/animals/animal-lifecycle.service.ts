@@ -151,6 +151,7 @@ export class AnimalLifecycleService {
             amount: new Prisma.Decimal(amount),
             buyer: input.sale?.buyer ?? null,
             createdById: userId,
+            updatedById: userId,
             createdAt: at,
           },
         });

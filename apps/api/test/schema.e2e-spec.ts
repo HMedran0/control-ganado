@@ -36,6 +36,7 @@ describe('Esquema de la base de datos', () => {
     ['identifiers_farm_type_value_active_uq', 'retired_at IS NULL'],
     ['pregnancies_dam_pending_uq', "outcome = 'PENDING'"],
     ['sales_animal_active_uq', 'voided_at IS NULL'],
+    ['expense_allocations_active_uq', 'voided_at IS NULL'],
   ])('tiene el índice único parcial %s con su condición', async (name, condition) => {
     const rows = await prisma.$queryRaw<{ indexdef: string }[]>`
       SELECT indexdef FROM pg_indexes WHERE schemaname = 'public' AND indexname = ${name}
@@ -80,7 +81,7 @@ describe('Esquema de la base de datos', () => {
     },
   );
 
-  it('tiene las 19 restricciones CHECK (14 de la migración manual, la de M4d, dos de M5 y dos de M6)', async () => {
+  it('tiene las 21 restricciones CHECK (14 de la migración manual, la de M4d, dos de M5, dos de M6 y dos de M7)', async () => {
     const rows = await prisma.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE contype = 'c' AND connamespace = 'public'::regnamespace
@@ -98,6 +99,7 @@ describe('Esquema de la base de datos', () => {
       'breed_gestation_ck',
       'cycle_dates_ck',
       'expense_amount_positive_ck',
+      'expense_general_without_lot_ck',
       'identifier_rfid_format_ck',
       'pregnancy_stillborn_ck',
       'sale_amount_positive_ck',
@@ -105,6 +107,7 @@ describe('Esquema de la base de datos', () => {
       'vaccination_cycle_vaccines_removed_ck',
       'vaccine_age_window_ck',
       'vaccine_interval_ck',
+      'valuation_amount_positive_ck',
       'weight_positive_ck',
       'weight_records_scale_identified_ck',
     ]);

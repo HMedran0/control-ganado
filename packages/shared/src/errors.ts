@@ -86,6 +86,29 @@ export const ERROR_CATALOG = {
     status: 422,
     detail: 'Hay animales sin peso registrado; usa reparto en partes iguales.',
   },
+  /** ECO-01 (M7): la compra se registra en el formulario del animal, no como gasto suelto. */
+  EXPENSE_PURCHASE_FROM_ANIMAL: {
+    status: 422,
+    detail: 'El valor de compra se registra en la ficha del animal, al crearlo o editarlo.',
+  },
+  /** ECO-01 (M7): un gasto anulado no se corrige; se registra otro. */
+  EXPENSE_VOIDED: { status: 409, detail: 'Este gasto está anulado: registra uno nuevo.' },
+  /** ECO-04 (M7): una venta anulada (se revirtió la salida) no se corrige. */
+  SALE_VOIDED: {
+    status: 409,
+    detail: 'Esta venta está anulada porque se revirtió la salida del animal.',
+  },
+  /** ECO-03 (M7): avalúo por precio por kilo sin precio para la categoría del animal. */
+  VALUATION_NO_PRICE: {
+    status: 422,
+    detail:
+      'No hay precio por kilo para la categoría {category}. Configúralo en Configuración → Finca.',
+  },
+  /** ECO-03 (M7): avalúo por precio por kilo de un animal sin pesajes. */
+  VALUATION_NO_WEIGHT: {
+    status: 422,
+    detail: 'El animal no tiene pesajes: registra un peso o pon el valor a mano.',
+  },
   WORK_SESSION_CLOSED: { status: 409, detail: 'La jornada ya fue cerrada.' },
   IMPORT_FILE_INVALID: { status: 422, detail: 'El archivo no tiene el formato de la plantilla.' },
   IMPORT_TOO_MANY_ROWS: { status: 413, detail: 'El archivo supera las 5.000 filas.' },

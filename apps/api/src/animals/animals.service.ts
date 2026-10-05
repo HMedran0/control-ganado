@@ -992,6 +992,7 @@ export class AnimalsService {
         description: `Compra del animal ${input.code}`,
         allocationMethod: 'DIRECT',
         createdById: userOf(scope),
+        updatedById: userOf(scope),
         createdAt: input.at,
         allocations: {
           create: {
