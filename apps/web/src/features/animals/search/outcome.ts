@@ -11,6 +11,8 @@ export type SearchOutcome =
       readonly animalId: string;
       /** Si coincidió por un identificador retirado, cuál («Identificador anterior»). */
       readonly previous: { readonly type: string; readonly value: string } | null;
+      /** Por qué coincidió: un QR del sistema escaneado cuenta como identificado por QR. */
+      readonly via: SearchMatch;
     }
   /** Varias coincidencias, difusas o ninguna: la pantalla de resultados. */
   | { readonly kind: 'results' };
@@ -18,7 +20,12 @@ export type SearchOutcome =
 export function searchOutcome(result: SearchResult): SearchOutcome {
   const exact = result.exactMatch;
   if (exact === null) return { kind: 'results' };
-  return { kind: 'open', animalId: exact.animalId, previous: previousIdentifier(exact.via) };
+  return {
+    kind: 'open',
+    animalId: exact.animalId,
+    previous: previousIdentifier(exact.via),
+    via: exact.via,
+  };
 }
 
 function previousIdentifier(match: SearchMatch): { type: string; value: string } | null {

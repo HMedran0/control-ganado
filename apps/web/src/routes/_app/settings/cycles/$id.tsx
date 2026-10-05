@@ -1,6 +1,7 @@
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router';
 
 import { RequireRole } from '../../../../components/layout/RequireRole';
+import { CycleProgress } from '../../../../features/health/CycleProgress';
 import { CatalogEditor } from '../../../../features/settings/CatalogEditor';
 import { CycleForm } from '../../../../features/settings/forms/CycleForm';
 import { PRIMARY_LINK } from '../../../../features/settings/SettingsHeader';
@@ -29,6 +30,9 @@ function EditCyclePage() {
           <CycleForm cycle={item} onSaved={onSaved} onReload={onReload} />
         )}
       />
+      <div className="mt-8">
+        <CycleProgress cycleId={id} />
+      </div>
     </RequireRole>
   );
 }

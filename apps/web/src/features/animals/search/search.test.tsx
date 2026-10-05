@@ -36,7 +36,7 @@ describe('flujo de búsqueda (ANI-05)', () => {
         },
         items: [item(ID, '045', true)],
       }),
-    ).toEqual({ kind: 'open', animalId: ID, previous: null });
+    ).toMatchObject({ kind: 'open', animalId: ID, previous: null, via: { kind: 'IDENTIFIER' } });
   });
 
   it('por un identificador retirado: abre la ficha y dice cuál era (IDN-02 CA2)', () => {
@@ -49,7 +49,11 @@ describe('flujo de búsqueda (ANI-05)', () => {
         },
         items: [],
       }),
-    ).toEqual({ kind: 'open', animalId: ID, previous: { type: 'VISUAL_TAG', value: '087' } });
+    ).toMatchObject({
+      kind: 'open',
+      animalId: ID,
+      previous: { type: 'VISUAL_TAG', value: '087' },
+    });
   });
 
   it('sin coincidencia exacta única: la pantalla de resultados', () => {

@@ -7,7 +7,7 @@ import {
 } from '@hato/shared';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import { Pencil, SearchX } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { AlertBanner } from '../../../components/ui/AlertBanner';
 import { Chapeta } from '../../../components/ui/Chapeta';
@@ -31,18 +31,18 @@ import '../nav-state';
 import { animalBanners, type BannerAction } from './banners';
 import { CodeHistoryBanner } from './CodeHistoryBanner';
 import { LifecycleActions } from './Lifecycle';
+import { HealthTab } from '../../health/HealthTab';
 import { ReproductionTab } from '../../reproduction/ReproductionTab';
 import { ChangesTab, CostsTab, GenealogyTab, HistoryTab, SummaryTab } from './sections';
+import type { DetailTab } from './tabs';
 
-export const DETAIL_TABS = [
-  'resumen',
-  'reproduccion',
-  'genealogia',
-  'costos',
-  'historial',
-  'cambios',
-] as const;
-export type DetailTab = (typeof DETAIL_TABS)[number];
+/**
+ * La pestaña Pesos trae la gráfica: se carga solo al abrirla, para no sumar al paquete principal
+ * (decisión de M6).
+ */
+const WeightsTab = lazy(() => import('../../weights/WeightsTab'));
+
+export { DETAIL_TABS, type DetailTab } from './tabs';
 
 /**
  * Ficha del animal (ANI-07, 06 §5.3): encabezado con la chapeta, identificadores, clasificación,
@@ -131,6 +131,27 @@ function Detail({
           },
         ]
       : []),
+    {
+      value: 'sanidad',
+      label: 'Sanidad',
+      content: (
+        <HealthTab
+          animal={animal}
+          today={today}
+          isAdmin={isAdmin}
+          canVoid={session.role === 'ADMIN' || session.role === 'VET'}
+        />
+      ),
+    },
+    {
+      value: 'pesos',
+      label: 'Pesos',
+      content: (
+        <Suspense fallback={<p className="text-texto-2">Cargando…</p>}>
+          <WeightsTab animal={animal} />
+        </Suspense>
+      ),
+    },
     { value: 'genealogia', label: 'Genealogía', content: <GenealogyTab animal={animal} /> },
     ...(isAdmin
       ? [{ value: 'costos' as const, label: 'Costos', content: <CostsTab animal={animal} /> }]
@@ -147,15 +168,42 @@ function Detail({
   const exitLabel = exitLabelFor(animal.status);
   const banners = animalBanners(animal, today);
   const navigate = useNavigate();
-  const bannerAction = (action: BannerAction) => ({
-    label: action === 'calving' ? 'Registrar parto' : 'Registrar palpación',
-    onClick: () => {
-      void navigate({
-        to: action === 'calving' ? '/animals/$id/calving' : '/animals/$id/diagnosis',
-        params: { id: animal.id },
-      });
-    },
-  });
+  const bannerAction = (action: BannerAction) => {
+    switch (action.kind) {
+      case 'calving':
+        return {
+          label: 'Registrar parto',
+          onClick: () => {
+            void navigate({ to: '/animals/$id/calving', params: { id: animal.id } });
+          },
+        };
+      case 'diagnosis':
+        return {
+          label: 'Registrar palpación',
+          onClick: () => {
+            void navigate({ to: '/animals/$id/diagnosis', params: { id: animal.id } });
+          },
+        };
+      case 'vaccine':
+        return {
+          label: 'Registrar vacuna',
+          onClick: () => {
+            void navigate({
+              to: '/animals/$id/vaccination',
+              params: { id: animal.id },
+              search: { vaccineId: action.vaccineId },
+            });
+          },
+        };
+      case 'weight':
+        return {
+          label: 'Registrar peso',
+          onClick: () => {
+            void navigate({ to: '/animals/$id/weight', params: { id: animal.id } });
+          },
+        };
+    }
+  };
 
   return (
     <div className="lg:grid lg:grid-cols-[20rem_1fr] lg:items-start lg:gap-8">
@@ -200,6 +248,26 @@ function Detail({
           {animal.forSale ? <Tag tone="potrero">Disponible para venta</Tag> : null}
           {animal.lot === null ? null : <Tag tone="neutro">Lote {animal.lot.name}</Tag>}
         </div>
+        {animal.status !== 'ACTIVE' ? null : (
+          <div role="group" aria-label="Registrar" className="flex flex-wrap gap-2">
+            {(
+              [
+                ['/animals/$id/vaccination', 'Vacuna'],
+                ['/animals/$id/weight', 'Peso'],
+                ['/animals/$id/treatment', 'Tratamiento'],
+              ] as const
+            ).map(([to, label]) => (
+              <Link
+                key={to}
+                to={to}
+                params={{ id: animal.id }}
+                className="inline-flex min-h-touch items-center rounded-control bg-potrero px-4 font-bold text-superficie hover:opacity-90"
+              >
+                {label}
+              </Link>
+            ))}
+          </div>
+        )}
         {animal.archive !== null ? null : (
           <Link
             to="/animals/$id/edit"

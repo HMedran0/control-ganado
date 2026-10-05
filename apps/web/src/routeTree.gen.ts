@@ -31,12 +31,17 @@ import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/ind
 import { Route as AppSettingsArchivedRouteImport } from './routes/_app/settings/archived'
 import { Route as AppSettingsFarmRouteImport } from './routes/_app/settings/farm'
 import { Route as AppSettingsImportRouteImport } from './routes/_app/settings/import'
+import { Route as AppVaccinationsBulkRouteImport } from './routes/_app/vaccinations/bulk'
+import { Route as AppWeightsImportRouteImport } from './routes/_app/weights/import'
 import { Route as AppAnimalsIdIndexRouteImport } from './routes/_app/animals/$id/index'
 import { Route as AppAnimalsIdAbortionRouteImport } from './routes/_app/animals/$id/abortion'
 import { Route as AppAnimalsIdCalvingRouteImport } from './routes/_app/animals/$id/calving'
 import { Route as AppAnimalsIdDiagnosisRouteImport } from './routes/_app/animals/$id/diagnosis'
 import { Route as AppAnimalsIdEditRouteImport } from './routes/_app/animals/$id/edit'
 import { Route as AppAnimalsIdServiceRouteImport } from './routes/_app/animals/$id/service'
+import { Route as AppAnimalsIdTreatmentRouteImport } from './routes/_app/animals/$id/treatment'
+import { Route as AppAnimalsIdVaccinationRouteImport } from './routes/_app/animals/$id/vaccination'
+import { Route as AppAnimalsIdWeightRouteImport } from './routes/_app/animals/$id/weight'
 import { Route as AppSettingsBreedsIndexRouteImport } from './routes/_app/settings/breeds/index'
 import { Route as AppSettingsBreedsIdRouteImport } from './routes/_app/settings/breeds/$id'
 import { Route as AppSettingsBreedsNewRouteImport } from './routes/_app/settings/breeds/new'
@@ -165,6 +170,16 @@ const AppSettingsImportRoute = AppSettingsImportRouteImport.update({
   path: '/settings/import',
   getParentRoute: () => AppRoute,
 } as any)
+const AppVaccinationsBulkRoute = AppVaccinationsBulkRouteImport.update({
+  id: '/vaccinations/bulk',
+  path: '/vaccinations/bulk',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppWeightsImportRoute = AppWeightsImportRouteImport.update({
+  id: '/weights/import',
+  path: '/weights/import',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAnimalsIdIndexRoute = AppAnimalsIdIndexRouteImport.update({
   id: '/animals/$id/',
   path: '/animals/$id/',
@@ -193,6 +208,21 @@ const AppAnimalsIdEditRoute = AppAnimalsIdEditRouteImport.update({
 const AppAnimalsIdServiceRoute = AppAnimalsIdServiceRouteImport.update({
   id: '/animals/$id/service',
   path: '/animals/$id/service',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsIdTreatmentRoute = AppAnimalsIdTreatmentRouteImport.update({
+  id: '/animals/$id/treatment',
+  path: '/animals/$id/treatment',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsIdVaccinationRoute = AppAnimalsIdVaccinationRouteImport.update({
+  id: '/animals/$id/vaccination',
+  path: '/animals/$id/vaccination',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAnimalsIdWeightRoute = AppAnimalsIdWeightRouteImport.update({
+  id: '/animals/$id/weight',
+  path: '/animals/$id/weight',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsBreedsIndexRoute = AppSettingsBreedsIndexRouteImport.update({
@@ -306,6 +336,8 @@ export interface FileRoutesByFullPath {
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
   '/settings/import': typeof AppSettingsImportRoute
+  '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
+  '/weights/import': typeof AppWeightsImportRoute
   '/animals/': typeof AppAnimalsIndexRoute
   '/reports/': typeof AppReportsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
@@ -314,6 +346,9 @@ export interface FileRoutesByFullPath {
   '/animals/$id/diagnosis': typeof AppAnimalsIdDiagnosisRoute
   '/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/animals/$id/service': typeof AppAnimalsIdServiceRoute
+  '/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
+  '/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
+  '/animals/$id/weight': typeof AppAnimalsIdWeightRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -353,6 +388,8 @@ export interface FileRoutesByTo {
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/farm': typeof AppSettingsFarmRoute
   '/settings/import': typeof AppSettingsImportRoute
+  '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
+  '/weights/import': typeof AppWeightsImportRoute
   '/animals': typeof AppAnimalsIndexRoute
   '/reports': typeof AppReportsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
@@ -361,6 +398,9 @@ export interface FileRoutesByTo {
   '/animals/$id/diagnosis': typeof AppAnimalsIdDiagnosisRoute
   '/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/animals/$id/service': typeof AppAnimalsIdServiceRoute
+  '/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
+  '/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
+  '/animals/$id/weight': typeof AppAnimalsIdWeightRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -402,6 +442,8 @@ export interface FileRoutesById {
   '/_app/settings/archived': typeof AppSettingsArchivedRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
   '/_app/settings/import': typeof AppSettingsImportRoute
+  '/_app/vaccinations/bulk': typeof AppVaccinationsBulkRoute
+  '/_app/weights/import': typeof AppWeightsImportRoute
   '/_app/animals/': typeof AppAnimalsIndexRoute
   '/_app/reports/': typeof AppReportsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
@@ -410,6 +452,9 @@ export interface FileRoutesById {
   '/_app/animals/$id/diagnosis': typeof AppAnimalsIdDiagnosisRoute
   '/_app/animals/$id/edit': typeof AppAnimalsIdEditRoute
   '/_app/animals/$id/service': typeof AppAnimalsIdServiceRoute
+  '/_app/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
+  '/_app/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
+  '/_app/animals/$id/weight': typeof AppAnimalsIdWeightRoute
   '/_app/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/_app/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/_app/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -451,6 +496,8 @@ export interface FileRouteTypes {
     | '/settings/archived'
     | '/settings/farm'
     | '/settings/import'
+    | '/vaccinations/bulk'
+    | '/weights/import'
     | '/animals/'
     | '/reports/'
     | '/settings/'
@@ -459,6 +506,9 @@ export interface FileRouteTypes {
     | '/animals/$id/diagnosis'
     | '/animals/$id/edit'
     | '/animals/$id/service'
+    | '/animals/$id/treatment'
+    | '/animals/$id/vaccination'
+    | '/animals/$id/weight'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -498,6 +548,8 @@ export interface FileRouteTypes {
     | '/settings/archived'
     | '/settings/farm'
     | '/settings/import'
+    | '/vaccinations/bulk'
+    | '/weights/import'
     | '/animals'
     | '/reports'
     | '/settings'
@@ -506,6 +558,9 @@ export interface FileRouteTypes {
     | '/animals/$id/diagnosis'
     | '/animals/$id/edit'
     | '/animals/$id/service'
+    | '/animals/$id/treatment'
+    | '/animals/$id/vaccination'
+    | '/animals/$id/weight'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -546,6 +601,8 @@ export interface FileRouteTypes {
     | '/_app/settings/archived'
     | '/_app/settings/farm'
     | '/_app/settings/import'
+    | '/_app/vaccinations/bulk'
+    | '/_app/weights/import'
     | '/_app/animals/'
     | '/_app/reports/'
     | '/_app/settings/'
@@ -554,6 +611,9 @@ export interface FileRouteTypes {
     | '/_app/animals/$id/diagnosis'
     | '/_app/animals/$id/edit'
     | '/_app/animals/$id/service'
+    | '/_app/animals/$id/treatment'
+    | '/_app/animals/$id/vaccination'
+    | '/_app/animals/$id/weight'
     | '/_app/settings/breeds/$id'
     | '/_app/settings/breeds/new'
     | '/_app/settings/cycles/$id'
@@ -738,6 +798,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsImportRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/vaccinations/bulk': {
+      id: '/_app/vaccinations/bulk'
+      path: '/vaccinations/bulk'
+      fullPath: '/vaccinations/bulk'
+      preLoaderRoute: typeof AppVaccinationsBulkRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/weights/import': {
+      id: '/_app/weights/import'
+      path: '/weights/import'
+      fullPath: '/weights/import'
+      preLoaderRoute: typeof AppWeightsImportRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/animals/$id/': {
       id: '/_app/animals/$id/'
       path: '/animals/$id'
@@ -778,6 +852,27 @@ declare module '@tanstack/react-router' {
       path: '/animals/$id/service'
       fullPath: '/animals/$id/service'
       preLoaderRoute: typeof AppAnimalsIdServiceRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/$id/treatment': {
+      id: '/_app/animals/$id/treatment'
+      path: '/animals/$id/treatment'
+      fullPath: '/animals/$id/treatment'
+      preLoaderRoute: typeof AppAnimalsIdTreatmentRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/$id/vaccination': {
+      id: '/_app/animals/$id/vaccination'
+      path: '/animals/$id/vaccination'
+      fullPath: '/animals/$id/vaccination'
+      preLoaderRoute: typeof AppAnimalsIdVaccinationRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/animals/$id/weight': {
+      id: '/_app/animals/$id/weight'
+      path: '/animals/$id/weight'
+      fullPath: '/animals/$id/weight'
+      preLoaderRoute: typeof AppAnimalsIdWeightRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/breeds/': {
@@ -925,6 +1020,8 @@ interface AppRouteChildren {
   AppSettingsArchivedRoute: typeof AppSettingsArchivedRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
   AppSettingsImportRoute: typeof AppSettingsImportRoute
+  AppVaccinationsBulkRoute: typeof AppVaccinationsBulkRoute
+  AppWeightsImportRoute: typeof AppWeightsImportRoute
   AppAnimalsIndexRoute: typeof AppAnimalsIndexRoute
   AppReportsIndexRoute: typeof AppReportsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
@@ -933,6 +1030,9 @@ interface AppRouteChildren {
   AppAnimalsIdDiagnosisRoute: typeof AppAnimalsIdDiagnosisRoute
   AppAnimalsIdEditRoute: typeof AppAnimalsIdEditRoute
   AppAnimalsIdServiceRoute: typeof AppAnimalsIdServiceRoute
+  AppAnimalsIdTreatmentRoute: typeof AppAnimalsIdTreatmentRoute
+  AppAnimalsIdVaccinationRoute: typeof AppAnimalsIdVaccinationRoute
+  AppAnimalsIdWeightRoute: typeof AppAnimalsIdWeightRoute
   AppSettingsBreedsIdRoute: typeof AppSettingsBreedsIdRoute
   AppSettingsBreedsNewRoute: typeof AppSettingsBreedsNewRoute
   AppSettingsCyclesIdRoute: typeof AppSettingsCyclesIdRoute
@@ -970,6 +1070,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsArchivedRoute: AppSettingsArchivedRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,
   AppSettingsImportRoute: AppSettingsImportRoute,
+  AppVaccinationsBulkRoute: AppVaccinationsBulkRoute,
+  AppWeightsImportRoute: AppWeightsImportRoute,
   AppAnimalsIndexRoute: AppAnimalsIndexRoute,
   AppReportsIndexRoute: AppReportsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
@@ -978,6 +1080,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnimalsIdDiagnosisRoute: AppAnimalsIdDiagnosisRoute,
   AppAnimalsIdEditRoute: AppAnimalsIdEditRoute,
   AppAnimalsIdServiceRoute: AppAnimalsIdServiceRoute,
+  AppAnimalsIdTreatmentRoute: AppAnimalsIdTreatmentRoute,
+  AppAnimalsIdVaccinationRoute: AppAnimalsIdVaccinationRoute,
+  AppAnimalsIdWeightRoute: AppAnimalsIdWeightRoute,
   AppSettingsBreedsIdRoute: AppSettingsBreedsIdRoute,
   AppSettingsBreedsNewRoute: AppSettingsBreedsNewRoute,
   AppSettingsCyclesIdRoute: AppSettingsCyclesIdRoute,

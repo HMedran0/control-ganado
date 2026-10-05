@@ -110,6 +110,7 @@ describe('avisos de la ficha (06 §5.3)', () => {
         tone: 'alerta',
         title: 'Aftosa vencida hace 6 días',
         description: 'Faltó en el último ciclo oficial de vacunación.',
+        action: { kind: 'vaccine', vaccineId: 'v' },
       },
     ]);
   });
@@ -162,8 +163,55 @@ describe('avisos de la ficha (06 §5.3)', () => {
       tone: 'alerta',
       title: 'Pasó la fecha de parto: registra el parto o el aborto',
       description: 'El parto estaba estimado para el 01/09/2026 (hace 24 días).',
-      action: 'calving',
+      action: { kind: 'calving' },
     });
+  });
+
+  it('M6: el retiro dice hasta cuándo para carne y para leche', () => {
+    const [banner] = animalBanners(
+      animal({
+        alerts: ['withdrawal'],
+        withdrawalUntil: toIsoDate('2026-10-21'),
+        withdrawals: { meatUntil: toIsoDate('2026-10-21'), milkUntil: toIsoDate('2026-09-30') },
+      }),
+      HOY,
+    );
+    expect(banner).toMatchObject({
+      title: 'En retiro hasta el 21/10/2026',
+      description: 'Carne hasta el 21/10/2026 · Leche hasta el 30/09/2026',
+    });
+  });
+
+  it('M6: ganancia baja y pérdida de peso, con la acción de registrar el peso', () => {
+    const banners = animalBanners(
+      animal({
+        alerts: ['low_gain', 'weight_loss'],
+        weight: {
+          gains: { lastTwo: -0.4, last90Days: 0.163, sinceBirth: 0.5 },
+          gainThreshold: 0.3,
+          lowGain: true,
+          weightLoss: true,
+          lossPercent: 8,
+        },
+      }),
+      HOY,
+    );
+    expect(banners).toEqual([
+      {
+        key: 'low-gain',
+        tone: 'aviso',
+        title: 'Ganancia baja: 0,163 kg/día en los últimos 90 días',
+        description: 'Lo esperado para su categoría es al menos 0,3 kg/día.',
+        action: { kind: 'weight' },
+      },
+      {
+        key: 'weight-loss',
+        tone: 'alerta',
+        title: 'Perdió peso: bajó 8 % desde el pesaje anterior',
+        description: 'Revisa su estado y vuelve a pesarlo.',
+        action: { kind: 'weight' },
+      },
+    ]);
   });
 
   it('un animal que ya salió no tiene avisos', () => {

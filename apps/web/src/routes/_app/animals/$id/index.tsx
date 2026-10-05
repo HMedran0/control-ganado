@@ -1,10 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 
-import {
-  AnimalDetailPage,
-  DETAIL_TABS,
-  type DetailTab,
-} from '../../../../features/animals/detail/AnimalDetailPage';
+import { AnimalDetailPage } from '../../../../features/animals/detail/AnimalDetailPage';
+import { DETAIL_TABS, type DetailTab } from '../../../../features/animals/detail/tabs';
 
 type DetailSearch = { tab?: DetailTab; anterior?: string };
 

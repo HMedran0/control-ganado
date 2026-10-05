@@ -1,5 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { updateFarmSchema, type CodeSuggestion, type FarmView } from '@hato/shared';
+import {
+  MANAGEMENT_CATEGORY,
+  updateFarmSchema,
+  type CodeSuggestion,
+  type FarmView,
+  type ManagementCategory,
+} from '@hato/shared';
 import { CircleCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Controller, useForm, useWatch, type Control } from 'react-hook-form';
@@ -9,6 +15,7 @@ import { AlertBanner } from '../../../components/ui/AlertBanner';
 import { NumberField } from '../../../components/ui/NumberField';
 import { SegmentedChoice } from '../../../components/ui/SegmentedChoice';
 import { TextField } from '../../../components/ui/TextField';
+import { CATEGORY_LABEL } from '../../animals/labels';
 import { useUpdateFarm } from '../api';
 import { FormActions } from '../FormActions';
 import { isVersionConflict, saveErrorMessage } from '../form-errors';
@@ -20,7 +27,9 @@ type NumericSetting =
   | 'minBreedingAgeMonths'
   | 'calvingAlertDays'
   | 'vaccineAlertDays'
-  | 'unconfirmedServiceAlertDays';
+  | 'unconfirmedServiceAlertDays'
+  | 'weightLossAlertPercent'
+  | 'weightGainAnchorMaxDays';
 
 /**
  * Datos y parámetros de la finca (CFG-01). Cambiar el destete o la gestación de la finca cambia
@@ -65,6 +74,9 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
         rabiesRiskZone: settings.rabiesRiskZone,
         codeReuse: settings.codeReuse,
         codeSuggestion: settings.codeSuggestion,
+        weightGainAlertKgPerDay: settings.weightGainAlertKgPerDay,
+        weightLossAlertPercent: settings.weightLossAlertPercent,
+        weightGainAnchorMaxDays: settings.weightGainAnchorMaxDays,
       },
     },
   });
@@ -171,6 +183,57 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
             error={errors.settings?.vaccineAlertDays?.message}
           />
         </div>
+        <fieldset className="flex flex-col gap-4 rounded-panel border-2 border-cerca p-4">
+          <legend className="px-1 font-bold">Pesos (PES-05)</legend>
+          <p className="text-texto-2">
+            «Ganancia baja» cuando la ganancia de los últimos 90 días es menor que el umbral de su
+            categoría. Deja vacía una categoría para no alertarla.
+          </p>
+          <Controller
+            control={control}
+            name="settings.weightGainAlertKgPerDay"
+            render={({ field }) => {
+              const value = (field.value ?? {}) as Partial<Record<ManagementCategory, number>>;
+              return (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {Object.values(MANAGEMENT_CATEGORY).map((category) => (
+                    <NumberField
+                      key={category}
+                      label={`${CATEGORY_LABEL[category]}: ganancia mínima`}
+                      unit="kg/día"
+                      maxDecimals={3}
+                      value={value[category] === undefined ? null : String(value[category])}
+                      onChange={(next) => {
+                        const updated = { ...value };
+                        if (next === null || next === '') delete updated[category];
+                        else updated[category] = Number(next);
+                        field.onChange(updated);
+                      }}
+                    />
+                  ))}
+                </div>
+              );
+            }}
+          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <SettingNumber
+              control={control}
+              name="weightLossAlertPercent"
+              label="«Perdió peso» si baja más de"
+              unit="%"
+              hint="Respecto al pesaje anterior."
+              error={errors.settings?.weightLossAlertPercent?.message}
+            />
+            <SettingNumber
+              control={control}
+              name="weightGainAnchorMaxDays"
+              label="Pesaje anterior a la ventana de 90 días, a lo sumo"
+              unit="días"
+              hint="Con pesaje trimestral, el anterior completa la ventana."
+              error={errors.settings?.weightGainAnchorMaxDays?.message}
+            />
+          </div>
+        </fieldset>
         <Controller
           control={control}
           name="settings.rabiesRiskZone"

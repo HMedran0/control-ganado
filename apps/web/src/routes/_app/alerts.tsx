@@ -1,22 +1,23 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { Bell } from 'lucide-react';
 
-import { PageHeader } from '../../components/layout/PageHeader';
-import { EmptyState } from '../../components/ui/EmptyState';
+import { AlertsPage, type AlertsSearch } from '../../features/alerts/AlertsPage';
 
+/** Alertas (M6). Los filtros de tipo y lote van en la URL (06 §4). */
 export const Route = createFileRoute('/_app/alerts')({
-  component: AlertsPage,
-});
-
-function AlertsPage() {
-  return (
-    <>
-      <PageHeader title="Alertas" />
-      <EmptyState
-        icon={Bell}
-        title="Sin alertas por ahora"
-        description="Aquí vas a ver las vacunas vencidas, los partos próximos, las servidas sin diagnóstico y los animales en retiro."
+  validateSearch: (search: Record<string, unknown>): AlertsSearch => ({
+    ...(typeof search.types === 'string' && search.types !== '' ? { types: search.types } : {}),
+    ...(typeof search.lotId === 'string' && search.lotId !== '' ? { lotId: search.lotId } : {}),
+  }),
+  component: function AlertsRoute() {
+    const search = Route.useSearch();
+    const navigate = Route.useNavigate();
+    return (
+      <AlertsPage
+        search={search}
+        onSearch={(next) => {
+          void navigate({ search: next, replace: true, resetScroll: false });
+        }}
       />
-    </>
-  );
-}
+    );
+  },
+});

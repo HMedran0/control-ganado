@@ -4,6 +4,7 @@ import { useCallback } from 'react';
 
 import type { SearchSource } from '../../../components/ui/SearchBar';
 import { useAuth } from '../../../lib/auth/context';
+import { rememberIdentification } from '../../../lib/identification/identification';
 import { fetchSearch } from '../api';
 import { searchOutcome } from './outcome';
 
@@ -21,12 +22,17 @@ export function useAnimalSearch(): (q: string, source?: SearchSource) => Promise
   const navigate = useNavigate();
 
   return useCallback(
-    async (q: string) => {
+    async (q: string, source?: SearchSource) => {
       const query = q.trim();
       if (query === '') return;
       try {
         const outcome = searchOutcome(await fetchSearch(api, queryClient, query));
         if (outcome.kind === 'open') {
+          // PES-01, PIL-05: el formulario de peso propone cómo se identificó al animal.
+          rememberIdentification(
+            outcome.animalId,
+            source === 'lector' ? 'RFID_READER' : outcome.via.kind === 'QR' ? 'QR' : 'SEARCH',
+          );
           await navigate({
             to: '/animals/$id',
             params: { id: outcome.animalId },
