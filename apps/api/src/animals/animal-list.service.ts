@@ -157,7 +157,26 @@ export class AnimalListService {
     const context = await this.farmContext.load(scope);
 
     const conditions = this.conditions(scope, query);
-    const sort = SORTS[query.sort];
+    const {
+      rows: page,
+      nextCursor,
+      total,
+    } = await this.page(scope, context, conditions, query.sort, pagination);
+    return { items: await this.toItems(scope, context, page), nextCursor, total };
+  }
+
+  /**
+   * Una página de filas crudas con las condiciones dadas (sobre `classified c` y `animals a`), en
+   * el orden pedido. La usan el listado, la exportación y la página de Alertas (M6).
+   */
+  async page(
+    scope: FarmScope,
+    context: FarmContext,
+    conditions: Prisma.Sql[],
+    sortName: AnimalSort,
+    pagination: { limit: number; cursor: CursorPayload | null },
+  ): Promise<{ rows: ListRow[]; nextCursor: string | null; total: number }> {
+    const sort = SORTS[sortName];
     const direction = sort.descending ? Prisma.sql`DESC` : Prisma.sql`ASC`;
     const cursorCondition = cursorSql(pagination.cursor, sort);
 
@@ -192,11 +211,9 @@ export class AnimalListService {
     const hasMore = rows.length > pagination.limit;
     const page = hasMore ? rows.slice(0, pagination.limit) : rows;
     const total = page[0]?.total ?? (await this.countWithoutPage(scope, context, conditions));
-    const items = await this.toItems(scope, context, page);
     const last = page.at(-1);
-
     return {
-      items,
+      rows: page,
       nextCursor:
         hasMore && last !== undefined
           ? encodeCursor({ k: sortKeyText(last.sort_key), id: last.id })

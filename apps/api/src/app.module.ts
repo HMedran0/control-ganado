@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 
+import { AlertsModule } from './alerts/alerts.module.js';
 import { AnimalsModule } from './animals/animals.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AccessGuard } from './auth/access.guard.js';
@@ -45,6 +46,7 @@ import { WeightsModule } from './weights/weights.module.js';
     ReproductionModule,
     SanitaryModule,
     WeightsModule,
+    AlertsModule,
     ImportsModule,
     AuditModule,
     HealthModule,
