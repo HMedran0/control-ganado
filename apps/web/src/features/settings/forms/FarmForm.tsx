@@ -39,8 +39,8 @@ type NumericSetting =
  * de reutilizar con números repetidos lo rechaza la API (`CODE_REUSE_CONFLICT`) con los códigos
  * en el mensaje, que se muestra tal cual.
  *
- * El precio por kilo por categoría no se edita aquí: es un dato económico y llega con Finanzas
- * (M7). Como el `PATCH` es parcial, guardar este formulario no lo toca.
+ * El precio por kilo por categoría (ECO-03, M7) solo lo ve y lo edita el ADMIN (RN-20): si la API
+ * no lo mandó, el bloque no aparece y el `PATCH`, que es parcial, no lo toca.
  */
 export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => void }) {
   const updateFarm = useUpdateFarm();
@@ -77,6 +77,10 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
         weightGainAlertKgPerDay: settings.weightGainAlertKgPerDay,
         weightLossAlertPercent: settings.weightLossAlertPercent,
         weightGainAnchorMaxDays: settings.weightGainAnchorMaxDays,
+        // Solo viene para el ADMIN (RN-20); si no vino, no se manda y el PATCH no lo toca.
+        ...(settings.pricePerKgByCategory === undefined
+          ? {}
+          : { pricePerKgByCategory: settings.pricePerKgByCategory }),
       },
     },
   });
@@ -234,6 +238,43 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
             />
           </div>
         </fieldset>
+        {settings.pricePerKgByCategory === undefined ? null : (
+          <fieldset className="flex flex-col gap-4 rounded-panel border-2 border-cerca p-4">
+            <legend className="px-1 font-bold">Precio por kilo para avalúos (ECO-03)</legend>
+            <p className="text-texto-2">
+              El avalúo por peso multiplica el último pesaje por el precio de su categoría. Deja
+              vacía una categoría si no se avalúa por peso.
+            </p>
+            <Controller
+              control={control}
+              name="settings.pricePerKgByCategory"
+              render={({ field }) => {
+                const value = (field.value ?? {}) as Partial<Record<ManagementCategory, string>>;
+                return (
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {Object.values(MANAGEMENT_CATEGORY).map((category) => (
+                      <NumberField
+                        key={category}
+                        label={`${CATEGORY_LABEL[category]}: precio por kilo`}
+                        currency
+                        value={
+                          value[category] === undefined ? null : String(Number(value[category]))
+                        }
+                        onChange={(next) => {
+                          const updated = { ...value };
+                          if (next === null || next === '') delete updated[category];
+                          else updated[category] = next;
+                          field.onChange(updated);
+                        }}
+                        error={errors.settings?.pricePerKgByCategory?.[category]?.message}
+                      />
+                    ))}
+                  </div>
+                );
+              }}
+            />
+          </fieldset>
+        )}
         <Controller
           control={control}
           name="settings.rabiesRiskZone"

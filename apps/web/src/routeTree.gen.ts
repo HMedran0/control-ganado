@@ -15,7 +15,6 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAccountRouteImport } from './routes/_app/account'
 import { Route as AppAlertsRouteImport } from './routes/_app/alerts'
-import { Route as AppFinanceRouteImport } from './routes/_app/finance'
 import { Route as AppMoreRouteImport } from './routes/_app/more'
 import { Route as AppRecordRouteImport } from './routes/_app/record'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
@@ -25,6 +24,7 @@ import { Route as AppAIdRouteImport } from './routes/_app/a/$id'
 import { Route as AppAnimalsIndexRouteImport } from './routes/_app/animals/index'
 import { Route as AppAnimalsLabelsRouteImport } from './routes/_app/animals/labels'
 import { Route as AppAnimalsNewRouteImport } from './routes/_app/animals/new'
+import { Route as AppFinanceIndexRouteImport } from './routes/_app/finance/index'
 import { Route as AppReportsIndexRouteImport } from './routes/_app/reports/index'
 import { Route as AppReportsBirthsRouteImport } from './routes/_app/reports/births'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
@@ -42,6 +42,7 @@ import { Route as AppAnimalsIdServiceRouteImport } from './routes/_app/animals/$
 import { Route as AppAnimalsIdTreatmentRouteImport } from './routes/_app/animals/$id/treatment'
 import { Route as AppAnimalsIdVaccinationRouteImport } from './routes/_app/animals/$id/vaccination'
 import { Route as AppAnimalsIdWeightRouteImport } from './routes/_app/animals/$id/weight'
+import { Route as AppFinanceExpensesNewRouteImport } from './routes/_app/finance/expenses/new'
 import { Route as AppSettingsBreedsIndexRouteImport } from './routes/_app/settings/breeds/index'
 import { Route as AppSettingsBreedsIdRouteImport } from './routes/_app/settings/breeds/$id'
 import { Route as AppSettingsBreedsNewRouteImport } from './routes/_app/settings/breeds/new'
@@ -60,6 +61,8 @@ import { Route as AppSettingsUsersNewRouteImport } from './routes/_app/settings/
 import { Route as AppSettingsVaccinesIndexRouteImport } from './routes/_app/settings/vaccines/index'
 import { Route as AppSettingsVaccinesIdRouteImport } from './routes/_app/settings/vaccines/$id'
 import { Route as AppSettingsVaccinesNewRouteImport } from './routes/_app/settings/vaccines/new'
+import { Route as AppFinanceExpensesIdIndexRouteImport } from './routes/_app/finance/expenses/$id/index'
+import { Route as AppFinanceExpensesIdEditRouteImport } from './routes/_app/finance/expenses/$id/edit'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -88,11 +91,6 @@ const AppAccountRoute = AppAccountRouteImport.update({
 const AppAlertsRoute = AppAlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppFinanceRoute = AppFinanceRouteImport.update({
-  id: '/finance',
-  path: '/finance',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMoreRoute = AppMoreRouteImport.update({
@@ -138,6 +136,11 @@ const AppAnimalsLabelsRoute = AppAnimalsLabelsRouteImport.update({
 const AppAnimalsNewRoute = AppAnimalsNewRouteImport.update({
   id: '/animals/new',
   path: '/animals/new',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceIndexRoute = AppFinanceIndexRouteImport.update({
+  id: '/finance/',
+  path: '/finance/',
   getParentRoute: () => AppRoute,
 } as any)
 const AppReportsIndexRoute = AppReportsIndexRouteImport.update({
@@ -223,6 +226,11 @@ const AppAnimalsIdVaccinationRoute = AppAnimalsIdVaccinationRouteImport.update({
 const AppAnimalsIdWeightRoute = AppAnimalsIdWeightRouteImport.update({
   id: '/animals/$id/weight',
   path: '/animals/$id/weight',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFinanceExpensesNewRoute = AppFinanceExpensesNewRouteImport.update({
+  id: '/finance/expenses/new',
+  path: '/finance/expenses/new',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsBreedsIndexRoute = AppSettingsBreedsIndexRouteImport.update({
@@ -316,6 +324,18 @@ const AppSettingsVaccinesNewRoute = AppSettingsVaccinesNewRouteImport.update({
   path: '/settings/vaccines/new',
   getParentRoute: () => AppRoute,
 } as any)
+const AppFinanceExpensesIdIndexRoute =
+  AppFinanceExpensesIdIndexRouteImport.update({
+    id: '/finance/expenses/$id/',
+    path: '/finance/expenses/$id/',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppFinanceExpensesIdEditRoute =
+  AppFinanceExpensesIdEditRouteImport.update({
+    id: '/finance/expenses/$id/edit',
+    path: '/finance/expenses/$id/edit',
+    getParentRoute: () => AppRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -323,7 +343,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/account': typeof AppAccountRoute
   '/alerts': typeof AppAlertsRoute
-  '/finance': typeof AppFinanceRoute
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/search': typeof AppSearchRoute
@@ -339,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
   '/weights/import': typeof AppWeightsImportRoute
   '/animals/': typeof AppAnimalsIndexRoute
+  '/finance/': typeof AppFinanceIndexRoute
   '/reports/': typeof AppReportsIndexRoute
   '/settings/': typeof AppSettingsIndexRoute
   '/animals/$id/abortion': typeof AppAnimalsIdAbortionRoute
@@ -349,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
   '/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
   '/animals/$id/weight': typeof AppAnimalsIdWeightRoute
+  '/finance/expenses/new': typeof AppFinanceExpensesNewRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -368,13 +389,14 @@ export interface FileRoutesByFullPath {
   '/settings/tags/': typeof AppSettingsTagsIndexRoute
   '/settings/users/': typeof AppSettingsUsersIndexRoute
   '/settings/vaccines/': typeof AppSettingsVaccinesIndexRoute
+  '/finance/expenses/$id/edit': typeof AppFinanceExpensesIdEditRoute
+  '/finance/expenses/$id/': typeof AppFinanceExpensesIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/change-password': typeof ChangePasswordRoute
   '/login': typeof LoginRoute
   '/account': typeof AppAccountRoute
   '/alerts': typeof AppAlertsRoute
-  '/finance': typeof AppFinanceRoute
   '/more': typeof AppMoreRoute
   '/record': typeof AppRecordRoute
   '/search': typeof AppSearchRoute
@@ -391,6 +413,7 @@ export interface FileRoutesByTo {
   '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
   '/weights/import': typeof AppWeightsImportRoute
   '/animals': typeof AppAnimalsIndexRoute
+  '/finance': typeof AppFinanceIndexRoute
   '/reports': typeof AppReportsIndexRoute
   '/settings': typeof AppSettingsIndexRoute
   '/animals/$id/abortion': typeof AppAnimalsIdAbortionRoute
@@ -401,6 +424,7 @@ export interface FileRoutesByTo {
   '/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
   '/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
   '/animals/$id/weight': typeof AppAnimalsIdWeightRoute
+  '/finance/expenses/new': typeof AppFinanceExpensesNewRoute
   '/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -420,6 +444,8 @@ export interface FileRoutesByTo {
   '/settings/tags': typeof AppSettingsTagsIndexRoute
   '/settings/users': typeof AppSettingsUsersIndexRoute
   '/settings/vaccines': typeof AppSettingsVaccinesIndexRoute
+  '/finance/expenses/$id/edit': typeof AppFinanceExpensesIdEditRoute
+  '/finance/expenses/$id': typeof AppFinanceExpensesIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -428,7 +454,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/account': typeof AppAccountRoute
   '/_app/alerts': typeof AppAlertsRoute
-  '/_app/finance': typeof AppFinanceRoute
   '/_app/more': typeof AppMoreRoute
   '/_app/record': typeof AppRecordRoute
   '/_app/search': typeof AppSearchRoute
@@ -445,6 +470,7 @@ export interface FileRoutesById {
   '/_app/vaccinations/bulk': typeof AppVaccinationsBulkRoute
   '/_app/weights/import': typeof AppWeightsImportRoute
   '/_app/animals/': typeof AppAnimalsIndexRoute
+  '/_app/finance/': typeof AppFinanceIndexRoute
   '/_app/reports/': typeof AppReportsIndexRoute
   '/_app/settings/': typeof AppSettingsIndexRoute
   '/_app/animals/$id/abortion': typeof AppAnimalsIdAbortionRoute
@@ -455,6 +481,7 @@ export interface FileRoutesById {
   '/_app/animals/$id/treatment': typeof AppAnimalsIdTreatmentRoute
   '/_app/animals/$id/vaccination': typeof AppAnimalsIdVaccinationRoute
   '/_app/animals/$id/weight': typeof AppAnimalsIdWeightRoute
+  '/_app/finance/expenses/new': typeof AppFinanceExpensesNewRoute
   '/_app/settings/breeds/$id': typeof AppSettingsBreedsIdRoute
   '/_app/settings/breeds/new': typeof AppSettingsBreedsNewRoute
   '/_app/settings/cycles/$id': typeof AppSettingsCyclesIdRoute
@@ -474,6 +501,8 @@ export interface FileRoutesById {
   '/_app/settings/tags/': typeof AppSettingsTagsIndexRoute
   '/_app/settings/users/': typeof AppSettingsUsersIndexRoute
   '/_app/settings/vaccines/': typeof AppSettingsVaccinesIndexRoute
+  '/_app/finance/expenses/$id/edit': typeof AppFinanceExpensesIdEditRoute
+  '/_app/finance/expenses/$id/': typeof AppFinanceExpensesIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -483,7 +512,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/account'
     | '/alerts'
-    | '/finance'
     | '/more'
     | '/record'
     | '/search'
@@ -499,6 +527,7 @@ export interface FileRouteTypes {
     | '/vaccinations/bulk'
     | '/weights/import'
     | '/animals/'
+    | '/finance/'
     | '/reports/'
     | '/settings/'
     | '/animals/$id/abortion'
@@ -509,6 +538,7 @@ export interface FileRouteTypes {
     | '/animals/$id/treatment'
     | '/animals/$id/vaccination'
     | '/animals/$id/weight'
+    | '/finance/expenses/new'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -528,13 +558,14 @@ export interface FileRouteTypes {
     | '/settings/tags/'
     | '/settings/users/'
     | '/settings/vaccines/'
+    | '/finance/expenses/$id/edit'
+    | '/finance/expenses/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/change-password'
     | '/login'
     | '/account'
     | '/alerts'
-    | '/finance'
     | '/more'
     | '/record'
     | '/search'
@@ -551,6 +582,7 @@ export interface FileRouteTypes {
     | '/vaccinations/bulk'
     | '/weights/import'
     | '/animals'
+    | '/finance'
     | '/reports'
     | '/settings'
     | '/animals/$id/abortion'
@@ -561,6 +593,7 @@ export interface FileRouteTypes {
     | '/animals/$id/treatment'
     | '/animals/$id/vaccination'
     | '/animals/$id/weight'
+    | '/finance/expenses/new'
     | '/settings/breeds/$id'
     | '/settings/breeds/new'
     | '/settings/cycles/$id'
@@ -580,6 +613,8 @@ export interface FileRouteTypes {
     | '/settings/tags'
     | '/settings/users'
     | '/settings/vaccines'
+    | '/finance/expenses/$id/edit'
+    | '/finance/expenses/$id'
   id:
     | '__root__'
     | '/_app'
@@ -587,7 +622,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/account'
     | '/_app/alerts'
-    | '/_app/finance'
     | '/_app/more'
     | '/_app/record'
     | '/_app/search'
@@ -604,6 +638,7 @@ export interface FileRouteTypes {
     | '/_app/vaccinations/bulk'
     | '/_app/weights/import'
     | '/_app/animals/'
+    | '/_app/finance/'
     | '/_app/reports/'
     | '/_app/settings/'
     | '/_app/animals/$id/abortion'
@@ -614,6 +649,7 @@ export interface FileRouteTypes {
     | '/_app/animals/$id/treatment'
     | '/_app/animals/$id/vaccination'
     | '/_app/animals/$id/weight'
+    | '/_app/finance/expenses/new'
     | '/_app/settings/breeds/$id'
     | '/_app/settings/breeds/new'
     | '/_app/settings/cycles/$id'
@@ -633,6 +669,8 @@ export interface FileRouteTypes {
     | '/_app/settings/tags/'
     | '/_app/settings/users/'
     | '/_app/settings/vaccines/'
+    | '/_app/finance/expenses/$id/edit'
+    | '/_app/finance/expenses/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -684,13 +722,6 @@ declare module '@tanstack/react-router' {
       path: '/alerts'
       fullPath: '/alerts'
       preLoaderRoute: typeof AppAlertsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/finance': {
-      id: '/_app/finance'
-      path: '/finance'
-      fullPath: '/finance'
-      preLoaderRoute: typeof AppFinanceRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/more': {
@@ -754,6 +785,13 @@ declare module '@tanstack/react-router' {
       path: '/animals/new'
       fullPath: '/animals/new'
       preLoaderRoute: typeof AppAnimalsNewRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/finance/': {
+      id: '/_app/finance/'
+      path: '/finance'
+      fullPath: '/finance/'
+      preLoaderRoute: typeof AppFinanceIndexRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/reports/': {
@@ -873,6 +911,13 @@ declare module '@tanstack/react-router' {
       path: '/animals/$id/weight'
       fullPath: '/animals/$id/weight'
       preLoaderRoute: typeof AppAnimalsIdWeightRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/finance/expenses/new': {
+      id: '/_app/finance/expenses/new'
+      path: '/finance/expenses/new'
+      fullPath: '/finance/expenses/new'
+      preLoaderRoute: typeof AppFinanceExpensesNewRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/breeds/': {
@@ -1001,13 +1046,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppSettingsVaccinesNewRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/finance/expenses/$id/': {
+      id: '/_app/finance/expenses/$id/'
+      path: '/finance/expenses/$id'
+      fullPath: '/finance/expenses/$id/'
+      preLoaderRoute: typeof AppFinanceExpensesIdIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/finance/expenses/$id/edit': {
+      id: '/_app/finance/expenses/$id/edit'
+      path: '/finance/expenses/$id/edit'
+      fullPath: '/finance/expenses/$id/edit'
+      preLoaderRoute: typeof AppFinanceExpensesIdEditRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppAccountRoute: typeof AppAccountRoute
   AppAlertsRoute: typeof AppAlertsRoute
-  AppFinanceRoute: typeof AppFinanceRoute
   AppMoreRoute: typeof AppMoreRoute
   AppRecordRoute: typeof AppRecordRoute
   AppSearchRoute: typeof AppSearchRoute
@@ -1023,6 +1081,7 @@ interface AppRouteChildren {
   AppVaccinationsBulkRoute: typeof AppVaccinationsBulkRoute
   AppWeightsImportRoute: typeof AppWeightsImportRoute
   AppAnimalsIndexRoute: typeof AppAnimalsIndexRoute
+  AppFinanceIndexRoute: typeof AppFinanceIndexRoute
   AppReportsIndexRoute: typeof AppReportsIndexRoute
   AppSettingsIndexRoute: typeof AppSettingsIndexRoute
   AppAnimalsIdAbortionRoute: typeof AppAnimalsIdAbortionRoute
@@ -1033,6 +1092,7 @@ interface AppRouteChildren {
   AppAnimalsIdTreatmentRoute: typeof AppAnimalsIdTreatmentRoute
   AppAnimalsIdVaccinationRoute: typeof AppAnimalsIdVaccinationRoute
   AppAnimalsIdWeightRoute: typeof AppAnimalsIdWeightRoute
+  AppFinanceExpensesNewRoute: typeof AppFinanceExpensesNewRoute
   AppSettingsBreedsIdRoute: typeof AppSettingsBreedsIdRoute
   AppSettingsBreedsNewRoute: typeof AppSettingsBreedsNewRoute
   AppSettingsCyclesIdRoute: typeof AppSettingsCyclesIdRoute
@@ -1052,12 +1112,13 @@ interface AppRouteChildren {
   AppSettingsTagsIndexRoute: typeof AppSettingsTagsIndexRoute
   AppSettingsUsersIndexRoute: typeof AppSettingsUsersIndexRoute
   AppSettingsVaccinesIndexRoute: typeof AppSettingsVaccinesIndexRoute
+  AppFinanceExpensesIdEditRoute: typeof AppFinanceExpensesIdEditRoute
+  AppFinanceExpensesIdIndexRoute: typeof AppFinanceExpensesIdIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAccountRoute: AppAccountRoute,
   AppAlertsRoute: AppAlertsRoute,
-  AppFinanceRoute: AppFinanceRoute,
   AppMoreRoute: AppMoreRoute,
   AppRecordRoute: AppRecordRoute,
   AppSearchRoute: AppSearchRoute,
@@ -1073,6 +1134,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppVaccinationsBulkRoute: AppVaccinationsBulkRoute,
   AppWeightsImportRoute: AppWeightsImportRoute,
   AppAnimalsIndexRoute: AppAnimalsIndexRoute,
+  AppFinanceIndexRoute: AppFinanceIndexRoute,
   AppReportsIndexRoute: AppReportsIndexRoute,
   AppSettingsIndexRoute: AppSettingsIndexRoute,
   AppAnimalsIdAbortionRoute: AppAnimalsIdAbortionRoute,
@@ -1083,6 +1145,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnimalsIdTreatmentRoute: AppAnimalsIdTreatmentRoute,
   AppAnimalsIdVaccinationRoute: AppAnimalsIdVaccinationRoute,
   AppAnimalsIdWeightRoute: AppAnimalsIdWeightRoute,
+  AppFinanceExpensesNewRoute: AppFinanceExpensesNewRoute,
   AppSettingsBreedsIdRoute: AppSettingsBreedsIdRoute,
   AppSettingsBreedsNewRoute: AppSettingsBreedsNewRoute,
   AppSettingsCyclesIdRoute: AppSettingsCyclesIdRoute,
@@ -1102,6 +1165,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppSettingsTagsIndexRoute: AppSettingsTagsIndexRoute,
   AppSettingsUsersIndexRoute: AppSettingsUsersIndexRoute,
   AppSettingsVaccinesIndexRoute: AppSettingsVaccinesIndexRoute,
+  AppFinanceExpensesIdEditRoute: AppFinanceExpensesIdEditRoute,
+  AppFinanceExpensesIdIndexRoute: AppFinanceExpensesIdIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

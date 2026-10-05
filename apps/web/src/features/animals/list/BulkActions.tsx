@@ -1,6 +1,6 @@
 import type { IsoDate, LotView, TagView } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { Printer } from 'lucide-react';
+import { Printer, Wallet } from 'lucide-react';
 import { useState } from 'react';
 
 import { Button } from '../../../components/ui/Button';
@@ -11,6 +11,7 @@ import { SelectField } from '../../../components/ui/SelectField';
 import { isApiError } from '../../../lib/api/errors';
 import { useToday } from '../../../lib/clock';
 import { useBulkLot, useBulkTags } from '../api';
+import '../../finance/nav-state';
 import { animalsCount } from '../labels';
 
 type Mode = 'addTag' | 'removeTag' | 'lot' | 'forSale' | 'notForSale';
@@ -25,8 +26,9 @@ const TITLES: Record<Mode, string> = {
 
 /**
  * Operaciones en lote sobre los animales seleccionados (CLS-02 CA2): etiquetas manuales, lote
- * y, solo para ADMIN, «Disponible para venta» (CLS-02 CA1). La API aplica todo o nada: si un
- * animal ya salió de la finca, no se cambia ninguno y el mensaje dice cuál.
+ * y, solo para ADMIN, «Disponible para venta» (CLS-02 CA1) y cargarles un gasto (ECO-02, M7). La
+ * API aplica todo o nada: si un animal ya salió de la finca, no se cambia ninguno y el mensaje
+ * dice cuál.
  */
 export function BulkActions({
   selectedIds,
@@ -88,6 +90,18 @@ export function BulkActions({
           >
             <Printer aria-hidden="true" className="size-5" />
             Imprimir etiquetas
+          </Link>
+        ) : null}
+        {isAdmin ? (
+          // ECO-02 CA1 (M7): repartir un gasto entre la selección. Los ids viajan en el estado de
+          // la navegación, no en la URL: pueden ser miles.
+          <Link
+            to="/finance/expenses/new"
+            state={{ expenseAnimalIds: [...selectedIds] }}
+            className="inline-flex min-h-touch items-center gap-2 rounded-control border-2 border-potrero bg-superficie px-4 font-bold text-potrero hover:bg-potrero-claro"
+          >
+            <Wallet aria-hidden="true" className="size-5" />
+            Cargar un gasto
           </Link>
         ) : null}
       </div>

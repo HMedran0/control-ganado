@@ -41,7 +41,11 @@ describe('Salida (ANI-04)', () => {
     await user.click(screen.getAllByRole('button', { name: 'Registrar salida' }).at(-1)!);
 
     await waitFor(() => {
-      expect(onDone).toHaveBeenCalledWith({ message: 'Salida de 5 registrada.', warnings: [] });
+      expect(onDone).toHaveBeenCalledWith({
+        message: 'Venta de 5 registrada. Este es su resultado económico.',
+        warnings: [],
+        showCosts: true,
+      });
     });
     expect(posts(fetchMock, '/exit')[0]).toMatchObject({
       type: 'SALE',

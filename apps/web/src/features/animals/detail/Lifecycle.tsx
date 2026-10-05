@@ -30,7 +30,12 @@ import { useAnimalLifecycle, useNextCode } from '../api';
 import { EXIT_TYPE_LABEL } from './history';
 
 /** Resultado de una acción: mensaje de confirmación y advertencias de la API. */
-export type LifecycleResult = { readonly message: string; readonly warnings: readonly Warning[] };
+/** Lo que pasó y, en una venta (CU-04, M7), la pestaña donde se ve el resultado económico. */
+export type LifecycleResult = {
+  readonly message: string;
+  readonly warnings: readonly Warning[];
+  readonly showCosts?: boolean;
+};
 
 type DialogKind = 'exit' | 'revert' | 'archive' | 'restore';
 
@@ -203,7 +208,17 @@ function ExitDialog({
                 ...(isSale ? {} : { sale: undefined }),
                 ...(needsConfirmation ? {} : { confirmWithdrawal: undefined }),
               });
-              onDone(resultOf(saved, `Salida de ${name} registrada.`));
+              onDone(
+                isSale
+                  ? {
+                      ...resultOf(
+                        saved,
+                        `Venta de ${name} registrada. Este es su resultado económico.`,
+                      ),
+                      showCosts: true,
+                    }
+                  : resultOf(saved, `Salida de ${name} registrada.`),
+              );
             } catch (error) {
               if (isApiError(error) && error.code === 'SALE_AMOUNT_REQUIRED') {
                 setError('sale.amount', { message: 'Indica el precio de venta.' });

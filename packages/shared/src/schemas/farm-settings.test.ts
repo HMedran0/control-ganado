@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_FARM_SETTINGS, farmSettingsSchema, parseFarmSettings } from './farm-settings.js';
+import {
+  DEFAULT_FARM_SETTINGS,
+  farmSettingsPatchSchema,
+  farmSettingsSchema,
+  parseFarmSettings,
+} from './farm-settings.js';
 
 describe('DEFAULT_FARM_SETTINGS (03-modelo-datos.md §2.1)', () => {
   it('tiene los valores por defecto de la especificación', () => {
@@ -102,5 +107,17 @@ describe('farmSettingsSchema', () => {
     if (!resultado.success) {
       expect(resultado.error.issues[0]?.path).toEqual(['weaningAgeMonths']);
     }
+  });
+});
+
+describe('pricePerKgByCategory (ECO-03, M7)', () => {
+  it('solo categorías de manejo y montos positivos', () => {
+    const parse = (value: unknown) =>
+      farmSettingsPatchSchema.safeParse({ pricePerKgByCategory: value }).success;
+    expect(parse({ COW: '7800.00', YOUNG_MALE: '8200' })).toBe(true);
+    expect(parse({})).toBe(true);
+    expect(parse({ VACA: '7800.00' })).toBe(false);
+    expect(parse({ COW: '7.800' })).toBe(false);
+    expect(parse({ COW: '0' })).toBe(false);
   });
 });

@@ -1,5 +1,4 @@
 import {
-  formatCop,
   formatDate,
   formatWeight,
   type AnimalDetail,
@@ -198,29 +197,6 @@ export function GenealogyTab({ animal }: { animal: AnimalDetail }) {
         )}
       </Section>
     </div>
-  );
-}
-
-/** Costos (solo ADMIN, RN-20). La inversión completa llega con Finanzas (M7). */
-export function CostsTab({ animal }: { animal: AnimalDetail }) {
-  const price = animal.economics?.purchasePrice ?? null;
-  return (
-    <Section title="Compra">
-      {price === null ? (
-        <p className="text-texto-2">
-          {animal.origin === 'PURCHASED'
-            ? 'No tiene valor de compra registrado. Puedes agregarlo al editar el animal.'
-            : 'Nació en la finca: no tiene valor de compra.'}
-        </p>
-      ) : (
-        <Facts
-          items={[
-            ['Valor de compra', <strong key="valor">{formatCop(price)}</strong>],
-            ['Fecha de ingreso', entryDateText(animal)],
-          ]}
-        />
-      )}
-    </Section>
   );
 }
 

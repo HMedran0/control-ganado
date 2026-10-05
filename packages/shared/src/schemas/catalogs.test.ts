@@ -215,9 +215,9 @@ describe('finca', () => {
   });
 
   it('el precio por kilo solo lo ve ADMIN (RN-20)', () => {
-    const settings = { ...DEFAULT_FARM_SETTINGS, pricePerKgByCategory: { VACA: '9500.00' } };
+    const settings = { ...DEFAULT_FARM_SETTINGS, pricePerKgByCategory: { COW: '9500.00' } };
 
-    expect(farmSettingsFor('ADMIN', settings).pricePerKgByCategory).toEqual({ VACA: '9500.00' });
+    expect(farmSettingsFor('ADMIN', settings).pricePerKgByCategory).toEqual({ COW: '9500.00' });
     for (const role of ['OPERATOR', 'VET'] as const) {
       expect(farmSettingsFor(role, settings)).not.toHaveProperty('pricePerKgByCategory');
     }

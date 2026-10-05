@@ -90,7 +90,9 @@ test.describe.serial('numeración reutilizable (El Retiro)', () => {
     await expectNoViolations(page);
     await capture(page, testInfo, 'salida-animal');
     await dialog.getByRole('button', { name: 'Registrar salida' }).click();
-    await expect(page.getByText(`Salida de ${reused} registrada.`)).toBeVisible();
+    await expect(
+      page.getByText(`Venta de ${reused} registrada. Este es su resultado económico.`),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Revertir salida' })).toBeVisible();
 
     // El mismo número, ahora para un animal nuevo.
@@ -184,8 +186,8 @@ test.describe.serial('numeración reutilizable (El Retiro)', () => {
     await expect(panel.getByText('Tipo de salida: Venta', { exact: true })).toBeVisible();
     await expect(panel.getByText('Tipo de salida: Venta → —', { exact: true })).toBeVisible();
     await expect(panel.getByText(/Administración El Retiro/).first()).toBeVisible();
-    await expect(panel).not.toContainText('3200000');
-    await expect(panel).not.toContainText('3.200.000');
+    // M7: la pestaña es solo del ADMIN, que ve el precio de la venta en pesos (RN-20).
+    await expect(panel.getByText('Precio: $ 3.200.000', { exact: true })).toBeVisible();
     await expectNoViolations(page);
     await capture(page, testInfo, 'cambios');
   });
@@ -199,7 +201,9 @@ test.describe.serial('numeración reutilizable (El Retiro)', () => {
     const exitDialog = page.getByRole('dialog');
     await exitDialog.getByLabel('Precio de venta').fill('2500000');
     await exitDialog.getByRole('button', { name: 'Registrar salida' }).click();
-    await expect(page.getByText(`Salida de ${tagged} registrada.`)).toBeVisible();
+    await expect(
+      page.getByText(`Venta de ${tagged} registrada. Este es su resultado económico.`),
+    ).toBeVisible();
 
     // Otro animal, con otro número, recibe la chapeta liberada.
     await registerAnimal(page, tagHolder, tagged);

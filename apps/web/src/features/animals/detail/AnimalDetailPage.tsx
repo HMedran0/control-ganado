@@ -33,7 +33,7 @@ import { CodeHistoryBanner } from './CodeHistoryBanner';
 import { LifecycleActions } from './Lifecycle';
 import { HealthTab } from '../../health/HealthTab';
 import { ReproductionTab } from '../../reproduction/ReproductionTab';
-import { ChangesTab, CostsTab, GenealogyTab, HistoryTab, SummaryTab } from './sections';
+import { ChangesTab, GenealogyTab, HistoryTab, SummaryTab } from './sections';
 import type { DetailTab } from './tabs';
 
 /**
@@ -41,12 +41,14 @@ import type { DetailTab } from './tabs';
  * (decisión de M6).
  */
 const WeightsTab = lazy(() => import('../../weights/WeightsTab'));
+// Costos (M7, solo ADMIN): se descarga al abrir la pestaña.
+const CostsTab = lazy(() => import('../../finance/CostsTab'));
 
 export { DETAIL_TABS, type DetailTab } from './tabs';
 
 /**
  * Ficha del animal (ANI-07, 06 §5.3): encabezado con la chapeta, identificadores, clasificación,
- * edad y avisos; pestañas Resumen, Reproducción (hembras), Genealogía, Costos (ADMIN), Historial
+ * edad y avisos; pestañas Resumen, Reproducción (hembras), Genealogía, Costos (ADMIN, M7), Historial
  * y Cambios (ADMIN, AUD-01 CA2). El ADMIN registra la salida, la revierte, archiva y restaura.
  * En escritorio el encabezado queda fijo a la izquierda y las pestañas a la derecha (06 §9).
  */
@@ -154,7 +156,17 @@ function Detail({
     },
     { value: 'genealogia', label: 'Genealogía', content: <GenealogyTab animal={animal} /> },
     ...(isAdmin
-      ? [{ value: 'costos' as const, label: 'Costos', content: <CostsTab animal={animal} /> }]
+      ? [
+          {
+            value: 'costos' as const,
+            label: 'Costos',
+            content: (
+              <Suspense fallback={<p className="text-texto-2">Cargando…</p>}>
+                <CostsTab animal={animal} />
+              </Suspense>
+            ),
+          },
+        ]
       : []),
     { value: 'historial', label: 'Historial', content: <HistoryTab animal={animal} /> },
     ...(isAdmin
@@ -284,6 +296,7 @@ function Detail({
             onDone={(result) => {
               setSaved(result.message);
               setActionWarnings(result.warnings);
+              if (result.showCosts === true) onTabChange('costos');
             }}
           />
         ) : null}

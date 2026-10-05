@@ -192,7 +192,33 @@ describe('FarmForm', () => {
       version: 4,
       settings: { weaningAgeMonths: 8, gestationDays: 285 },
     });
-    // El precio por kilo no viaja: el PATCH es parcial y no lo toca.
+    // El ADMIN recibe el precio por kilo (vacío aquí) y lo devuelve igual.
+    expect(sentBody(fetchMock, 0)).toMatchObject({ settings: { pricePerKgByCategory: {} } });
+  });
+
+  it('precio por kilo por categoría (ECO-03, M7): se edita y viaja como texto en pesos', async () => {
+    const { fetchMock } = await renderApp(<FarmForm farm={FARM} onReload={vi.fn()} />, () =>
+      json({ ...FARM, version: 5 }),
+    );
+    const user = userEvent.setup();
+    await user.type(screen.getByLabelText('Vaca: precio por kilo'), '7800');
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+    expect(await screen.findByText('Parámetros guardados.')).toBeInTheDocument();
+    expect(sentBody(fetchMock, 0)).toMatchObject({
+      settings: { pricePerKgByCategory: { COW: '7800' } },
+    });
+  });
+
+  it('sin el precio en la respuesta (RN-20), el bloque no aparece y el PATCH no lo toca', async () => {
+    const { pricePerKgByCategory: _hidden, ...publicSettings } = DEFAULT_FARM_SETTINGS;
+    const { fetchMock } = await renderApp(
+      <FarmForm farm={{ ...FARM, settings: publicSettings }} onReload={vi.fn()} />,
+      () => json({ ...FARM, version: 5 }),
+    );
+    const user = userEvent.setup();
+    expect(screen.queryByLabelText('Vaca: precio por kilo')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+    expect(await screen.findByText('Parámetros guardados.')).toBeInTheDocument();
     expect(JSON.stringify(sentBody(fetchMock, 0))).not.toContain('pricePerKgByCategory');
   });
 

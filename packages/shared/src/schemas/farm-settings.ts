@@ -81,8 +81,19 @@ const settingsFields = {
   codeSuggestion: z.enum([CODE_SUGGESTION.PATTERN, CODE_SUGGESTION.LOWEST_FREE], {
     message: 'Elige cómo se sugiere el código.',
   }),
-  /** Precio por kilo para avalúos, por categoría de manejo. Montos como cadena decimal. */
-  pricePerKgByCategory: z.record(z.string(), z.string()),
+  /**
+   * Precio por kilo para avalúos (ECO-03), por categoría de manejo; solo lo ve el ADMIN (RN-20).
+   * Montos positivos como cadena decimal. Una categoría sin precio no se puede avaluar por peso.
+   */
+  pricePerKgByCategory: z.partialRecord(
+    z.enum(Object.values(MANAGEMENT_CATEGORY) as [ManagementCategory, ...ManagementCategory[]]),
+    z
+      .string()
+      .regex(/^\d{1,9}(\.\d{1,2})?$/, {
+        message: 'Escribe el precio en pesos, sin puntos de miles.',
+      })
+      .refine((value) => Number(value) > 0, { message: 'El precio debe ser mayor que cero.' }),
+  ),
   /**
    * Umbral de «Ganancia baja» por categoría de manejo, en kg/día (PES-05 CA2). Una categoría sin
    * umbral no genera la alerta.

@@ -92,9 +92,11 @@ describe('auditQuerySchema (AUD-01)', () => {
     expect(auditQuerySchema.safeParse({ entity: 'Lot', entityId: uuidv7() }).success).toBe(true);
   });
 
-  it('no deja consultar entidades económicas', () => {
-    expect(auditQuerySchema.safeParse({ entity: 'Expense' }).success).toBe(false);
-    expect(auditQuerySchema.safeParse({ entity: 'Sale' }).success).toBe(false);
+  it('desde M7 deja consultar gastos, ventas y avalúos (la ruta es solo del ADMIN), no los inicios de sesión', () => {
+    for (const entity of ['Expense', 'Sale', 'Valuation']) {
+      expect(auditQuerySchema.safeParse({ entity }).success).toBe(true);
+    }
+    expect(auditQuerySchema.safeParse({ entity: 'Session' }).success).toBe(false);
   });
 
   it('exige un rango de fechas en orden', () => {

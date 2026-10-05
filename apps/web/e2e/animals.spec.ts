@@ -93,7 +93,7 @@ test.describe.serial('animales', () => {
 
     // Costos: el valor de compra, solo para ADMIN.
     await page.getByRole('tab', { name: 'Costos' }).click();
-    await expect(page.getByText('$ 1.850.000')).toBeVisible();
+    await expect(page.getByText('$ 1.850.000').first()).toBeVisible();
 
     // El lector, desde otra pantalla, abre la ficha (ANI-05 CA3).
     await page.goto('/');

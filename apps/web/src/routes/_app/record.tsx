@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
 import { Button } from '../../components/ui/Button';
 import { AnimalPicker } from '../../features/animals/form/AnimalPicker';
+import { useRequiredSession } from '../../lib/auth/context';
 
 export const Route = createFileRoute('/_app/record')({
   component: RecordPage,
@@ -29,12 +30,14 @@ const LINK =
  * Registrar (06 §4): primero el animal (código, nombre o chip) y luego qué se registra: vacuna,
  * peso o tratamiento (M6), y en las hembras parto, servicio o palpación (M5; las pantallas de
  * reproducción explican si el animal no es hembra). Aparte, lo que se registra para muchos animales
- * a la vez: la vacunación por lote y la sesión de la báscula.
+ * a la vez: la vacunación por lote y la sesión de la báscula. El ADMIN registra además un gasto
+ * (M7), del animal elegido o para repartir.
  */
 function RecordPage() {
   const navigate = useNavigate();
   const [animal, setAnimal] = useState<AnimalRef | null>(null);
   const [missing, setMissing] = useState(false);
+  const isAdmin = useRequiredSession().role === 'ADMIN';
 
   const go = (
     to: (typeof ANIMAL_ACTIONS)[number]['to'] | (typeof FEMALE_ACTIONS)[number]['to'],
@@ -98,6 +101,20 @@ function RecordPage() {
             </Link>
           </div>
         </section>
+        {isAdmin ? (
+          <section className="flex flex-col gap-3 border-t border-cerca pt-5">
+            <h2 className="text-md font-bold">Finanzas</h2>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                to="/finance/expenses/new"
+                search={animal === null ? {} : { animalId: animal.id }}
+                className={LINK}
+              >
+                Gasto
+              </Link>
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   );
