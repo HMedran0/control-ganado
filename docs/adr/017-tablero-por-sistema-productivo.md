@@ -90,8 +90,9 @@ abiertas varias preguntas:
 - Una finca nueva (M10a) debe nacer con las etiquetas de sistema `COTERO` y `REPRODUCTOR`; hoy solo
   las crea el seed. Sin `REPRODUCTOR`, ningún animal es reproductor y todos los machos con
   objetivo tienen peso de venta.
-- El promedio de días para la venta depende de los datos: en El Retiro, los machos de M4c ganan
-  tan poco que pasa de mil días. Es una cifra, no una alerta.
+- El promedio de días para la venta depende de los datos: en El Retiro, los machos de M4c ganaban
+  tan poco que pasaba de mil días. Es una cifra, no una alerta. En M8b el seed les dio una ganancia
+  realista (0,4 a 0,7 kg/día hasta 550 kg) y el promedio quedó en 244 días.
 - En HTTP/1.1, Inicio no llega a 4 s en 3G: hacen falta HTTP/2 o menos archivos. Si en M10b no
   alcanza, la siguiente palanca es juntar los chunks del layout y de Inicio (unos 36 archivos
   pequeños) y precargar su código mientras se refresca la sesión, que en HTTP/1.1 compite con el

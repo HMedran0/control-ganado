@@ -276,8 +276,7 @@ export const EXPECTED_FINANCE = {
  * Tablero de Inicio (M8a). Las cifras comunes ya están arriba (inventario, reproducción,
  * nacimientos, alertas, inversión); estas son las de las preguntas propias de cada sistema. Las
  * calcula el generador tal como es: el intervalo entre partos del seed (501 días en promedio)
- * queda por encima de la referencia de UPRA (387 a 439), y los machos de M4c de El Retiro ganan
- * tan poco que el promedio de días para la venta pasa de mil. Son datos ficticios, no umbrales.
+ * queda por encima de la referencia de UPRA (387 a 439). Son datos ficticios, no umbrales.
  */
 export const EXPECTED_DASHBOARD = {
   /** La Esperanza, doble propósito: preguntas de cría y retiro de leche. */
@@ -308,15 +307,27 @@ export const EXPECTED_DASHBOARD = {
   },
   /** El Retiro, levante y ceba, con los casos de `retiro-ceba.ts`. */
   retiro: {
-    /** 41, 42 y 44 este mes; 43 ya en el peso; 45 posiblemente; el 48 (reproductor) fuera. */
+    /**
+     * 41, 42 y 44 este mes; 43 ya en el peso; 45 posiblemente; el 48 (reproductor) fuera.
+     *
+     * M8b: los machos de M4c ganan de 0,4 a 0,7 kg/día hasta 550 kg (`retiro.ts`). Antes su peso
+     * subía y bajaba de un pesaje a otro y sumaban 1.089 días en promedio para la venta. Con la
+     * ganancia realista: 1, 4, 9, 10 y 35 pasan a «ya en el peso» (6 → 11); el 11 llega este mes
+     * (3 → 4); el 35 deja «posiblemente» (2 → 1); el 4 y el 9 dejan «más adelante» (6 → 4). El 1,
+     * el 10 y el 11 antes perdían peso y no tenían fecha estimada.
+     */
     saleWeight: {
       monthEnd: toIsoDate('2026-09-30'),
-      reached: 6,
-      thisMonth: 3,
-      likelyReached: 2,
-      later: 6,
+      reached: 11,
+      thisMonth: 4,
+      likelyReached: 1,
+      later: 4,
     },
-    daysToSale: { averageDays: 1089, animals: 9 },
+    /**
+     * M8b: 244 días en promedio, sobre 8 machos (antes 1.089 sobre 9: el 35, que estaba en
+     * «posiblemente», ya está en el peso y no cuenta).
+     */
+    daysToSale: { averageDays: 244, animals: 8 },
     /** Lotes sin el id (lo pone el generador): Ceba B, por debajo del umbral; Ceba A, no. */
     lotGains: {
       belowThreshold: [

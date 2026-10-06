@@ -98,6 +98,11 @@ export type RetiroSeed = {
 /** Números libres hoy: nadie activo los tiene (el 17 lo tuvo un animal vendido). */
 const FREE_NUMBERS = new Set([17, 33]);
 
+/** Ganancia de los machos entre pesajes (120 días): de 0,4 a 0,7 kg/día (M8b). */
+const MALE_GAIN_PER_WEIGHING_KG = { min: 48, max: 84 } as const;
+/** Peso adulto de los machos de El Retiro [Ficticio]. */
+const MALE_ADULT_WEIGHT_KG = 550;
+
 /** Animales que salieron: el número que tenían, cómo y cuándo. */
 const EXITED = [
   // Vendido con chapeta liberada, DIN y RFID que siguen con él (08 §3.5). Su número lo tiene
@@ -132,10 +137,25 @@ export function buildRetiroSeed(today: IsoDate): RetiroSeed {
     retiredAt: retired,
     retireReason: retired === null ? null : IDENTIFIER_RETIRE_REASON.EXITED,
   });
-  const weightsFor = (birthDate: IsoDate, until: IsoDate, base: number) => {
+  /**
+   * Un pesaje cada 120 días desde el mes de vida. Los machos (M8b) suben de 48 a 84 kg por
+   * intervalo —de 0,4 a 0,7 kg/día, lo realista en ceba— hasta un peso adulto de 550 kg
+   * [Ficticio], para que los días para la venta y las fechas estimadas sean creíbles. Las hembras
+   * siguen como en M4c. Cada pesaje gasta un número aleatorio, sea macho o hembra, así que el resto
+   * de la finca no se mueve.
+   */
+  const weightsFor = (sex: Sex, birthDate: IsoDate, until: IsoDate, base: number) => {
     const weights: { id: string; on: IsoDate; kg: number }[] = [];
+    let maleKg = base;
     for (let on = addDays(birthDate, 30); on <= until; on = addDays(on, 120)) {
-      weights.push({ id: ids.next(), on, kg: base + weights.length * random.int(25, 45) });
+      const id = ids.next();
+      if (sex === SEX.MALE) {
+        const gain = random.int(MALE_GAIN_PER_WEIGHING_KG.min, MALE_GAIN_PER_WEIGHING_KG.max);
+        if (weights.length > 0) maleKg = Math.min(MALE_ADULT_WEIGHT_KG, maleKg + gain);
+        weights.push({ id, on, kg: maleKg });
+      } else {
+        weights.push({ id, on, kg: base + weights.length * random.int(25, 45) });
+      }
     }
     return weights;
   };
@@ -169,7 +189,7 @@ export function buildRetiroSeed(today: IsoDate): RetiroSeed {
       birthDate,
       exit: { type: exited.type, date: exitDate },
       identifiers,
-      weights: weightsFor(birthDate, exitDate, 34),
+      weights: weightsFor(exited.sex, birthDate, exitDate, 34),
       sale:
         exited.type === EXIT_TYPE.SALE
           ? {
@@ -186,14 +206,16 @@ export function buildRetiroSeed(today: IsoDate): RetiroSeed {
     const code = String(number);
     const birthDate =
       REUSED_BIRTHS[code] ?? addDays(toIsoDate('2020-03-01'), random.int(0, 5 * 365));
+    const id = ids.next();
+    const sex = random.chance(0.7) ? SEX.FEMALE : SEX.MALE;
     animals.push({
-      id: ids.next(),
+      id,
       code,
-      sex: random.chance(0.7) ? SEX.FEMALE : SEX.MALE,
+      sex,
       birthDate,
       exit: null,
       identifiers: [tag(code, birthDate, null)],
-      weights: weightsFor(birthDate, today, 32),
+      weights: weightsFor(sex, birthDate, today, 32),
       sale: null,
     });
   }
