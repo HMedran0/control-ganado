@@ -110,9 +110,13 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
   const { farmId, today, weaningAgeMonths } = params;
   const todayDate = Prisma.sql`${today}::date`;
   const monthEnd = Prisma.sql`${endOfMonth(today)}::date`;
+  // Peso objetivo del animal (PES-06): el de su categoría, si está activo y no es reproductor.
+  const saleTarget = Prisma.sql`(CASE WHEN k.is_active AND NOT k.is_breeder THEN ${saleTargetSql(params)} END)`;
   // Fecha estimada de saleWeightProjection: último pesaje + ⌈10 · faltante / ganancia⌉ días, en
-  // enteros (centésimas de kilo y milésimas de kg/día; los dos positivos aquí).
-  const saleEstimate = Prisma.sql`(k.weight_last_on + ((10 * (k.sale_target_cents - k.weight_last_cents) + k.gain_90_milli - 1) / k.gain_90_milli)::int)`;
+  // enteros (centésimas de kilo y milésimas de kg/día; los dos positivos donde se usa).
+  const saleEstimate = Prisma.sql`(k.weight_last_on + ((10 * (${saleTarget} - k.weight_last_cents) + k.gain_90_milli - 1) / k.gain_90_milli)::int)`;
+  // Nunca NULL (con COALESCE): en un CASE, «NOT NULL» no entra en ninguna rama y caería en el ELSE.
+  const hasEstimate = Prisma.sql`COALESCE(${saleTarget} IS NOT NULL AND k.weight_last_cents < ${saleTarget} AND k.gain_90_milli > 0, false)`;
 
   return Prisma.sql`
     ${vaccineStatusCtes({ farmId, today, vaccineAlertDays: params.vaccineAlertDays })},
@@ -148,7 +152,7 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
         wf.gain_last_two_milli,
         wf.gain_90_milli,
         wf.gain_birth_milli,
-        hato_months_between(a.birth_date, ${todayDate}) AS age_months,
+        ag.age_months,
         COALESCE(r.calving_count, 0) + a.imported_prior_calvings AS calving_count,
         r.last_calving_date,
         r.open_service_date,
@@ -156,18 +160,28 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
         r.open_expected_calving_date,
         w.withdrawal_until,
         w.milk_withdrawal_until,
-        EXISTS (
-          SELECT 1 FROM animal_tags at JOIN tags tg ON tg.id = at.tag_id
-          WHERE at.animal_id = a.id AND at.removed_at IS NULL
-            AND tg.farm_id = ${farmId}::uuid AND tg.key = ${BREEDER_TAG_KEY}
-        ) AS is_breeder,
+        (br.animal_id IS NOT NULL) AS is_breeder,
         (r.open_service_date IS NOT NULL AND r.open_confirmed_at IS NULL) AS served,
         (r.open_service_date IS NOT NULL AND r.open_confirmed_at IS NOT NULL) AS pregnant
       FROM animals a
+      -- La edad una sola vez por animal (barrera OFFSET 0): hato_months_between no se expande en
+      -- línea, y cada uso de la categoría (y de lo que depende de ella: umbral de ganancia, peso
+      -- de venta) la volvía a llamar. Con el seed de carga, el peso de venta tardaba 1,4 s (M8a).
+      CROSS JOIN LATERAL (
+        SELECT hato_months_between(a.birth_date, ${todayDate}) AS age_months OFFSET 0
+      ) ag
       LEFT JOIN reproduction r ON r.dam_id = a.id
       LEFT JOIN withdrawals w ON w.animal_id = a.id
       LEFT JOIN vaccine_alerts va ON va.animal_id = a.id
       LEFT JOIN weight_facts wf ON wf.animal_id = a.id
+      -- Una fila por animal con la etiqueta «Reproductor»: una unión (que el planificador quita si
+      -- nadie usa is_breeder) y no un EXISTS que se repite en cada expresión que lo usa.
+      LEFT JOIN (
+        SELECT DISTINCT at.animal_id
+        FROM animal_tags at JOIN tags tg ON tg.id = at.tag_id
+        WHERE at.farm_id = ${farmId}::uuid AND at.removed_at IS NULL
+          AND tg.farm_id = ${farmId}::uuid AND tg.key = ${BREEDER_TAG_KEY}
+      ) br ON br.animal_id = a.id
       WHERE a.farm_id = ${farmId}::uuid
     ),
     categorized AS (
@@ -189,13 +203,13 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
       FROM facts f
     ),
     targeted AS (
-      SELECT k.*,
-        ${gainThresholdSql(params)} AS gain_threshold_milli,
-        CASE WHEN k.is_active AND NOT k.is_breeder THEN ${saleTargetSql(params)} END AS sale_target_cents
+      SELECT k.*, ${gainThresholdSql(params)} AS gain_threshold_milli
       FROM categorized k
     ),
     classified AS (
       SELECT k.*,
+        ${saleTarget} AS sale_target_cents,
+        CASE WHEN ${hasEstimate} THEN ${saleEstimate} END AS sale_weight_on,
         (k.calving_count >= 1) AS calved,
         (k.category = ${MANAGEMENT_CATEGORY.COW}::text
           AND k.open_service_date IS NULL
@@ -212,13 +226,10 @@ export function classificationCtes(params: ClassificationParams): Prisma.Sql {
           AND k.gain_90_milli < k.gain_threshold_milli, false) AS low_gain,
         (k.is_active AND k.milk_withdrawal_until IS NOT NULL
           AND k.milk_withdrawal_until >= ${todayDate}) AS milk_withdrawal,
-        CASE WHEN k.sale_target_cents IS NOT NULL AND k.weight_last_cents < k.sale_target_cents
-            AND k.gain_90_milli > 0 THEN ${saleEstimate}
-        END AS sale_weight_on,
         CASE
-          WHEN k.sale_target_cents IS NULL OR k.weight_last_cents IS NULL THEN NULL
-          WHEN k.weight_last_cents >= k.sale_target_cents THEN ${SALE_WEIGHT_STATUS.REACHED}::text
-          WHEN k.gain_90_milli IS NULL OR k.gain_90_milli <= 0 THEN NULL
+          WHEN ${saleTarget} IS NULL OR k.weight_last_cents IS NULL THEN NULL
+          WHEN k.weight_last_cents >= ${saleTarget} THEN ${SALE_WEIGHT_STATUS.REACHED}::text
+          WHEN NOT ${hasEstimate} THEN NULL
           WHEN ${saleEstimate} < ${todayDate} THEN ${SALE_WEIGHT_STATUS.LIKELY_REACHED}::text
           WHEN ${saleEstimate} <= ${monthEnd} THEN ${SALE_WEIGHT_STATUS.THIS_MONTH}::text
           ELSE ${SALE_WEIGHT_STATUS.LATER}::text

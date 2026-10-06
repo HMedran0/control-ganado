@@ -97,9 +97,13 @@ export function vaccineStatusCtes(params: VaccineStatusParams): Prisma.Sql {
         COALESCE(l.next_due_on,
           CASE WHEN v.booster_interval_days > 0
                THEN l.applied_on + v.booster_interval_days END) AS interval_due_on,
+        -- Sobre la tabla y no sobre vs_records: la CTE no tiene índice y el EXISTS la recorría
+        -- por cada par animal-vacuna (M8a, medido con el seed de carga). Mismo filtro que
+        -- vs_records; el índice (farm_id, animal_id, vaccine_id, applied_on) lo resuelve.
         EXISTS (
-          SELECT 1 FROM vs_records r
-          WHERE r.animal_id = a.id AND r.vaccine_id = v.id
+          SELECT 1 FROM vaccination_records r
+          WHERE r.farm_id = ${farmId}::uuid AND r.voided_at IS NULL
+            AND r.animal_id = a.id AND r.vaccine_id = v.id
             AND r.applied_on BETWEEN COALESCE(cur.starts_on, clo.starts_on)
                                  AND COALESCE(cur.ends_on, clo.ends_on)) AS cycle_applied
       FROM animals a

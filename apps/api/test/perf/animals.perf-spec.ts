@@ -8,8 +8,9 @@ import { PrismaService } from '../../src/infra/prisma.service.js';
 import { bearer, createTestApp, signTestToken } from '../helpers/app.js';
 
 /**
- * Rendimiento de la búsqueda y el listado (RNF-01, ANI-05 CA2): con 5.000 animales y 50.000
- * eventos, búsqueda por debajo de 1 s y listado filtrado por debajo de 2 s, en el percentil 95.
+ * Rendimiento de la búsqueda, el listado y el tablero (RNF-01, ANI-05 CA2, RPT-01 CA2): con 5.000
+ * animales y 50.000 eventos, búsqueda por debajo de 1 s, y listado filtrado y tablero por debajo de
+ * 2 s, en el percentil 95.
  *
  * Necesita la finca del seed de carga en la base de pruebas:
  * `DATABASE_URL=$TEST_DATABASE_URL pnpm db:seed:load`, y luego
@@ -138,6 +139,8 @@ describe('rendimiento con el seed de carga (RNF-01)', () => {
       'category=COW,HEIFER&ageMinMonths=18&alerts=calving_soon&sort=age&limit=50',
     ),
     list('máximo por página (200)', 'limit=200&sort=code'),
+    // M8a: todas las cifras de Inicio en una pasada de la clasificación (RPT-01 CA2).
+    { name: 'Tablero (Inicio)', path: '/api/v1/dashboard', limitMs: LIST_LIMIT_MS },
   ];
 
   for (const scenario of scenarios) {
