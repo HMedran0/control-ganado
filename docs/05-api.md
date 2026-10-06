@@ -58,7 +58,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 | POST | /me/email/verification | T | Reenvía el enlace de verificación |
 | POST | /me/identities/google/link | T | `{ currentPassword }` → `{ intent }`: intención de vínculo de un solo uso (5 min). El navegador va a `/auth/google/start?intent=…` y el retorno vincula por (`provider`, `subject`) |
 | POST | /me/identities/google/unlink | T | `{ currentPassword }` → desvincula. `LAST_LOGIN_METHOD` si es su único método de acceso |
-| GET | /farm | T | Datos y parámetros. `settings.pricePerKgByCategory` solo viaja para ADMIN (RN-20). Desde M4c, M6, M8 y M9b, `settings` incluye `codeReuse`, `codeSuggestion`, `productionSystem`, `salesFocus`, `dryOffBeforeCalvingDays`, `weightGainAlertKgPerDay`, `weightLossAlertPercent` y `targetSaleWeightKg` (03 §2.1). Cambiar `codeReuse` de `true` a `false` con números repetidos responde `CODE_REUSE_CONFLICT` con los animales en `context` |
+| GET | /farm | T | Datos y parámetros. `settings.pricePerKgByCategory` solo viaja para ADMIN (RN-20). Desde M4c, M6, M8 y M9b, `settings` incluye `codeReuse`, `codeSuggestion`, `productionSystem`, `salesFocus`, `dryOffBeforeCalvingDays`, `weightGainAlertKgPerDay`, `weightLossAlertPercent` y `targetSaleWeightKg` (03 §2.1). `productionSystem`, `salesFocus` (o `null`) y `targetSaleWeightKg` (kilos enteros de 50 a 1.500 por categoría) existen desde M8a y solo los cambia el ADMIN con `PATCH /farm`. Cambiar `codeReuse` de `true` a `false` con números repetidos responde `CODE_REUSE_CONFLICT` con los animales en `context` |
 | PATCH | /farm | A | Editar datos y `settings` (parciales: se mezclan con los guardados y se valida el resultado). Exige `version` |
 | GET/POST/PATCH | /breeds, /breeds/:id | T lee, A escribe | Catálogo de razas |
 | GET/POST/PATCH | /vaccines, /vaccines/:id | T lee, A/V escribe | Catálogo de vacunas (incluye `scheduleType` y elegibilidad) |
@@ -94,6 +94,7 @@ Los esquemas de entrada y salida se definen con zod en `packages/shared/src/sche
 **Detalles de M4a.**
 - Cada fila trae `expectedCalvingDate`: el parto estimado de la preñez abierta confirmada, o `null` (columna «Parto estimado» de 06 §5.2).
 - `GET /animals` responde `{ items, nextCursor, total }`: `total` es el conteo con los filtros aplicados, sin paginar. Filtros: `category` (`CALF_MALE, CALF_FEMALE, HEIFER, COW, YOUNG_MALE, ADULT_MALE`); `tags` recibe etiquetas derivadas (`SERVED, PREGNANT, CALVED, DRY, WITHDRAWAL`) y claves de etiquetas manuales (`COTERO`…) en la misma lista; `alerts` acepta además `unconfirmed_service` (servida sin diagnóstico, RN-08). Varios valores de `category`, `breedId` o `lotId` se combinan con «o»; varios de `tags` o `alerts`, con «y». `status` es `active` por defecto; `archived` solo para ADMIN. `sort`: `code`, `age` (de menor a mayor edad), `lastWeight` y sus inversos con `-`; sin peso, al final. Solo los animales activos tienen alertas.
+- **Desde M8a**, `GET /animals` (y su exportación) acepta además: `bornFrom` y `bornTo` (nacidos entre esas fechas, ambas incluidas; `bornTo` antes de `bornFrom` → `VALIDATION_FAILED`), `saleWeight` (`reached`, `this_month`, `likely_reached` o `later`, PES-06; solo activos) y `milkWithdrawal` (`true`: retiro de leche vigente; solo activos). `sort=calving` ordena por parto estimado, el más próximo primero, y deja al final a quien no tiene preñez confirmada (CU-03). El resumen de peso de cada fila, de la ficha y de `GET /animals/:id/weights` trae `saleWeight: { targetKg, status, estimatedOn } | null` (PES-06 CA2; `estimatedOn` es `null` si ya está en el peso).
 - `GET /animals/search?q=` → `{ exactMatch: { animalId, via, matches } | null, items }`. `via` y cada elemento de `matches` dicen por qué coincidió: `{ kind: 'CODE' | 'NAME', value }` o `{ kind: 'IDENTIFIER', identifierType, value, previous }` (`previous: true` es un identificador retirado). Hay `exactMatch` cuando todas las coincidencias exactas son del mismo animal; si son de animales distintos, `exactMatch` es `null` y cada uno aparece en `items` con `exact: true` y su porqué. La búsqueda difusa (`pg_trgm`) solo corre si no hubo ninguna coincidencia exacta, y desde 2 caracteres. No incluye archivados; sí los que salieron, con su `status`.
 - `GET /animals/:id`: `economics: { purchasePrice }` solo existe en la respuesta de ADMIN. `POST /animals` y `PATCH /animals/:id` responden la ficha con `warnings`.
 - `POST /animals/bulk/tags` y `/bulk/lot` son todo o nada: si un animal no es de la finca (404), está archivado (`ANIMAL_ARCHIVED`) o salió (`ANIMAL_EXITED`), no se cambia ninguno. `add` y `remove` son ids de etiquetas manuales. Respuestas: `{ updated }` y `{ moved, unchanged }`.
@@ -246,7 +247,7 @@ Todas las rutas responden 403 a OPERATOR y VET (RN-20, comprobado por rol en el 
 ## Tablero y reportes
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
-| GET | /dashboard | T | Indicadores RPT-01 (económicos solo A). Desde M8 agrega las preguntas del sistema productivo de la finca (CFG-03): destete e intervalo entre partos en cría, peso de venta y ganancia en ceba (PES-05, PES-06), vacas en ordeño, secas, leche de ayer y del mes, secar pronto y retiro de leche en lechería y doble propósito |
+| GET | /dashboard | T | Indicadores RPT-01 (económicos solo A). Desde M8 agrega las preguntas del sistema productivo de la finca (CFG-03): destete e intervalo entre partos en cría, peso de venta y ganancia en ceba (PES-05, PES-06), vacas en ordeño, secas, leche de ayer y del mes, secar pronto y retiro de leche en lechería y doble propósito. Contrato de M8a abajo |
 | GET | /reports/inventory | T | Por sexo, categoría de manejo, raza, lote |
 | GET | /reports/inventory-ica | T | Grupos de edad y sexo en formato ICA |
 | GET | /reports/births?from&to | T | NAC-01 (M5): `{ from, to, totals: { live, males, females, weak, stillborn }, items: [{ calf, birthDate, dam, sire, sireExternalRef, breed, birthWeightKg, birthCondition }], stillbirths: [{ pregnancyId, date, dam, count }] }`. Sin fechas, del 1.º de enero a hoy. Cuenta los nacidos en la finca en el período aunque ya hayan salido; no los archivados |
@@ -256,6 +257,18 @@ Todas las rutas responden 403 a OPERATOR y VET (RN-20, comprobado por rol en el 
 | GET | /reports/:name/export?format=xlsx | T (económicos A) | Exportación |
 | GET | /animals/:id/report.pdf | T | Ficha individual en PDF |
 | GET | /export/full | A | Exportación completa (BAK-02) |
+
+**`GET /dashboard` (M8a, `DashboardResponse` de shared).** Todas las cifras salen de SQL en una pasada de la clasificación sobre los activos (ADR-009, ADR-017) y coinciden con el total del listado o de Alertas al que enlaza la web. Siempre trae:
+- `today`, `productionSystem`, `salesFocus` y `questions` (las preguntas propias del sistema, en orden: `WEANING`, `CALVING_INTERVAL`, `DRY_COWS`, `MILK_WITHDRAWAL`, `SALE_WEIGHT`, `LOW_GAIN_LOTS`, `DAYS_TO_SALE`);
+- `herd: { total, males, females, calvesMale, calvesFemale }`;
+- `reproduction: { pregnant, served, calvingSoon, calvingOverdue, nextCalving: { animalId, code, expectedCalvingDate } | null }` (la próxima es la primera de `alerts=calving_soon&sort=calving`);
+- `births: { from, to, live, males, females }`, con el criterio del reporte de nacimientos, del 1.º de enero a hoy;
+- `vaccines: { pending, overdue, due, currentCycle: { id, name } | null }`: `pending` cuenta cada animal una vez (lo mismo que Alertas con `types=vaccine_overdue,vaccine_due`); `currentCycle` es el ciclo oficial en curso hoy, para su avance (`GET /vaccination-cycles/:id/progress`);
+- `alerts`: animales activos por tipo de alerta, como los conteos de `GET /alerts`;
+- `forSale: { count, sex }`: marcados «Disponible para venta», del sexo de `salesFocus` si lo hay;
+- `investment` (cadena decimal): inversión del hato activo (RN-18), **solo para ADMIN**; para los demás la clave no existe ni se consulta (RN-20).
+
+Y solo las secciones de `questions`: `weaning: { bornFrom, bornTo, count, weighed, averageWeightKg }`, `calvingInterval: { count, females, averageDays, distribution: [{ bucket, count }] }` (RN-38), `dryCows: { count }`, `milkWithdrawal: { count }`, `saleWeight: { monthEnd, reached, thisMonth, likelyReached, later }`, `lotGains: { belowThreshold, others }` (cada lote: `{ lotId, name, animals, averageGain, averageThreshold, lowGain }`, en kg/día) y `daysToSale: { averageDays, animals }` (de los que tienen fecha estimada hoy o después). Cambiar el sistema productivo cambia las secciones, nunca las cifras comunes (CFG-03 CA1). Medido con el seed de carga (5.000 animales y 50.000 eventos): p95 de 887 ms.
 
 ## Auditoría
 | Método | Ruta | Rol | Descripción |

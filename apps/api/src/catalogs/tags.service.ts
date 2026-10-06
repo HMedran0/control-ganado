@@ -27,7 +27,7 @@ import {
 
 const FIELDS = ['label', 'description', 'isActive'] as const;
 
-/** Etiquetas manuales (CLS-02, 08 §1.1). La etiqueta de sistema es COTERO. */
+/** Etiquetas manuales (CLS-02, 08 §1.1). Las de sistema son COTERO y, desde M8a, REPRODUCTOR. */
 @Injectable()
 export class TagsService {
   constructor(
@@ -82,8 +82,8 @@ export class TagsService {
   }
 
   /**
-   * Edita una etiqueta. La de sistema (COTERO) no se desactiva ni se renombra: solo se edita
-   * su descripción, que la finca puede ajustar (08 §1.1).
+   * Edita una etiqueta. Las de sistema (COTERO, REPRODUCTOR) no se desactivan ni se renombran:
+   * solo se edita su descripción, que la finca puede ajustar (08 §1.1).
    *
    * @throws {DomainError} `SYSTEM_TAG_PROTECTED`.
    */

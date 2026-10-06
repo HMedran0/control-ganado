@@ -275,7 +275,8 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 | **M4c** | ANI-10, ANI-11, IDN-06, RN-30 a RN-33; segunda finca de pruebas con numeración reutilizable. | Núcleo |
 | **M4d** | AUT-10 sesión deslizante y AUT-11 sesiones activas (1 a 2 días, junto con importación y exportación a Excel, QR y etiquetas). | Núcleo |
 | **M6** | PES-04 (importar sesión de la báscula), PES-05 cálculo de ganancia y alertas en la ficha y el listado. | Núcleo |
-| **M8** | CFG-03 (sistema productivo), tablero por sistema, PES-05 en el tablero, PES-06 (peso objetivo). | Núcleo |
+| **M8a** | CFG-03 (sistema productivo), tablero por sistema, PES-05 en el tablero, PES-06 (peso objetivo). | Núcleo |
+| **M8b** | BAK-02 (exportación completa, primero), RPT-02 (reportes estándar), reporte ICA y RPT-03 (gráficas). | Núcleo |
 | **M9** | Jornada de pesaje con lector en modo teclado y peso digitado (ya previsto en JOR), reutilizando las alertas de PES-05. | Completo |
 | **M9b (nuevo)** | Control de leche: LEC-01 a LEC-05, RN-34 a RN-37, seed de leche. | Completo (se ejecuta si el cronograma lo permite antes del piloto; si no, pasa a la fase 2) |
 | **M10a (nuevo)** | AUT-12 correo saliente, AUT-13 invitación, AUT-14 verificación y recuperación por correo, AUT-15 Google en la web, política de privacidad y términos. M10 pasa a llamarse M10b (endurecimiento y despliegue). | Núcleo (unas 2 semanas) |
@@ -292,6 +293,8 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 4. Si numeran del 1 en adelante y reasignan números de animales vendidos.
 5. Cómo registran hoy la leche: por ordeño, total diario o pesajes periódicos (control lechero mensual).
 6. Quiénes usarán la app, cuáles tienen correo y si usan cuentas de Google (Gmail) en el celular.
+7. (M8a) Cómo llaman al macho de ceba mayor de 24 meses (novillo, torete, novillo gordo…) y si separan los reproductores del resto de los machos. **Hallazgo de dominio para validar en el piloto:** la categoría de manejo es por edad (08 §2.1) y muestra «Toro» a todo macho de 24 meses o más, también a un novillo de ceba que la finca está por vender. M8a no cambia las categorías: el peso objetivo de venta se aplica a Levante y Toro, y los reproductores se excluyen con la etiqueta del sistema «Reproductor». Si la finca llama distinto a esos machos, se decide entonces si hace falta una categoría o una etiqueta nueva.
+8. (M8a) El peso objetivo de venta (450 kg para Levante y Toro) y si cambia por sexo, raza o temporada.
 
 ## Fuentes
 - Datamars Colombia (s. f.). Básculas Tru-Test. https://www.datamarscolombia.com/Basculas.aspx

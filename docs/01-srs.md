@@ -66,6 +66,8 @@ El código se escribe en inglés y la interfaz en español. Esta tabla es la cor
 | Estado al nacer | `Animal.birthCondition` | Sana (`HEALTHY`) o débil (`WEAK`), en las crías registradas con su parto. La muerta al nacer no es animal: suma a `Pregnancy.stillbornCount` (REP-04 CA4). |
 | Cotero | etiqueta manual `COTERO` | Animal destinado a labores o clasificación específica de la finca (decisión en 08 §1.1). |
 | Disponible para venta | `Animal.forSale = true` | Marcado manualmente por el administrador. |
+| Reproductor | etiqueta del sistema `REPRODUCTOR` | Macho que la finca conserva para servir. No tiene peso objetivo de venta (PES-06, M8a). |
+| Peso de venta | `Farm.settings.targetSaleWeightKg` | Peso objetivo por categoría; con él, la fecha estimada en que cada animal lo alcanza (PES-06). «Ya en el peso» es medido; «este mes» y «posiblemente en el peso», estimados. |
 | Salida | `Animal.exitType` | Venta, muerte, sacrificio, robo, traslado u otro. Un animal con salida no cuenta en el inventario. |
 | Lote | `Lot` | Grupo de manejo (por potrero, edad o propósito). |
 | Vacuna | `Vaccine` | Catálogo de vacunas con intervalo de refuerzo. |
@@ -483,13 +485,14 @@ El pesaje periódico se hace en báscula electrónica, y digitar cada peso es le
 - CA1: Para cada animal: ganancia diaria promedio (kg/día) entre los dos últimos pesajes, en los últimos 90 días y desde el nacimiento.
 - CA2: Alerta "Ganancia baja" si la ganancia de los últimos 90 días es menor que el umbral de su categoría (`weightGainAlertKgPerDay`, por categoría de manejo; por defecto 0,30 kg/día para Levante [Validar]).
 - CA3: Alerta "Perdió peso" si el último pesaje es menor que el anterior en más de `weightLossAlertPercent` (por defecto 5 % [Validar]).
-- CA4: Listado filtrable por estas alertas y resumen por lote.
+- CA4: Listado filtrable por estas alertas y resumen por lote. En el tablero (M8a, ADR-017): para cada lote, el promedio de la ganancia de 90 días de sus animales con umbral y ganancia, frente al promedio de sus umbrales; el lote está «por debajo de lo esperado» si el primero es menor (en enteros, milésimas de kg/día), y cada lote enlaza a Alertas con «Ganancia baja» y ese lote.
 - CA5 (M6, ADR-015): La ganancia de 90 días es la pendiente de la regresión lineal de los pesajes de la ventana más el último anterior (ancla) si está a lo sumo `weightGainAnchorMaxDays` (180 [Validar]) antes del inicio de la ventana; exige un pesaje dentro de la ventana, dos puntos y 30 días entre el primero y el último. Se redondea a milésimas de kg/día antes de comparar con el umbral, en shared y en SQL con la misma aritmética entera. «Perdió peso» compara el último pesaje con el último de una fecha anterior. Un umbral en el límite exacto no alerta.
 
 **PES-06 — Peso objetivo de venta** · S · F1 (M8)
-- CA1: La finca define un peso objetivo de venta por sexo o categoría (`targetSaleWeightKg`; por defecto 450 kg en machos de Levante [Validar]).
-- CA2: Para cada animal con al menos dos pesajes: fecha estimada en que alcanzará el peso objetivo, según su ganancia de los últimos 90 días.
+- CA1: La finca define un peso objetivo de venta por categoría de manejo (`targetSaleWeightKg`; por defecto 450 kg en Levante y en Toro [Validar], M8a). Los machos con la etiqueta del sistema «Reproductor» no tienen peso de venta.
+- CA2: Para cada animal con al menos dos pesajes: fecha estimada en que alcanzará el peso objetivo, según su ganancia de los últimos 90 días (ADR-015): el último pesaje más ⌈(objetivo − último) / ganancia⌉ días, en enteros. Sin ganancia positiva no hay fecha. Se muestra en la pestaña Pesos de la ficha.
 - CA3: Pregunta del tablero en fincas de ceba: "¿Cuáles alcanzan el peso de venta este mes?".
+- CA4 (M8a): Lo medido y lo estimado van separados, cada uno con su filtro del listado (`saleWeight`): **ya en el peso** (último pesaje ≥ objetivo), **este mes** (fecha estimada entre hoy y el último día del mes), **posiblemente en el peso** (la fecha estimada ya pasó pero el último pesaje está por debajo: «Según su ganancia ya debería estar en el peso: pésalo para confirmar») y **después**.
 
 **PES-07 — Báscula por cable en escritorio** · C · F3 (M18)
 - CA1: La app de escritorio (Tauri) se conecta al indicador Tru-Test por USB o Bluetooth con el mismo `TruTestAdapter` y la lógica compartida de PES-03.
@@ -555,6 +558,8 @@ Responde las preguntas de la situación problema del enunciado:
 - (Solo ADMIN) Inversión total del hato activo.
 - CA1: Cada indicador es un enlace al listado filtrado correspondiente.
 - CA2: Carga en menos de 2 segundos con 5.000 animales.
+- CA3 (M8a): «¿Qué falta vacunar?» cuenta cada animal una vez (vencidas o pendientes o próximas) y enlaza a Alertas con los dos tipos. «¿Cuáles paren pronto?» enlaza al listado ordenado por parto estimado (CU-03) y dice cuál es la próxima. «Nacidos del año» enlaza al reporte de nacimientos. Las cifras que son un promedio (intervalo entre partos, días para la venta) no tienen listado. A la derecha (debajo en el celular) van las alertas activas por tipo, en el orden del sistema productivo.
+- CA4 (M8a): Todas las cifras salen de SQL con la misma clasificación del listado (ADR-009), así que coinciden con el total del listado al que enlazan; una prueba lo compara cifra por cifra.
 
 **RPT-02 — Reportes estándar** · M · F1
 Inventario (total, por sexo, por categoría de manejo, por raza, por lote); **inventario por grupos de edad en formato ICA** (08 §2.2); avance del ciclo oficial de vacunación; nacimientos por período; vacunados por período y vacuna; pendientes de vacunación; partos próximos; vendidos o retirados por período; historial individual (PDF de la ficha).
@@ -576,6 +581,8 @@ Cada finca vende cosas distintas: unas solo machos (ceba), otras hembras o terne
 - CA1: No cambia datos ni reglas: cambia **qué se destaca** en el tablero, el orden de los reportes y qué alertas aparecen primero.
 - CA2: El control de leche (§3.16) solo aparece con `LECHERIA` o `DOBLE_PROPOSITO`.
 - CA3: Con `salesFocus`, el listado de "Disponibles para venta" y las sugerencias de venta se centran en ese sexo.
+- CA4 (M8a): Las preguntas de leche que necesitan el control lechero (M9b) no aparecen antes de M9b, ni como tarjetas vacías. Hasta entonces, doble propósito muestra las de cría (destete, intervalo entre partos, horras) más «¿Cuáles están en retiro de leche?», que sale de los tratamientos; lechería, solo esta última. El orden de los reportes por sistema llega con los reportes de M8b.
+- CA5 (M8a): El sistema productivo también ordena los grupos de Alertas: pesos primero en ceba, reproducción en cría y doble propósito, retiros en lechería.
 
 Preguntas del tablero por sistema (se agregan a las comunes de RPT-01: total, preñadas, partos próximos, vacunas):
 
@@ -586,7 +593,9 @@ Preguntas del tablero por sistema (se agregan a las comunes de RPT-01: total, pr
 | Lechería y doble propósito | ¿Cuántas vacas están en ordeño y cuántas secas? · ¿Cuánta leche se produjo ayer y en el mes? · ¿Cuáles se deben secar pronto? · ¿Cuáles están en retiro de leche? |
 | Ciclo completo | Combinación de cría y ceba. |
 
-Referencias [Real]: en sistemas doble propósito en Colombia, UPRA (2024) reporta de 5,69 a 9,88 litros por vaca al día, destete hacia los 7 meses e intervalo entre partos de 387 a 439 días. Sirven como referencia en los reportes, no como umbrales fijos.
+Referencias [Real]: en sistemas doble propósito en Colombia, UPRA (2024) reporta de 5,69 a 9,88 litros por vaca al día, destete hacia los 7 meses e intervalo entre partos de 387 a 439 días. Sirven como referencia en los reportes, no como umbrales fijos: en el tablero (M8a) van como texto de contexto junto al indicador, sin color ni alerta.
+
+Intervalo entre partos del hato (M8a, RN-38): todos los intervalos válidos de las hembras activas, promediados como intervalos, con su distribución en rangos (menos de 365, 365 a 399, 400 a 439, 440 a 499 y 500 días o más). Destete del mes: los nacidos en el mes calendario que está a `weaningAgeMonths` meses del actual (con meses cumplidos y recorte a fin de mes, ADR-002, son exactamente los que cumplen la edad este mes), con el peso promedio de su último pesaje.
 
 **CFG-02 — Catálogos** · M · F1
 Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vacunación, lotes y etiquetas manuales (M3). Los **tipos de gasto** pasan a M7 (Finanzas), donde se usan; hoy son un enum fijo (`EXPENSE_TYPE`).

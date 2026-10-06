@@ -47,14 +47,14 @@ Motor: PostgreSQL 16+. ORM: Prisma. El esquema de referencia completo está en `
   "weightGainAlertKgPerDay": { "YOUNG_MALE": 0.3 },
   "weightLossAlertPercent": 5,
   "weightGainAnchorMaxDays": 180,
-  "targetSaleWeightKg": { "YOUNG_MALE": 450 },
+  "targetSaleWeightKg": { "YOUNG_MALE": 450, "ADULT_MALE": 450 },
   "scaleStableToleranceKg": 1,
   "scaleStableSeconds": 2,
   "scaleMinWeightKg": 20,
   "scaleZeroThresholdKg": 10
 }
 ```
-`overdueCalvingAlertDays` (M5, RN-39): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar»; 15 por defecto [Validar]. Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo, hasta tres decimales), `weightLossAlertPercent` (entero) y `weightGainAnchorMaxDays` (antigüedad máxima del ancla de la ganancia de 90 días, 180 [Validar], ADR-015) de PES-05 (M6); `targetSaleWeightKg` (por sexo o categoría) de PES-06 (M8); `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg` y `scaleZeroThresholdKg`, las condiciones de guardado del pesaje en vivo (PES-03 CA2 y CA3, F2, M15; 09 v1.4). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
+`overdueCalvingAlertDays` (M5, RN-39): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar»; 15 por defecto [Validar]. Campos de la validación con ganaderos (09): `codeReuse` y `codeSuggestion` (`PATTERN` | `LOWEST_FREE`) de ANI-10 (M4c); `productionSystem` (`CRIA` | `LEVANTE_CEBA` | `LECHERIA` | `DOBLE_PROPOSITO` | `CICLO_COMPLETO`) y `salesFocus` (`MALES` | `FEMALES` | `BOTH` | `null`) de CFG-03 (M8); `dryOffBeforeCalvingDays` de LEC-03 (M9b); `weightGainAlertKgPerDay` (por categoría de manejo, hasta tres decimales), `weightLossAlertPercent` (entero) y `weightGainAnchorMaxDays` (antigüedad máxima del ancla de la ganancia de 90 días, 180 [Validar], ADR-015) de PES-05 (M6); `targetSaleWeightKg` (por categoría de manejo, kilos enteros; 450 en Levante y Toro [Validar]) de PES-06 (M8a; los machos con la etiqueta del sistema `REPRODUCTOR` no tienen peso de venta); `scaleStableToleranceKg`, `scaleStableSeconds`, `scaleMinWeightKg` y `scaleZeroThresholdKg`, las condiciones de guardado del pesaje en vivo (PES-03 CA2 y CA3, F2, M15; 09 v1.4). Los valores por defecto marcados [Validar] en 08 §3.7 se confirman con la finca.
 
 **User** — `id, name, username (único global, `[a-z0-9._-]{3,30}`), email? (único si existe), email_verified_at timestamptz?, password_hash?, must_change_password bool, is_active, created_at, updated_at, last_login_at`
 - `password_hash` pasa a opcional en M10a: quien acepta una invitación con Google (AUT-13 CA2) puede no tener contraseña. Nunca queda un usuario sin ningún método de acceso: sin contraseña, no se puede desvincular Google (`LAST_LOGIN_METHOD`).
@@ -95,7 +95,7 @@ Semilla (08 §3.3): Aftosa (`OFFICIAL_CYCLE`); Brucelosis RB51 (`AGE_WINDOW`, FE
 
 **Lot** — `id, farm_id, name, description?, is_active, version`. Único (`farm_id`, `lower(name)`).
 
-**Tag** — etiquetas manuales. `id, farm_id, key, label, description?, is_system, is_active, version`. Único (`farm_id`, `key`) y (`farm_id`, `lower(label)`). La `key` se genera del nombre al crear la etiqueta y no cambia al renombrarla. Semilla de sistema: `COTERO`, que no se puede desactivar ni renombrar (solo se edita su descripción).
+**Tag** — etiquetas manuales. `id, farm_id, key, label, description?, is_system, is_active, version`. Único (`farm_id`, `key`) y (`farm_id`, `lower(label)`). La `key` se genera del nombre al crear la etiqueta y no cambia al renombrarla. Semilla de sistema: `COTERO` y, desde M8a, `REPRODUCTOR` («Reproductor»: macho que la finca conserva para servir, sin peso objetivo de venta, PES-06), que no se pueden desactivar ni renombrar (solo se edita su descripción). En el seed, los cuatro toros de La Esperanza y el 48 de El Retiro la tienen. Ninguna regla usa una etiqueta que la finca no tenga: sin `REPRODUCTOR`, ningún animal es reproductor.
 
 **Catálogos (M3).** Los nombres se guardan normalizados (sin espacios al inicio ni al final, sin espacios dobles) y son únicos por finca **sin distinguir mayúsculas**: «Brahman», «brahman » y «Brahman» son el mismo. Los catálogos no se borran: se desactivan (`is_active = false`), dejan de ofrecerse en los formularios y conservan su historial. `Farm` y los catálogos llevan `version` para el control de concurrencia de `PATCH` (05, «Convenciones»).
 
@@ -319,6 +319,10 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 
 **Estado de vacunas en SQL** (M6, ADR-009 decisión 8): la CTE `vaccine_status` (`vaccine-status.sql.ts`) da estado, motivo y fecha límite por animal activo y vacuna con programación, y `classificationCtes` las resume en `vaccine_overdue` y `vaccine_due`. Reemplaza el cálculo en memoria del filtro de alertas de vacunas.
 
+**Peso de venta** (M8a, PES-06, ADR-017): en `classificationCtes`, para los activos que no son reproductores, `sale_target_cents` (el objetivo de su categoría), `sale_weight_on` (último pesaje + ⌈10 · faltante en centésimas / ganancia de 90 días en milésimas⌉ días, si la ganancia es positiva) y `sale_weight_status` (`reached`, `this_month`, `likely_reached`, `later`). Además `is_breeder`, `milk_withdrawal` y `gain_threshold_milli`. Igual a `saleWeightProjection` de shared, animal por animal (prueba de equivalencia). La edad se calcula una vez por animal (`LATERAL` con `OFFSET 0`): `hato_months_between` no se expande en línea y cada uso de la categoría la volvía a llamar.
+
+**Intervalo entre partos del hato** (M8a, RN-38): `herdCalvingIntervalsSql` (`apps/api/src/dashboard/calving-intervals.sql.ts`) une cada parto de una hembra activa con el anterior (`lag` por fecha e id) y descarta los pares con servicio estimado; promedio y distribución por rangos, iguales a `herdCalvingIntervals` de shared sobre el seed.
+
 **Inversión por animal**: `SUM(expense_allocations.amount)` de las asignaciones vigentes de gastos no anulados (CTE `investment`, `apps/api/src/finance/investment.sql.ts`), igual a `animalInvestment` de shared animal por animal (prueba de equivalencia de M7, ADR-016).
 
 **Edad legible**: función compartida en `packages/shared` (`formatAge`), usada por web, móvil y reportes.
@@ -345,7 +349,7 @@ Un parto nuevo sin secado previo cierra la lactancia anterior y abre otra (RN-37
 `pnpm db:seed` reproduce **exactamente** la finca de referencia ficticia de `08-dominio-y-finca-referencia.md` §3:
 - Finca La Esperanza (vereda Loma Grande, San Juan Nepomuceno), parámetros y ciclos de vacunación.
 - Usuarios `alvaro` (ADMIN), `wilmer` y `yeison` (OPERATOR), `paola.vet` (VET). Contraseña de desarrollo en `.env.example`, nunca en producción.
-- Catálogos semilla (razas con grupo y gestación, vacunas con programación, etiqueta COTERO, lotes Paridas, Horras y novillas, Levante, Toros).
+- Catálogos semilla (razas con grupo y gestación, vacunas con programación, etiquetas COTERO y REPRODUCTOR (M8a), lotes Paridas, Horras y novillas, Levante, Toros).
 - 284 animales activos con la distribución de 08 §3.2, historial 2024–2026, 10 vendidos y 3 muertos.
 - El seed es **determinista** (generador con semilla fija y "hoy" fijado en `SEED_TODAY=2026-09-25`) para que las pruebas E2E puedan afirmar cifras exactas del tablero (por ejemplo, 284 activos, 64 + 7 preñadas, 14 terneras pendientes de brucelosis).
 - M6 cambia el último pesaje (15/09/2026) de cinco levantes: tres ganaron solo 15 kg desde el 15/06 y dos perdieron el 8 %. Se aplica después de la economía y sin consumir el generador, así que ninguna otra cifra cambia; `expected.ts` suma `EXPECTED_WEIGHT_ALERTS = { lowGain: 5, weightLoss: 2 }` (los que perdieron peso también tienen ganancia baja).

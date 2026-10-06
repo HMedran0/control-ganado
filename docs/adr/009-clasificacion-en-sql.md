@@ -74,6 +74,11 @@ TypeScript.
    brucelosis, intervalos vencidos y en el borde de la ventana, tres aplicaciones el mismo día,
    anuladas, vacuna quitada del ciclo, umbrales de peso exactos y anclas a 180 y 181 días). Dos
    aplicaciones del mismo día se ordenan por la próxima fecha más lejana en los dos caminos.
+9. **Peso de venta, retiro de leche y rendimiento (M8a, ADR-017).** La CTE agrega el peso de venta
+   de `saleWeightProjection`, el retiro de leche, la etiqueta «Reproductor» y el umbral de ganancia
+   de cada animal, con su prueba de equivalencia. Para que el tablero responda con el seed de carga,
+   la edad se calcula una vez por animal (`LATERAL` con `OFFSET 0`) y `cycle_applied` consulta
+   `vaccination_records` por su índice en lugar de la CTE `vs_records` (ADR-017 decisión 7).
 
 ## Consecuencias
 

@@ -77,7 +77,7 @@ Consecuencia: confirma la prioridad de la app móvil sin conexión (fase 2) y de
 Las fincas de doble propósito agrupan el ganado por estado productivo. Lotes semilla: **Paridas** (vacas con cría al pie), **Horras y novillas**, **Levante** (machos destetados), **Toros**.
 
 ### 1.11 Tipo de finca — [Ficticio]
-**Cría y doble propósito** (leche y carne), típica de los Montes de María: `productionSystem = DOBLE_PROPOSITO` (CFG-03). El control de leche entra como alcance extendido en M9b (LEC-01 a LEC-05, 09 §4.2); el seed de la finca incluye control lechero (§3.6).
+**Cría y doble propósito** (leche y carne), típica de los Montes de María: `productionSystem = DOBLE_PROPOSITO` (CFG-03). El control de leche entra como alcance extendido en M9b (LEC-01 a LEC-05, 09 §4.2); el seed de la finca incluye control lechero (§3.6). Su tablero (M8a) muestra las preguntas de cría (destete, intervalo entre partos, horras) y el retiro de leche hasta que exista el control lechero; sin `salesFocus`.
 
 ### 1.12 Gastos que se siguen por animal — [Ficticio]
 - Directos: compra, medicamentos y tratamientos individuales, veterinario por caso, transporte de un animal.
@@ -161,7 +161,7 @@ Todos los nombres, cifras y valores de esta sección son **ficticios**.
 | Terneros | 38 | < 7 meses |
 | Terneras | 36 | < 7 meses; 14 entre 3 y 9 meses sin brucelosis (pendientes) |
 | Levante | 52 | 14 marcados "Disponible para venta" |
-| Toros | 4 | 2 Brahman, 1 Gyr, 1 Romosinuano |
+| Toros | 4 | 2 Brahman, 1 Gyr, 1 Romosinuano; desde M8a con la etiqueta del sistema «Reproductor» (sin peso de venta) |
 | Coteros | 2 | Bueyes adultos con etiqueta COTERO (cuentan como machos adultos) |
 
 Distribución de razas: Brahman comercial 40 %, Brahman × Pardo 30 %, Girolando 20 %, Romosinuano 10 %.
@@ -189,6 +189,7 @@ Finca pequeña para probar la numeración reutilizable (ANI-10, ANI-11, IDN-06).
 - Al menos dos números reutilizados: un animal vendido y otro activo con el mismo número, cada uno con su propio historial.
 - Un animal vendido con chapeta liberada (`EXITED`) y DIN y RFID que siguen asociados a él (RN-32).
 - Un ADMIN propio con correo, para las pruebas de aislamiento por finca.
+- Desde M8a, **finca de levante y ceba** que vende machos (`productionSystem = LEVANTE_CEBA`, `salesFocus = MALES`), con ocho machos comprados el 20/05/2026 (códigos 41 a 48, `apps/api/prisma/seed/retiro-ceba.ts`, con su propio generador): en el lote **Ceba A**, el 41 y el 42 llegan a 450 kg este mes (28/09 y 30/09, a 0,8 kg/día), el 43 ya pasó los 450 kg, el 44 tiene más de 24 meses («Toro») y también llega este mes, y el 45 debería estar en el peso según su ganancia pero su último pesaje es de julio; en **Ceba B**, el 46 y el 47 ganan menos de 0,30 kg/día; el 48 es el toro reproductor, con la etiqueta «Reproductor». El Retiro pasa de 41 animales (38 activos) a 49 (46 activos); las cifras de La Esperanza no cambian. Sus cifras del tablero están en `EXPECTED_DASHBOARD`.
 
 ### 3.6 Control lechero del seed — [Ficticio] (M9b)
 La finca de referencia (doble propósito) recibe 90 días de control lechero coherente para sus vacas en ordeño y algunos secados. Producción por vaca entre 4 y 10 litros diarios, consistente con UPRA (2024), que reporta 5,69 a 9,88 litros por vaca al día en doble propósito. Las cifras esperadas (vacas en ordeño, secas, secar pronto, producción de ayer y del mes) se agregan a `expected.ts` en M9b.
@@ -199,7 +200,7 @@ Valores por defecto de `Farm.settings`, confirmables con la finca o el veterinar
 - `weightGainAlertKgPerDay`: 0,30 kg/día para Levante; por categoría de manejo.
 - `weightLossAlertPercent = 5`.
 - `weightGainAnchorMaxDays = 180` (M6, ADR-015): el último pesaje anterior a la ventana de 90 días completa la ganancia si está a lo sumo a 180 días del inicio de la ventana; así una finca que pesa cada tres meses tiene ganancia de 90 días. Confirmar con la finca y el veterinario.
-- `targetSaleWeightKg`: 450 kg en machos de Levante.
+- `targetSaleWeightKg`: 450 kg en machos de Levante y en los de 24 meses o más (Toro) [Validar] (M8a). En la ceba colombiana se venden novillos de 24 a 36 meses, que la clasificación por edad llama «Toro»; los reproductores no tienen peso de venta: se marcan con la etiqueta del sistema «Reproductor» (`REPRODUCTOR`, como COTERO). Pendiente con la finca piloto: cómo llaman a ese macho y si separan los reproductores (09 §6, preguntas 7 y 8).
 - `overdueCalvingAlertDays = 15` (M5): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar» (RN-39). Decisión de la sesión de M5; confirmar con la finca y el veterinario.
 
 ---
