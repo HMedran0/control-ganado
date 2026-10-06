@@ -476,6 +476,11 @@ describe('Animales e identificadores', () => {
         .expect(200);
       expect(changed.body.economics).toEqual({ purchasePrice: '2100000.00' });
       expect(await prisma.expense.count({ where: { voidedAt: null } })).toBe(1);
+      // M7 (ADR-016): la asignación anterior queda anulada; la ficha lee solo la vigente.
+      expect(await prisma.expenseAllocation.count({ where: { voidedAt: null } })).toBe(1);
+      expect(await prisma.expenseAllocation.count({ where: { voidedAt: { not: null } } })).toBe(1);
+      const reread = await http().get(`/api/v1/animals/${animal.id}`).set(admin).expect(200);
+      expect(reread.body.economics).toEqual({ purchasePrice: '2100000.00' });
       const removed = await http()
         .patch(`/api/v1/animals/${animal.id}`)
         .set(admin)

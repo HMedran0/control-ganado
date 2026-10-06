@@ -315,12 +315,16 @@ export class AnimalDetailService {
       : { previousHolder: null, currentHolder: holder };
   }
 
-  /** Valor de compra: la asignación del gasto `PURCHASE` vigente del animal (ANI-01 CA2). */
+  /**
+   * Valor de compra: la asignación **vigente** del gasto `PURCHASE` vigente del animal (ANI-01 CA2).
+   * Desde M7, corregir la compra anula la asignación anterior y crea otra (ADR-016).
+   */
   private async purchasePrice(scope: FarmScope, animalId: string, db: Tx): Promise<string | null> {
     const allocation = await db.expenseAllocation.findFirst({
       where: {
         farmId: scope.farmId,
         animalId,
+        voidedAt: null,
         expense: { type: 'PURCHASE', voidedAt: null },
       },
       select: { amount: true },

@@ -232,6 +232,7 @@ export class AnimalExportService {
         where: {
           farmId: scope.farmId,
           animalId: { in: ids },
+          voidedAt: null,
           expense: { type: 'PURCHASE', voidedAt: null },
         },
         select: { animalId: true, amount: true },
