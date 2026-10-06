@@ -119,6 +119,8 @@ export function useUpdateFarm() {
     mutationFn: (body: UpdateFarmInput) => api.patch<FarmView>('/farm', body),
     onSuccess: (farm) => {
       queryClient.setQueryData(['farm'], farm);
+      // El sistema productivo y los parámetros cambian lo que muestra Inicio (CFG-03).
+      void queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
   });
 }

@@ -245,6 +245,33 @@ describe('FarmForm', () => {
     });
   });
 
+  it('sistema productivo, qué vende y peso de venta (CFG-03, PES-06; M8a)', async () => {
+    const { fetchMock } = await renderApp(<FarmForm farm={FARM} onReload={vi.fn()} />, () =>
+      json({ ...FARM, version: 5 }),
+    );
+    const user = userEvent.setup();
+    const system = screen.getByLabelText('¿Qué hace la finca?');
+    expect(system).toHaveValue('DOBLE_PROPOSITO');
+    await user.selectOptions(system, 'LEVANTE_CEBA');
+    const focus = screen.getByRole('radiogroup', { name: '¿Qué vende principalmente?' });
+    expect(within(focus).getByRole('radio', { name: 'Sin definir' })).toBeChecked();
+    await user.click(within(focus).getByRole('radio', { name: 'Machos' }));
+    // 450 kg en Levante y en Toro por defecto [Validar]; se cambia el de Toro.
+    expect(screen.getByLabelText('Levante: peso de venta')).toHaveValue('450');
+    const bull = screen.getByLabelText('Toro: peso de venta');
+    await user.clear(bull);
+    await user.type(bull, '480');
+    await user.click(screen.getByRole('button', { name: 'Guardar parámetros' }));
+    expect(await screen.findByText('Parámetros guardados.')).toBeInTheDocument();
+    expect(sentBody(fetchMock, 0)).toMatchObject({
+      settings: {
+        productionSystem: 'LEVANTE_CEBA',
+        salesFocus: 'MALES',
+        targetSaleWeightKg: { YOUNG_MALE: 450, ADULT_MALE: 480 },
+      },
+    });
+  });
+
   it('CODE_REUSE_CONFLICT: muestra qué números están repetidos', async () => {
     const detail =
       'Hay números repetidos entre animales activos y animales que salieron (5 y 5). Cámbialos antes de desactivar la reutilización.';

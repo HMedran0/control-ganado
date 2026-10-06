@@ -1,10 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
   MANAGEMENT_CATEGORY,
+  PRODUCTION_SYSTEM,
+  SALES_FOCUS,
   updateFarmSchema,
   type CodeSuggestion,
   type FarmView,
   type ManagementCategory,
+  type SalesFocus,
 } from '@hato/shared';
 import { CircleCheck } from 'lucide-react';
 import { useState } from 'react';
@@ -14,8 +17,10 @@ import type { z } from 'zod';
 import { AlertBanner } from '../../../components/ui/AlertBanner';
 import { NumberField } from '../../../components/ui/NumberField';
 import { SegmentedChoice } from '../../../components/ui/SegmentedChoice';
+import { SelectField } from '../../../components/ui/SelectField';
 import { TextField } from '../../../components/ui/TextField';
 import { CATEGORY_LABEL } from '../../animals/labels';
+import { PRODUCTION_SYSTEM_LABEL, SALES_FOCUS_LABEL } from '../../dashboard/labels';
 import { useUpdateFarm } from '../api';
 import { FormActions } from '../FormActions';
 import { isVersionConflict, saveErrorMessage } from '../form-errors';
@@ -41,6 +46,10 @@ type NumericSetting =
  *
  * El precio por kilo por categoría (ECO-03, M7) solo lo ve y lo edita el ADMIN (RN-20): si la API
  * no lo mandó, el bloque no aparece y el `PATCH`, que es parcial, no lo toca.
+ *
+ * Sistema productivo y qué vende la finca (CFG-03, M8a): cambian qué destaca Inicio y qué alertas
+ * salen primero, no los datos. El peso objetivo de venta (PES-06) va por categoría, junto a los
+ * demás parámetros de peso.
  */
 export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => void }) {
   const updateFarm = useUpdateFarm();
@@ -77,6 +86,9 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
         weightGainAlertKgPerDay: settings.weightGainAlertKgPerDay,
         weightLossAlertPercent: settings.weightLossAlertPercent,
         weightGainAnchorMaxDays: settings.weightGainAnchorMaxDays,
+        productionSystem: settings.productionSystem,
+        salesFocus: settings.salesFocus,
+        targetSaleWeightKg: settings.targetSaleWeightKg,
         // Solo viene para el ADMIN (RN-20); si no vino, no se manda y el PATCH no lo toca.
         ...(settings.pricePerKgByCategory === undefined
           ? {}
@@ -140,6 +152,55 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
       </fieldset>
 
       <fieldset className="flex flex-col gap-5">
+        <legend className="mb-3 text-lg font-bold">Sistema productivo</legend>
+        <p className="text-texto-2">
+          Cambia qué preguntas destaca Inicio y qué alertas salen primero. No cambia los datos ni
+          las reglas.
+        </p>
+        <Controller
+          control={control}
+          name="settings.productionSystem"
+          render={({ field }) => (
+            <SelectField
+              label="¿Qué hace la finca?"
+              value={field.value ?? ''}
+              onChange={(event) => {
+                field.onChange(event.target.value);
+              }}
+              error={errors.settings?.productionSystem?.message}
+            >
+              {Object.values(PRODUCTION_SYSTEM).map((system) => (
+                <option key={system} value={system}>
+                  {PRODUCTION_SYSTEM_LABEL[system]}
+                </option>
+              ))}
+            </SelectField>
+          )}
+        />
+        <Controller
+          control={control}
+          name="settings.salesFocus"
+          render={({ field }) => (
+            <SegmentedChoice<SalesFocus | 'NONE'>
+              label="¿Qué vende principalmente?"
+              hint="«Disponibles para venta» en Inicio se centra en ese sexo."
+              options={[
+                ...Object.values(SALES_FOCUS).map((focus) => ({
+                  value: focus,
+                  label: SALES_FOCUS_LABEL[focus],
+                })),
+                { value: 'NONE', label: 'Sin definir' },
+              ]}
+              value={field.value === undefined ? null : (field.value ?? 'NONE')}
+              onChange={(next) => {
+                field.onChange(next === 'NONE' ? null : next);
+              }}
+            />
+          )}
+        />
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-5">
         <legend className="mb-3 text-lg font-bold">Parámetros del hato</legend>
         <div className="grid gap-5 sm:grid-cols-2">
           <SettingNumber
@@ -188,7 +249,7 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
           />
         </div>
         <fieldset className="flex flex-col gap-4 rounded-panel border-2 border-cerca p-4">
-          <legend className="px-1 font-bold">Pesos (PES-05)</legend>
+          <legend className="px-1 font-bold">Pesos (PES-05 y PES-06)</legend>
           <p className="text-texto-2">
             «Ganancia baja» cuando la ganancia de los últimos 90 días es menor que el umbral de su
             categoría. Deja vacía una categoría para no alertarla.
@@ -237,6 +298,36 @@ export function FarmForm({ farm, onReload }: { farm: FarmView; onReload: () => v
               error={errors.settings?.weightGainAnchorMaxDays?.message}
             />
           </div>
+          <p className="text-texto-2">
+            Peso objetivo de venta (PES-06): con él, cada animal con dos pesajes tiene la fecha
+            estimada en que lo alcanza. Los machos con la etiqueta «Reproductor» no lo tienen.
+          </p>
+          <Controller
+            control={control}
+            name="settings.targetSaleWeightKg"
+            render={({ field }) => {
+              const value = (field.value ?? {}) as Partial<Record<ManagementCategory, number>>;
+              return (
+                <div className="grid gap-4 sm:grid-cols-3">
+                  {Object.values(MANAGEMENT_CATEGORY).map((category) => (
+                    <NumberField
+                      key={category}
+                      label={`${CATEGORY_LABEL[category]}: peso de venta`}
+                      unit="kg"
+                      value={value[category] === undefined ? null : String(value[category])}
+                      onChange={(next) => {
+                        const updated = { ...value };
+                        if (next === null || next === '') delete updated[category];
+                        else updated[category] = Number(next);
+                        field.onChange(updated);
+                      }}
+                      error={errors.settings?.targetSaleWeightKg?.[category]?.message}
+                    />
+                  ))}
+                </div>
+              );
+            }}
+          />
         </fieldset>
         {settings.pricePerKgByCategory === undefined ? null : (
           <fieldset className="flex flex-col gap-4 rounded-panel border-2 border-cerca p-4">
