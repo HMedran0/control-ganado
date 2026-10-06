@@ -16,6 +16,7 @@
  */
 
 import {
+  BREEDER_TAG_KEY,
   addDays,
   addMonths,
   CALVING_TYPE,
@@ -508,7 +509,8 @@ export function buildHerd(
       detail: 'Feria ganadera de Sincelejo',
       notes: 'Reproductor de la finca.',
       estimated: false,
-      tagKeys: [],
+      // M8a: marcados como reproductores, sin peso objetivo de venta (PES-06).
+      tagKeys: [BREEDER_TAG_KEY],
     });
     bulls.push(bull);
     animals.push(bull);

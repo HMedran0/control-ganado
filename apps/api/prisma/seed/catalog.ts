@@ -8,6 +8,7 @@
  */
 
 import {
+  BREEDER_TAG_KEY,
   BREED_GROUP,
   DEFAULT_CALF_CODE_PATTERN,
   DEFAULT_FARM_GESTATION_DAYS,
@@ -25,7 +26,7 @@ import {
   type VaccineScheduleType,
 } from '@hato/shared';
 
-import type { IdFactory } from './ids.js';
+import { derivedId, type IdFactory } from './ids.js';
 
 /** Precio de referencia en pie, $/kg (08 §3.4). Ficticio. */
 export const PRICE_PER_KG = 7_800;
@@ -233,6 +234,14 @@ export const TAGS = [
       'Animal destinado a trabajo (carga, tiro) o a un uso específico definido por la finca',
     isSystem: true,
   },
+  {
+    // M8a: el macho reproductor no tiene peso objetivo de venta (PES-06). Su identificador sale
+    // de `derivedId` (ver `buildCatalog`) para no mover ningún identificador anterior.
+    key: BREEDER_TAG_KEY,
+    label: 'Reproductor',
+    description: 'Macho que la finca conserva para servir: no tiene peso objetivo de venta',
+    isSystem: true,
+  },
 ] as const;
 
 /** Catálogos ya con identificador, listos para escribir y para que el hato los referencie. */
@@ -280,7 +289,14 @@ export function buildCatalog(ids: IdFactory): Catalog {
   for (const lot of LOTS) lotIds.set(lot.key, ids.next());
 
   const tagIds = new Map<string, string>();
-  for (const tag of TAGS) tagIds.set(tag.key, ids.next());
+  for (const tag of TAGS) {
+    // Las etiquetas agregadas después de M3 no consumen el generador: así los identificadores de
+    // todo lo demás no cambian.
+    tagIds.set(
+      tag.key,
+      tag.key === BREEDER_TAG_KEY ? derivedId(`tag:${tag.key}`, '2026-01-01') : ids.next(),
+    );
+  }
 
   const admin = users[0];
   if (admin === undefined) throw new Error('El catálogo de usuarios no puede estar vacío.');

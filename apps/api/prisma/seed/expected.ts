@@ -194,7 +194,8 @@ export const EXPECTED_CATALOG = {
   vaccines: 4,
   cycles: 3,
   lots: 4,
-  tags: 1,
+  /** COTERO y, desde M8a, REPRODUCTOR (los cuatro toros). */
+  tags: 2,
 } as const;
 
 /** Reparto por lote de los animales activos (08 §1.10). */
@@ -225,9 +226,13 @@ export const EXPECTED_NUEVA = {
   users: 1,
 } as const;
 
+/**
+ * El Retiro (08 §3.5). Desde M8a suma los ocho machos de ceba de `retiro-ceba.ts` (41 a 48): de
+ * 41 animales y 38 activos pasa a 49 y 46. Lo demás de M4c no cambia.
+ */
 export const EXPECTED_RETIRO = {
-  total: 41,
-  active: 38,
+  total: 49,
+  active: 46,
   exited: 3,
   /** Números normalizados que comparten un activo y uno que salió (RN-33). */
   reusedCodes: ['12', '5'],
@@ -265,4 +270,61 @@ export const EXPECTED_FINANCE = {
   },
   /** Inversión acumulada de los animales activos hoy (RN-18). */
   herdInvestment: '36761389.00',
+} as const;
+
+/**
+ * Tablero de Inicio (M8a). Las cifras comunes ya están arriba (inventario, reproducción,
+ * nacimientos, alertas, inversión); estas son las de las preguntas propias de cada sistema. Las
+ * calcula el generador tal como es: el intervalo entre partos del seed (501 días en promedio)
+ * queda por encima de la referencia de UPRA (387 a 439), y los machos de M4c de El Retiro ganan
+ * tan poco que el promedio de días para la venta pasa de mil. Son datos ficticios, no umbrales.
+ */
+export const EXPECTED_DASHBOARD = {
+  /** La Esperanza, doble propósito: preguntas de cría y retiro de leche. */
+  esperanza: {
+    /** Nacidos en febrero de 2026: cumplen los 7 meses de destete en septiembre. */
+    weaning: {
+      bornFrom: toIsoDate('2026-02-01'),
+      bornTo: toIsoDate('2026-02-28'),
+      count: 9,
+      weighed: 9,
+      averageWeightKg: 60.8,
+    },
+    /** De los dos animales en retiro (08 §3.2), uno sigue también en retiro de leche. */
+    milkWithdrawal: 1,
+    /** RN-38 sobre las hembras activas. */
+    calvingInterval: {
+      count: 62,
+      females: 52,
+      averageDays: 501,
+      distribution: [
+        { bucket: 'UNDER_365', count: 10 },
+        { bucket: 'D365_399', count: 0 },
+        { bucket: 'D400_439', count: 3 },
+        { bucket: 'D440_499', count: 19 },
+        { bucket: 'D500_PLUS', count: 30 },
+      ],
+    },
+  },
+  /** El Retiro, levante y ceba, con los casos de `retiro-ceba.ts`. */
+  retiro: {
+    /** 41, 42 y 44 este mes; 43 ya en el peso; 45 posiblemente; el 48 (reproductor) fuera. */
+    saleWeight: {
+      monthEnd: toIsoDate('2026-09-30'),
+      reached: 6,
+      thisMonth: 3,
+      likelyReached: 2,
+      later: 6,
+    },
+    daysToSale: { averageDays: 1089, animals: 9 },
+    /** Lotes sin el id (lo pone el generador): Ceba B, por debajo del umbral; Ceba A, no. */
+    lotGains: {
+      belowThreshold: [
+        { name: 'Ceba B', animals: 2, averageGain: 0.181, averageThreshold: 0.3, lowGain: 2 },
+      ],
+      others: [
+        { name: 'Ceba A', animals: 4, averageGain: 0.802, averageThreshold: 0.3, lowGain: 0 },
+      ],
+    },
+  },
 } as const;

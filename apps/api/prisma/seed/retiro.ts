@@ -8,7 +8,9 @@
  *   número, cada uno con su propio historial (RN-33);
  * - el 5 anterior se vendió con la chapeta liberada (`EXITED`) y conserva su DIN y su RFID
  *   (RN-32);
- * - un ADMIN propio con correo, `retiro.admin`, para las pruebas de aislamiento por finca.
+ * - un ADMIN propio con correo, `retiro.admin`, para las pruebas de aislamiento por finca;
+ * - desde M8a, finca de **levante y ceba** que vende machos (CFG-03), con los casos de ceba de
+ *   `retiro-ceba.ts` (peso de venta y lotes con ganancia baja).
  *
  * No toca ninguna cifra de La Esperanza. Es determinista como el seed de referencia: semilla
  * propia, identificadores con reloj desplazado y marcas de tiempo derivadas de las fechas.
@@ -23,7 +25,9 @@ import {
   IDENTIFIER_RETIRE_REASON,
   IDENTIFIER_TYPE,
   ORIGIN,
+  PRODUCTION_SYSTEM,
   ROLE,
+  SALES_FOCUS,
   SEX,
   toIsoDate,
   WEIGHT_METHOD,
@@ -38,6 +42,7 @@ import type { SeedClient } from './client.js';
 import { createIdFactory, instantOf } from './ids.js';
 import { hashSeedPassword } from './password.js';
 import { createRandom } from './random.js';
+import { CEBA_ENTRY, buildRetiroCeba, type RetiroCeba } from './retiro-ceba.js';
 import { resetFarmData } from './write.js';
 import { Prisma } from '../../src/generated/prisma/client.js';
 
@@ -86,6 +91,8 @@ export type RetiroSeed = {
   readonly membershipId: string;
   readonly breedId: string;
   readonly animals: readonly RetiroAnimal[];
+  /** Casos de ceba de M8a, con su propio generador. */
+  readonly ceba: RetiroCeba;
 };
 
 /** Números libres hoy: nadie activo los tiene (el 17 lo tuvo un animal vendido). */
@@ -191,7 +198,8 @@ export function buildRetiroSeed(today: IsoDate): RetiroSeed {
     });
   }
 
-  return { farmId, userId, membershipId, breedId, animals };
+  // Al final y con su propia fábrica: no mueve ningún identificador de M4c.
+  return { farmId, userId, membershipId, breedId, animals, ceba: buildRetiroCeba() };
 }
 
 /** Escribe El Retiro, borrando antes lo que hubiera de ella. Devuelve filas por tabla. */
@@ -209,7 +217,14 @@ export async function writeRetiroSeed(
     data: {
       id: seed.farmId,
       name: RETIRO.name,
-      settings: { ...DEFAULT_FARM_SETTINGS, codeReuse: true, codeSuggestion: 'LOWEST_FREE' },
+      settings: {
+        ...DEFAULT_FARM_SETTINGS,
+        codeReuse: true,
+        codeSuggestion: 'LOWEST_FREE',
+        // M8a: finca de ceba que vende machos (CFG-03).
+        productionSystem: PRODUCTION_SYSTEM.LEVANTE_CEBA,
+        salesFocus: SALES_FOCUS.MALES,
+      },
       createdAt,
       updatedAt: createdAt,
     },
@@ -307,11 +322,104 @@ export async function writeRetiroSeed(
         ],
   );
   await prisma.sale.createMany({ data: sales });
+  const ceba = await writeCeba(prisma, seed, today);
 
   return {
+    ...ceba,
     'animales de El Retiro': seed.animals.length,
     'identificadores de El Retiro': identifiers.length,
     'pesajes de El Retiro': weights.length,
     'ventas de El Retiro': sales.length,
+  };
+}
+
+/** Escribe los casos de ceba de M8a (`retiro-ceba.ts`). */
+async function writeCeba(
+  prisma: SeedClient,
+  seed: RetiroSeed,
+  today: IsoDate,
+): Promise<Record<string, number>> {
+  const { ceba } = seed;
+  const createdAt = instantOf(today);
+  const day = (date: IsoDate) => new Date(`${date}T00:00:00.000Z`);
+  await prisma.lot.createMany({
+    data: ceba.lots.map((lot) => ({
+      id: lot.id,
+      farmId: seed.farmId,
+      name: lot.name,
+      description: lot.description,
+      updatedAt: createdAt,
+    })),
+  });
+  await prisma.tag.create({
+    data: {
+      id: ceba.breederTag.id,
+      farmId: seed.farmId,
+      key: ceba.breederTag.key,
+      label: ceba.breederTag.label,
+      description: 'Macho que la finca conserva para servir: no tiene peso objetivo de venta',
+      isSystem: true,
+      updatedAt: createdAt,
+    },
+  });
+  await prisma.animal.createMany({
+    data: ceba.animals.map((animal) => ({
+      id: animal.id,
+      farmId: seed.farmId,
+      code: animal.code,
+      sex: animal.sex,
+      breedId: seed.breedId,
+      birthDate: day(animal.birthDate),
+      origin: ORIGIN.PURCHASED,
+      originDetail: 'Feria de ganado [Ficticio]',
+      entryDate: day(CEBA_ENTRY),
+      lotId: animal.lotId,
+      createdById: seed.userId,
+      updatedById: seed.userId,
+      createdAt: instantOf(CEBA_ENTRY),
+      updatedAt: instantOf(CEBA_ENTRY),
+    })),
+  });
+  await prisma.identifier.createMany({
+    data: ceba.animals.map((animal) => ({
+      id: animal.visualTagId,
+      farmId: seed.farmId,
+      animalId: animal.id,
+      type: IDENTIFIER_TYPE.VISUAL_TAG,
+      value: animal.code,
+      assignedAt: day(CEBA_ENTRY),
+      createdAt: instantOf(CEBA_ENTRY),
+      updatedAt: instantOf(CEBA_ENTRY),
+    })),
+  });
+  const weights = ceba.animals.flatMap((animal) =>
+    animal.weights.map((weight) => ({
+      id: weight.id,
+      farmId: seed.farmId,
+      animalId: animal.id,
+      weighedOn: day(weight.on),
+      weightKg: new Prisma.Decimal(weight.kg),
+      method: WEIGHT_METHOD.SCALE,
+      isBirthWeight: false,
+      createdById: seed.userId,
+      createdAt: instantOf(weight.on),
+      updatedAt: instantOf(weight.on),
+    })),
+  );
+  await prisma.weightRecord.createMany({ data: weights });
+  await prisma.animalTag.createMany({
+    data: ceba.breederLinks.map((link) => ({
+      id: link.id,
+      farmId: seed.farmId,
+      animalId: link.animalId,
+      tagId: ceba.breederTag.id,
+      createdById: seed.userId,
+      createdAt: instantOf(CEBA_ENTRY),
+      updatedAt: instantOf(CEBA_ENTRY),
+    })),
+  });
+  return {
+    'machos de ceba de El Retiro': ceba.animals.length,
+    'pesajes de ceba de El Retiro': weights.length,
   };
 }
