@@ -9,26 +9,29 @@ import { RETIRO_NAME, isMobile, login, seedPassword } from './helpers';
  * Inicio — tablero por sistema productivo (M8a: RPT-01, CFG-03, PES-05, PES-06) en móvil y
  * escritorio, con axe, contra `hato_test` sembrada.
  *
- * El seed se siembra con «hoy» = 25/09/2026, pero la API de las pruebas usa la fecha real (ADR-010):
- * aquí solo se afirman las cifras de `expected.ts` que no dependen del día (inventario, preñadas,
- * servidas, para venta, inversión). Las demás se comprueban contra el listado al que enlazan, y el
- * caso de «alcanzan el peso de venta este mes» se prepara por la API con fechas relativas a hoy.
+ * Las cifras exactas de `expected.ts` las afirma la prueba de integración de la API
+ * (`apps/api/test/dashboard.e2e-spec.ts`), sobre una base recién sembrada. Aquí no se puede: el
+ * seed se siembra con «hoy» = 25/09/2026 pero la API de las pruebas usa la fecha real (ADR-010), y
+ * las specs que corren antes (y el otro proyecto) registran animales, partos y gastos en La
+ * Esperanza. Por eso la pantalla se compara con lo que responde `GET /dashboard` en ese momento,
+ * cada indicador con el listado al que enlaza, y el caso de «alcanzan el peso de venta este mes» se
+ * prepara por la API con fechas relativas a hoy.
  */
 
 const capturas = fileURLToPath(new URL('./capturas/', import.meta.url));
 const run = `${Date.now().toString(36).slice(-5)}${Math.floor(Math.random() * 100)}`;
 const tag = (testInfo: TestInfo) => `${isMobile(testInfo) ? 'M' : 'E'}${run}`;
 
-/** Cifras de `apps/api/prisma/seed/expected.ts` que no cambian con la fecha. */
-const ESPERANZA = {
-  active: '284',
-  males: '96 machos',
-  females: '188 hembras',
-  pregnant: '71',
-  served: '16 servidas sin palpar',
-  forSale: '14',
-  investment: '$ 36,8 M',
+/** Lo que la pantalla necesita de `GET /dashboard` para compararse. */
+type Board = {
+  herd: { total: number; males: number; females: number };
+  reproduction: { pregnant: number; served: number };
+  forSale: { count: number };
+  investment?: string;
 };
+
+/** Entero con puntos de miles, como la pantalla (`groupThousands`). */
+const thousands = (value: number) => String(value).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
 async function expectNoViolations(page: Page): Promise<void> {
   const results = await new AxeBuilder({ page })
@@ -103,6 +106,7 @@ test.describe.serial('Inicio (M8a)', () => {
   test('La Esperanza, doble propósito: sus cifras y las preguntas de cría, con axe', async ({
     page,
   }, testInfo) => {
+    const board = await (await apiAs(testInfo, 'alvaro')).get<Board>('/dashboard');
     await login(page, 'alvaro');
     const own = page.getByRole('region', { name: 'Para tu finca de doble propósito' });
     await expect(own).toBeVisible();
@@ -116,13 +120,20 @@ test.describe.serial('Inicio (M8a)', () => {
     // La referencia de UPRA es solo texto de contexto.
     await expect(page.getByText(/UPRA \(2024\) reporta de 387 a 439 días/)).toBeVisible();
 
-    expect(await figure(page, '¿Cuántos animales hay?')).toBe(ESPERANZA.active);
-    await expect(row(page, '¿Cuántos animales hay?')).toContainText(ESPERANZA.males);
-    await expect(row(page, '¿Cuántos animales hay?')).toContainText(ESPERANZA.females);
-    expect(await figure(page, '¿Cuántas están preñadas?')).toBe(ESPERANZA.pregnant);
-    await expect(row(page, '¿Cuántas están preñadas?')).toContainText(ESPERANZA.served);
-    expect(await figure(page, '¿Cuáles están para venta?')).toBe(ESPERANZA.forSale);
-    await expect(row(page, '¿Cuánto hay invertido?')).toContainText(ESPERANZA.investment);
+    // Las cifras de la pantalla son las de la API (las de expected.ts, con la base recién sembrada).
+    expect(await figure(page, '¿Cuántos animales hay?')).toBe(thousands(board.herd.total));
+    await expect(row(page, '¿Cuántos animales hay?')).toContainText(
+      `${thousands(board.herd.males)} machos · ${thousands(board.herd.females)} hembras`,
+    );
+    expect(await figure(page, '¿Cuántas están preñadas?')).toBe(
+      thousands(board.reproduction.pregnant),
+    );
+    await expect(row(page, '¿Cuántas están preñadas?')).toContainText(
+      `${thousands(board.reproduction.served)} servida`,
+    );
+    expect(await figure(page, '¿Cuáles están para venta?')).toBe(thousands(board.forSale.count));
+    expect(board.investment).toBeDefined();
+    await expect(row(page, '¿Cuánto hay invertido?')).toContainText(/\$ [\d.,]+( M)?/);
 
     // Las alertas por tipo, con la reproducción primero en doble propósito.
     const alerts = page.getByRole('complementary', { name: 'Alertas' });
