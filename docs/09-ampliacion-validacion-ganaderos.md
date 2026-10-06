@@ -295,6 +295,8 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 6. Quiénes usarán la app, cuáles tienen correo y si usan cuentas de Google (Gmail) en el celular.
 7. (M8a) Cómo llaman al macho de ceba mayor de 24 meses (novillo, torete, novillo gordo…) y si separan los reproductores del resto de los machos. **Hallazgo de dominio para validar en el piloto:** la categoría de manejo es por edad (08 §2.1) y muestra «Toro» a todo macho de 24 meses o más, también a un novillo de ceba que la finca está por vender. M8a no cambia las categorías: el peso objetivo de venta se aplica a Levante y Toro, y los reproductores se excluyen con la etiqueta del sistema «Reproductor». Si la finca llama distinto a esos machos, se decide entonces si hace falta una categoría o una etiqueta nueva.
 8. (M8a) El peso objetivo de venta (450 kg para Levante y Toro) y si cambia por sexo, raza o temporada.
+9. (M8b) Qué reportes consulta primero según lo que hace la finca: el orden propuesto (`reportOrder`, 08 §3.7) pone los partos y los nacimientos primero en cría y doble propósito, y el inventario, las salidas y la plata primero en ceba.
+10. (M8b) Si el inventario por grupos de edad que entrega Arreo (una tabla por sexo con los grupos del 08 §2.2, la finca, el código de predio y la fecha de corte) sirve tal cual para los trámites y los ciclos de vacunación, o si el ICA o el vacunador de Fedegán piden otra presentación (por ejemplo, el cuadro de población con los grupos en columnas).
 
 ## Fuentes
 - Datamars Colombia (s. f.). Básculas Tru-Test. https://www.datamarscolombia.com/Basculas.aspx

@@ -113,6 +113,8 @@ El ICA agrupa la población bovina por sexo y edad. Se agrega el reporte **"Inve
 - Hembras: < 3 meses · 3–9 meses · 9–12 meses · 1–2 años · 2–3 años · 3–5 años · > 5 años.
 - Machos: < 3 meses · 3–9 meses · 9–12 meses · 1–2 años · 2–3 años · > 3 años.
 
+Formato del reporte (M8b, ADR-018) [Validar con el ICA y la finca, 09 §6 pregunta 10]: la finca, su municipio y departamento, el código de predio ICA y la fecha de corte (hoy); una tabla por sexo con sus grupos en este orden, los que están en cero también, y el total de cada sexo y del hato. La edad es en meses cumplidos (ADR-002) al día de corte, sobre los animales activos.
+
 ### 2.3 Código de las crías — [Real, práctica común + decisión]
 Es común numerar los animales con el año de nacimiento. **Patrón configurable** `calfCodePattern`, por defecto `{YY}-{NNN}` (por ejemplo, `26-045`: año 2026, consecutivo 45 del año). Tokens: `{YYYY}`, `{YY}`, `{NNN}` (consecutivo del año con ceros), `{N}` (consecutivo sin ceros). El sistema sugiere el siguiente código libre; el usuario puede cambiarlo.
 Los animales existentes conservan el código que ya tienen (en la finca de referencia, números de tres dígitos: `001`–`350`).
@@ -202,6 +204,7 @@ Valores por defecto de `Farm.settings`, confirmables con la finca o el veterinar
 - `weightLossAlertPercent = 5`.
 - `weightGainAnchorMaxDays = 180` (M6, ADR-015): el último pesaje anterior a la ventana de 90 días completa la ganancia si está a lo sumo a 180 días del inicio de la ventana; así una finca que pesa cada tres meses tiene ganancia de 90 días. Confirmar con la finca y el veterinario.
 - `targetSaleWeightKg`: 450 kg en machos de Levante y en los de 24 meses o más (Toro) [Validar] (M8a). En la ceba colombiana se venden novillos de 24 a 36 meses, que la clasificación por edad llama «Toro»; los reproductores no tienen peso de venta: se marcan con la etiqueta del sistema «Reproductor» (`REPRODUCTOR`, como COTERO). Pendiente con la finca piloto: cómo llaman a ese macho y si separan los reproductores (09 §6, preguntas 7 y 8).
+- Orden de los reportes por sistema productivo (M8b, `reportOrder`) [Validar, 09 §6 pregunta 9]: cría y doble propósito empiezan por partos próximos y nacimientos; levante y ceba, por inventario, vendidos y retirados y el reporte económico; lechería, por partos próximos e inventario; ciclo completo, por inventario, partos y nacimientos.
 - `overdueCalvingAlertDays = 15` (M5): días después del parto estimado de una preñez abierta para la alerta «Parto vencido sin registrar» (RN-39). Decisión de la sesión de M5; confirmar con la finca y el veterinario.
 
 ---

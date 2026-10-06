@@ -159,6 +159,7 @@ La tecnología (Expo o Capacitor) la decide el ADR-014. Lo que sigue vale para l
 - Consultas agregadas en SQL (vistas o `$queryRaw` tipado) dentro del módulo `reports`.
 - Excel con `exceljs` (M4d): la exportación del listado arma el libro en memoria, hasta 50.000 filas, con fechas y números reales y el texto escapado contra la inyección de fórmulas; si un reporte llega a pasar ese tamaño, se cambia a su escritor en streaming. La importación usa el mismo paquete para leer (ADR-011). PDF de ficha individual (S) con plantilla HTML renderizada en el servidor (evaluar `@react-pdf/renderer` o Playwright; decidir con ADR).
 - Los números del tablero y los reportes salen de las mismas funciones de consulta.
+- M8b (ADR-018): los reportes estándar (`apps/api/src/reports`) agregan en SQL sobre `classificationCtes` y arman su Excel en memoria (son pequeños). La exportación completa (`apps/api/src/export`) sí va en streaming: un `.xlsx` por entidad con el escritor en streaming de `exceljs`, dentro de un ZIP que escribe un módulo propio (`zip-writer.ts`, DEFLATE con descriptor de datos, sin dependencias), leyendo por bloques de 2.000 filas en una transacción `REPEATABLE READ READ ONLY` con un candado global. El PDF de la ficha pasa a M19.
 
 ## 8. Copias de seguridad (BAK-01)
 - Contenedor de respaldo con `pg_dump` en formato custom, diario a las 02:00 (hora Colombia), cifrado con `age` o GPG, subido a almacenamiento S3-compatible externo (Backblaze B2, Cloudflare R2 o similar).

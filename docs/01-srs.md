@@ -563,10 +563,16 @@ Responde las preguntas de la situación problema del enunciado:
 
 **RPT-02 — Reportes estándar** · M · F1
 Inventario (total, por sexo, por categoría de manejo, por raza, por lote); **inventario por grupos de edad en formato ICA** (08 §2.2); avance del ciclo oficial de vacunación; nacimientos por período; vacunados por período y vacuna; pendientes de vacunación; partos próximos; vendidos o retirados por período; historial individual (PDF de la ficha).
-- CA1: Todos exportables a Excel. Historial individual exportable a PDF (S).
+- CA1: Todos exportables a Excel. Historial individual exportable a PDF (S): pasa a M19 (07 §6, ADR-018).
+- CA2 (M8b): Los reportes van en el orden del sistema productivo de la finca (CFG-03 CA1, `reportOrder` [Validar]); el económico (ECO-06) solo aparece para el ADMIN.
+- CA3 (M8b): Las cifras salen de SQL con la misma clasificación del listado (ADR-009): el inventario por categoría, raza y lote coincide con el listado filtrado; los pendientes de vacunación y los partos próximos, con el tablero; los grupos del ICA, con `icaAgeGroup` animal por animal.
+- CA4 (M8b): El reporte del ICA trae la finca, su ubicación, el código de predio ICA, la fecha de corte y una tabla por sexo con los grupos del 08 §2.2 y los totales [Validar el formato con el ICA y la finca].
+- CA5 (M8b): Precio de venta y comprador de las salidas solo para el ADMIN, en pantalla y en Excel (RN-20).
 
 **RPT-03 — Gráficas estadísticas** · S · F1
 - CA1: Evolución del inventario por mes, nacimientos por mes y sexo, distribución por categoría.
+- CA2 (M8b): Los últimos 12 meses; el inventario de cada mes son los animales en la finca al terminar su último día (el mes en curso, hoy), con la regla `wasInHerdOn` en shared y en SQL; los nacimientos, con el criterio del reporte de nacimientos.
+- CA3 (M8b): SVG propio, cargado solo al abrir las gráficas, con su tabla de datos y cada marca alcanzable con el teclado.
 
 ### 3.12 Configuración (CFG)
 
@@ -610,7 +616,10 @@ Razas (con grupo racial y días de gestación), vacunas, ciclos oficiales de vac
 - CA2: Procedimiento de restauración documentado y probado al menos una vez antes de salir a producción.
 
 **BAK-02 — Exportación por el usuario** · M · F1
-- CA1: El ADMIN descarga todos los datos de la finca en un archivo Excel (una hoja por entidad) o CSV comprimido.
+- CA1: El ADMIN descarga todos los datos de la finca en un archivo Excel (una hoja por entidad) o CSV comprimido. Desde M8b: un ZIP con un `.xlsx` por entidad y un `LEEME.txt` en español que describe cada archivo y cada columna (ADR-018).
+- CA2 (M8b): Trae también lo archivado y lo anulado, marcado; los usuarios sin contraseñas, sesiones ni intentos de inicio de sesión; el texto protegido contra fórmulas. Nombres de archivo solo en ASCII.
+- CA3 (M8b): Se genera mientras se descarga, sin cargar la finca en memoria, de una foto consistente de la base.
+- CA4 (M8b): Queda en la auditoría (quién y cuándo). Tres por hora por finca y una a la vez en el servidor; si no, 429 con `Retry-After` y el mensaje para reintentar.
 
 ### 3.14 Auditoría (AUD)
 

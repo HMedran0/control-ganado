@@ -244,7 +244,8 @@ Invariante (RN-17): suma de las asignaciones **vigentes** = `expense.amount`. Se
 
 **Sesión en UTC.** El adaptador de Prisma (`@prisma/adapter-pg`) envía y lee `timestamptz` sin desfase; con la sesión de PostgreSQL en otra zona (`PGTZ=America/Bogota` en el contenedor) las marcas se guardaban cinco horas corridas y lo que genera la base (`now()`) se leía cinco horas antes. La API y el seed abren sus conexiones con `TimeZone=UTC` (`src/infra/db-session.ts`). Las fechas de negocio son `date` y no dependen de esto (ADR-002).
 
-**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/IMPORT/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS, diff jsonb, created_at timestamptz`.
+**AuditLog** — `id bigserial, farm_id, user_id, entity text, entity_id uuid, action enum CREATE/UPDATE/ARCHIVE/RESTORE/VOID/EXIT/REVERT_EXIT/LOGIN/IMPORT/ACCEPT_INVITATION/VERIFY_EMAIL/RESET_PASSWORD/LINK_IDENTITY/UNLINK_IDENTITY/REVOKE_SESSIONS/EXPORT, diff jsonb, created_at timestamptz`.
+Exportación completa (BAK-02, M8b): `EXPORT` sobre la entidad `Farm` con el id de la finca, escrita antes de generar el ZIP. El límite de tres por hora por finca se deduce de estas filas (ADR-018), sin tabla propia.
 Cuentas y correo (M4d, M10a): invitación creada, reenviada y anulada → entidad `Invitation` con `CREATE`, `UPDATE` y `VOID`; aceptada → `ACCEPT_INVITATION`; correo verificado → `VERIFY_EMAIL`; contraseña restablecida por correo → `RESET_PASSWORD`; Google vinculado y desvinculado → `LINK_IDENTITY` y `UNLINK_IDENTITY`; sesiones cerradas por el ADMIN o por el propio usuario → `REVOKE_SESSIONS`. El `diff` nunca guarda tokens, hashes, contraseñas ni el `code_verifier`.
 Índices: (`farm_id`, `entity`, `entity_id`), (`farm_id`, `created_at` DESC). Solo inserción.
 

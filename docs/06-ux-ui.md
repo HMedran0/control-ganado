@@ -42,6 +42,7 @@ El sistema toma sus señas del objeto más característico del manejo del ganado
 | `--color-info-claro` · `--color-alerta-claro` · `--color-aviso-claro` · `--color-neutro-claro` | `#E3EBF5` · `#FCEBEA` · `#FBEFE3` · `#E8EBE4` | Tintes de fondo para `Tag` y `AlertBanner` (M2b, tomados del prototipo). |
 | `--color-info-intenso` · `--color-alerta-intenso` · `--color-aviso-intenso` | `#173F70` · `#8E1B12` · `#6E3500` | Texto principal sobre los tintes: con el tono base no se llega a 7:1 (el rojo de alerta no lo alcanza ni sobre blanco). |
 | `--color-chapeta-borde` | `#C99E00` | Borde de la chapeta (`docs/referencia/prototipo/LEEME.md`). |
+| `--color-serie-1` · `--color-serie-2` | `#2E7D4F` · `#3B7DD8` | Series de las gráficas (M8b): hembras y machos, o la serie única con la 1. Validadas para daltonismo (separación ≥ 20) y contraste ≥ 3:1; nunca para estados. |
 
 Contrastes exigidos por `apps/web/src/styles/tokens.test.ts`: 7:1 para el texto principal (también sobre los tintes, con los tonos intensos) y 4,5:1 para el texto de `Tag` (14 px en negrita).
 
@@ -86,7 +87,7 @@ Registrar (+)
 Alertas (vacunas, partos, servidas sin diagnóstico, retiros, ganancia baja, perdió peso; secar pronto en M9b)
 Reportes
 Más: Jornadas · Finanzas(A) · Configuración(A) · Mi cuenta (datos, correo, Sesiones, Google) · Salir
-Configuración(A) → Finca (incluye Numeración de los animales, M4c) · Archivados (M4c)
+Configuración(A) → Finca (incluye Numeración de los animales, M4c) · Archivados (M4c) · Exportar todos los datos (M8b)
 Configuración(A) → Usuarios: crear usuario sin correo · Invitar por correo · invitaciones pendientes · cerrar las sesiones de un usuario
 ```
 
@@ -431,6 +432,15 @@ Más → **Finanzas** (en escritorio, en la barra lateral). Tres pestañas en la
 Configuración → Finca agrega, para el ADMIN, "Precio por kilo para avalúos (ECO-03)": un `NumberField` en pesos por categoría de manejo.
 
 Desde M8a, Configuración → Finca empieza con «Sistema productivo»: «¿Qué hace la finca?» (lista nativa: Cría, Levante y ceba, Lechería especializada, Doble propósito, Ciclo completo) y «¿Qué vende principalmente?» (`SegmentedChoice`: Machos · Hembras · Los dos · Sin definir). En el bloque de pesos, «Peso objetivo de venta (PES-06)»: un `NumberField` en kilos por categoría, con la nota de que los machos con la etiqueta «Reproductor» no lo tienen. Guardar la finca refresca Inicio. El listado de animales entiende los filtros a los que enlaza Inicio, con su chip: «Nacidos del 01/02/2026 al 28/02/2026», «Ya en el peso de venta», «Alcanzan el peso este mes», «Posiblemente en el peso (estimado)», «Alcanzan el peso después de este mes» y «En retiro de leche»; y el orden «Parto más próximo primero», también desde el encabezado «Parto estimado».
+
+### 5.19 Reportes, gráficas y exportación (M8b)
+**Reportes** (barra lateral en escritorio; Más → Reportes en el celular): «En el orden de una finca de doble propósito. Todos se descargan en Excel.» y una lista de tarjetas: primero **Gráficas** y después los reportes en el orden del sistema productivo (`reportOrder` [Validar]); el **Reporte económico** solo para el ADMIN y lleva a Finanzas → Reporte. Cada reporte abre su página: «‹ Reportes», el título y para qué sirve, sus filtros (Desde y Hasta, por defecto del 1.º de enero a hoy; Vacuna; Tipo de salida; Ciclo), **Descargar en Excel** (secundario, con los mismos filtros) y sus tablas, con el código del animal enlazado a la ficha y las filas del inventario enlazadas al listado filtrado. Nacimientos suma su botón de Excel.
+
+**Grupos de edad (formato ICA).** Arriba la finca, la ubicación, el «Código de predio ICA» («Sin registrar» si falta) y el corte; debajo una tabla por sexo (Hembras con 7 grupos, Machos con 6) con su total y «Total de animales». En escritorio, las dos tablas lado a lado [Validar el formato].
+
+**Gráficas (RPT-03).** Tres secciones: «Animales en la finca al cierre de cada mes» (línea), «Nacimientos por mes» (columnas apiladas: hembras abajo en `--color-serie-1`, machos encima en `--color-serie-2`, con leyenda) y «Animales activos por categoría» (barras horizontales con el número al final). SVG propio del ancho de la pantalla, texto de 13 a 14 px, rejilla en `--color-cerca` y textos en tinta de texto, nunca del color de la serie. Al pasar el dedo o enfocar una marca con el teclado, una línea debajo dice el mes y sus cifras («jul 2026: 10 nacimientos · 5 hembras · 5 machos»). Cada gráfica tiene **Ver los datos** con su tabla. Los colores de serie no se usan para estados.
+
+**Configuración → Exportar todos los datos** (ADMIN). Qué trae el archivo (un Excel por tipo de registro, lo archivado y lo anulado marcado, el LEEME, sin contraseñas, hasta 3 veces por hora) y **Descargar todo (ZIP)**. Mientras se prepara: «Preparando el archivo…» y «Puede tardar un minuto con una conexión lenta. No cierres esta página.»; al terminar: «Listo: el archivo quedó en tus descargas.»; con el límite o con otra exportación en curso, el mensaje de la API («Hay otra exportación en curso; intenta en un minuto.»).
 
 ## 6. Componentes del sistema de diseño
 

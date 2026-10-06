@@ -248,15 +248,21 @@ Todas las rutas responden 403 a OPERATOR y VET (RN-20, comprobado por rol en el 
 | Método | Ruta | Rol | Descripción |
 |---|---|---|---|
 | GET | /dashboard | T | Indicadores RPT-01 (económicos solo A). Desde M8 agrega las preguntas del sistema productivo de la finca (CFG-03): destete e intervalo entre partos en cría, peso de venta y ganancia en ceba (PES-05, PES-06), vacas en ordeño, secas, leche de ayer y del mes, secar pronto y retiro de leche en lechería y doble propósito. Contrato de M8a abajo |
-| GET | /reports/inventory | T | Por sexo, categoría de manejo, raza, lote |
-| GET | /reports/inventory-ica | T | Grupos de edad y sexo en formato ICA |
+| GET | /reports/inventory | T | Por sexo, categoría de manejo, raza, lote (M8b, `InventoryReport`) |
+| GET | /reports/inventory-ica | T | Grupos de edad y sexo en formato ICA (M8b, `IcaInventoryReport`) |
 | GET | /reports/births?from&to | T | NAC-01 (M5): `{ from, to, totals: { live, males, females, weak, stillborn }, items: [{ calf, birthDate, dam, sire, sireExternalRef, breed, birthWeightKg, birthCondition }], stillbirths: [{ pregnancyId, date, dam, count }] }`. Sin fechas, del 1.º de enero a hoy. Cuenta los nacidos en la finca en el período aunque ya hayan salido; no los archivados |
-| GET | /reports/vaccinations?from&to&vaccineId | T | Vacunados |
-| GET | /reports/calvings-upcoming | T | Partos próximos |
-| GET | /reports/exits?from&to&type | T | Vendidos o retirados |
-| GET | /reports/:name/export?format=xlsx | T (económicos A) | Exportación |
+| GET | /reports/vaccinations?from&to&vaccineId | T | Vacunados (M8b, `VaccinationsReport`) |
+| GET | /reports/vaccination-pending | T | Pendientes de vacunación (M8b, `VaccinationPendingReport`) |
+| GET | /reports/calvings-upcoming | T | Partos próximos (M8b, `CalvingsUpcomingReport`) |
+| GET | /reports/exits?from&to&type | T (precio y comprador A) | Vendidos o retirados (M8b, `ExitsReport`) |
+| GET | /reports/charts | T | Datos de las gráficas (RPT-03, M8b, `ChartsReport`) |
+| GET | /reports/:name/export?format=xlsx | T (económicos A) | Excel de un reporte, con los mismos filtros (M8b) |
 | GET | /animals/:id/report.pdf | T | Ficha individual en PDF |
-| GET | /export/full | A | Exportación completa (BAK-02) |
+| GET | /export/full | A | Exportación completa (BAK-02, M8b): ZIP en streaming. Contrato abajo |
+
+**Reportes (M8b, tipos en `packages/shared/src/schemas/reports.ts`).** Todos los roles; el período, sin fechas, va del 1.º de enero a hoy y `from > to` es 422. Las cifras que dependen de la categoría o la edad salen de la clasificación del listado (ADR-009) y coinciden con él y con el tablero. `exits`: `salePrice` (string con dos decimales) y `buyer` solo existen para el ADMIN (RN-20). `charts`: `inventoryByMonth` (12 meses, activos al cierre de cada uno; el mes en curso, hoy), `birthsByMonth` (12 meses, criterio de NAC-01) y `byCategory`. `/reports/:name/export?format=xlsx` acepta `inventory`, `inventory-ica`, `cycle-progress` (con `cycleId`, de otra finca 404), `births`, `vaccinations`, `vaccination-pending`, `calvings-upcoming` y `exits`, con los filtros de su JSON; otro nombre, 404 (el económico es `GET /finance/summary/export.xlsx`); otro formato, 422. Nombre del archivo en ASCII con la fecha de corte o el período (`grupos-de-edad-ica-2026-09-25.xlsx`).
+
+**`GET /export/full` (BAK-02, M8b, ADR-018).** Solo ADMIN. Responde `application/zip` con `Content-Disposition: attachment; filename="arreo-<finca>-<fecha>.zip"` y `Cache-Control: no-store`, escrito mientras se descarga: un `.xlsx` por entidad (`finca`, `usuarios`, `animales`, `identificadores`, `etiquetas-de-animales`, `movimientos-de-lote`, `prenez-y-partos`, `vacunaciones`, `tratamientos`, `pesajes`, `gastos`, `reparto-de-gastos`, `ventas`, `avaluos`, `jornadas`, `entradas-de-jornada`, `razas`, `vacunas`, `ciclos-de-vacunacion`, `vacunas-de-ciclos`, `lotes`, `etiquetas`, `perfiles-de-bascula`, `importaciones`, `auditoria`) y `LEEME.txt` (UTF-8 con BOM). Antes de responder: una exportación a la vez en el servidor (`EXPORT_IN_PROGRESS`, 429, `Retry-After: 60`) y tres por hora por finca (`EXPORT_LIMIT_REACHED`, 429, `Retry-After` en segundos); luego se audita (`AuditLog` `EXPORT`). Un error a mitad de la escritura corta la conexión: el ZIP queda incompleto.
 
 **`GET /dashboard` (M8a, `DashboardResponse` de shared).** Todas las cifras salen de SQL en una pasada de la clasificación sobre los activos (ADR-009, ADR-017) y coinciden con el total del listado o de Alertas al que enlaza la web. Siempre trae:
 - `today`, `productionSystem`, `salesFocus` y `questions` (las preguntas propias del sistema, en orden: `WEANING`, `CALVING_INTERVAL`, `DRY_COWS`, `MILK_WITHDRAWAL`, `SALE_WEIGHT`, `LOW_GAIN_LOTS`, `DAYS_TO_SALE`);
@@ -362,6 +368,8 @@ Definido en `packages/shared/src/errors.ts` como constante; el `detail` en espa�
 | `IDENTITY_ALREADY_LINKED` | 409 | Esa cuenta de Google ya está vinculada a otro usuario. |
 | `LAST_LOGIN_METHOD` | 409 | No puedes desvincular tu único método de acceso. Crea una contraseña primero. |
 | `OAUTH_FLOW_INVALID` | 400 | El inicio con Google se interrumpió o venció. Intenta de nuevo. |
+| `EXPORT_LIMIT_REACHED` | 429 | Ya se exportaron los datos de la finca 3 veces en la última hora. Intenta de nuevo en {minutes} minutos. (con `Retry-After`, M8b) |
+| `EXPORT_IN_PROGRESS` | 429 | Hay otra exportación en curso; intenta en un minuto. (con `Retry-After: 60`, M8b) |
 | `RATE_LIMITED` | 429 | Demasiadas solicitudes. Espera un momento. |
 | `INTERNAL_ERROR` | 500 | Ocurrió un error inesperado. Ya quedó registrado. |
 
