@@ -346,6 +346,7 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
         'GET /api/v1/finance/summary/export.xlsx',
         'GET /api/v1/audit',
         'PATCH /api/v1/sales/:id',
+        'GET /api/v1/dashboard',
       ]),
     );
   });
@@ -360,6 +361,9 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
       path: `/api/v1/animals/${ids.animal ?? ''}/finance`,
     });
     expect(own.leaks.length).toBeGreaterThan(0);
+    // M8a: el tablero del ADMIN trae la inversión del hato; el barrido la reconoce.
+    const board = await sweep(admin, { method: 'GET', path: '/api/v1/dashboard' });
+    expect(board.leaks.length).toBeGreaterThan(0);
 
     const results: string[] = [];
     let checked = 0;

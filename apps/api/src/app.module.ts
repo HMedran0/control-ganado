@@ -21,6 +21,7 @@ import { SanitaryModule } from './sanitary/sanitary.module.js';
 import { UsersModule } from './users/users.module.js';
 import { WeightsModule } from './weights/weights.module.js';
 import { FinanceModule } from './finance/finance.module.js';
+import { DashboardModule } from './dashboard/dashboard.module.js';
 
 /**
  * Módulo raíz.
@@ -49,6 +50,7 @@ import { FinanceModule } from './finance/finance.module.js';
     WeightsModule,
     FinanceModule,
     AlertsModule,
+    DashboardModule,
     ImportsModule,
     AuditModule,
     HealthModule,
