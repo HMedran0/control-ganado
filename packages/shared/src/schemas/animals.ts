@@ -19,6 +19,7 @@ import {
   MANUAL_RETIRE_REASONS,
   MANAGEMENT_CATEGORY,
   ORIGIN,
+  SALE_WEIGHT_STATUS,
   SEX,
   WEIGHT_METHOD,
   type AnimalAlert,
@@ -31,6 +32,7 @@ import {
   type ManualRetireReason,
   type Origin,
   type PregnancyOutcome,
+  type SaleWeightStatus,
   type Sex,
   type WeightMethod,
 } from '../enums.js';
@@ -303,8 +305,19 @@ export const ANIMAL_LIST_STATUS = {
 } as const;
 export type AnimalListStatus = (typeof ANIMAL_LIST_STATUS)[keyof typeof ANIMAL_LIST_STATUS];
 
-/** Orden del listado. Con `-` delante, descendente (ANI-06 CA3). */
-export const ANIMAL_SORT = ['code', '-code', 'age', '-age', 'lastWeight', '-lastWeight'] as const;
+/**
+ * Orden del listado. Con `-` delante, descendente (ANI-06 CA3). `calving` (M8a, CU-03): por parto
+ * estimado, el más próximo primero; sin preñez confirmada, al final.
+ */
+export const ANIMAL_SORT = [
+  'code',
+  '-code',
+  'age',
+  '-age',
+  'lastWeight',
+  '-lastWeight',
+  'calving',
+] as const;
 export type AnimalSort = (typeof ANIMAL_SORT)[number];
 
 /**
@@ -339,6 +352,17 @@ export const listAnimalsQuerySchema = z
       }),
     ),
     forSale: booleanQuery.optional(),
+    /** Nacidos entre estas fechas, ambas incluidas (M8a: destete del mes, nacidos del año). */
+    bornFrom: isoDateSchema.optional(),
+    bornTo: isoDateSchema.optional(),
+    /** Situación frente al peso objetivo de venta (PES-06, M8a). */
+    saleWeight: z
+      .enum(Object.values(SALE_WEIGHT_STATUS) as [SaleWeightStatus, ...SaleWeightStatus[]], {
+        message: 'Situación de peso de venta no válida.',
+      })
+      .optional(),
+    /** Con retiro de leche vigente (M8a; el de carne y el más lejano van en `tags=WITHDRAWAL`). */
+    milkWithdrawal: booleanQuery.optional(),
     sort: z.enum(ANIMAL_SORT, { message: 'Orden no válido.' }).default('code'),
     limit: z.string().optional(),
     cursor: z.string().optional(),
@@ -349,6 +373,11 @@ export const listAnimalsQuerySchema = z
       value.ageMaxMonths === undefined ||
       value.ageMinMonths <= value.ageMaxMonths,
     { path: ['ageMaxMonths'], message: 'La edad máxima debe ser mayor o igual que la mínima.' },
+  )
+  .refine(
+    (value) =>
+      value.bornFrom === undefined || value.bornTo === undefined || value.bornFrom <= value.bornTo,
+    { path: ['bornTo'], message: 'La fecha final debe ser igual o posterior a la inicial.' },
   );
 export type ListAnimalsQuery = z.infer<typeof listAnimalsQuerySchema>;
 

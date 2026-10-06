@@ -46,5 +46,6 @@ export function classificationParams(scope: FarmScope, context: FarmContext): Cl
     weightGainAlertKgPerDay: context.settings.weightGainAlertKgPerDay,
     weightLossAlertPercent: context.settings.weightLossAlertPercent,
     weightGainAnchorMaxDays: context.settings.weightGainAnchorMaxDays,
+    targetSaleWeightKg: context.settings.targetSaleWeightKg,
   };
 }

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BREEDER_TAG_KEY,
   ANIMAL_ALERT,
   ANIMAL_LIST_STATUS,
   DomainError,
@@ -64,7 +65,8 @@ export type ListRow = {
 /**
  * Orden del listado (ANI-06 CA3): una lista cerrada de expresiones fijas. `age` va de menor a
  * mayor edad, es decir, de la fecha de nacimiento más reciente a la más antigua. Sin último
- * peso, el animal queda al final en los dos sentidos.
+ * peso, el animal queda al final en los dos sentidos. `calving` (M8a, CU-03) va del parto
+ * estimado más próximo al más lejano; sin preñez confirmada, al final.
  */
 /** Tipo de la clave de orden: cómo se castea el cursor y qué forma debe tener. */
 const KEY_KIND = {
@@ -94,6 +96,11 @@ const SORTS: Readonly<Record<AnimalSort, SortSpec>> = {
     key: Prisma.sql`COALESCE(lw.weight_kg, -1)`,
     descending: true,
     kind: KEY_KIND.numeric,
+  },
+  calving: {
+    key: Prisma.sql`(CASE WHEN c.pregnant THEN c.open_expected_calving_date ELSE DATE '9999-12-31' END)`,
+    descending: false,
+    kind: KEY_KIND.date,
   },
 };
 
@@ -284,6 +291,21 @@ export class AnimalListService {
     if (query.forSale !== undefined) {
       conditions.push(Prisma.sql`a.for_sale = ${query.forSale}::boolean`);
     }
+    if (query.bornFrom !== undefined) {
+      conditions.push(Prisma.sql`a.birth_date >= ${query.bornFrom}::date`);
+    }
+    if (query.bornTo !== undefined) {
+      conditions.push(Prisma.sql`a.birth_date <= ${query.bornTo}::date`);
+    }
+    // Solo los activos tienen peso de venta y retiro de leche en la clasificación.
+    if (query.saleWeight !== undefined) {
+      conditions.push(Prisma.sql`c.sale_weight_status = ${query.saleWeight}::text`);
+    }
+    if (query.milkWithdrawal !== undefined) {
+      conditions.push(
+        query.milkWithdrawal ? Prisma.sql`c.milk_withdrawal` : Prisma.sql`NOT c.milk_withdrawal`,
+      );
+    }
 
     const alerts = query.alerts ?? [];
     if (alerts.length > 0) {
@@ -359,6 +381,9 @@ export class AnimalListService {
           withdrawalUntil: fromPrismaDateOrNull(row.withdrawal_until),
           archived: row.archived,
           exitType: row.exit_type as ExitType | null,
+          isBreeder: tagLinks.some(
+            (link) => link.animalId === row.id && link.tag.key === BREEDER_TAG_KEY,
+          ),
         },
         context,
         vaccineStatuses.get(row.id) ?? [],

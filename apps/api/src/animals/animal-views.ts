@@ -5,7 +5,9 @@ import {
   ageInMonths,
   derivedTags,
   gainFromMilli,
+  lastTwoWeights,
   managementCategory,
+  saleWeightProjection,
   weightAlerts,
   type AnimalAlert,
   type AnimalStatus,
@@ -38,6 +40,8 @@ export type AnimalFacts = PregnancyFacts & {
   readonly withdrawalUntil: IsoDate | null;
   readonly archived: boolean;
   readonly exitType: ExitType | null;
+  /** Tiene la etiqueta del sistema «Reproductor» (sin peso de venta, PES-06). */
+  readonly isBreeder: boolean;
 };
 
 export type DerivedView = {
@@ -79,10 +83,14 @@ export const WEIGHT_LIKE_SELECT = {
   voidedAt: true,
 } as const;
 
-/** Resumen de peso de un animal de la categoría dada (PES-05), con las funciones de shared. */
+/**
+ * Resumen de peso de un animal de la categoría dada (PES-05) y su peso de venta (PES-06), con las
+ * funciones de shared.
+ */
 export function weightSummaryOf(
   records: readonly WeightRecordLike[],
   category: ManagementCategory,
+  isBreeder: boolean,
   context: FarmContext,
 ): WeightSummary {
   const { settings, today } = context;
@@ -98,6 +106,13 @@ export function weightSummaryOf(
     lowGain: result.lowGain,
     weightLoss: result.weightLoss,
     lossPercent: result.lossPercent,
+    saleWeight: saleWeightProjection({
+      targetKg: settings.targetSaleWeightKg[category],
+      isBreeder,
+      last: lastTwoWeights(records)?.last ?? null,
+      gain90Milli: result.gains.last90DaysMilli,
+      today,
+    }),
   };
 }
 
@@ -132,7 +147,9 @@ export function deriveView(
   });
   const status = animalStatus({ archived: facts.archived, exitType: facts.exitType });
   const weight =
-    status === ANIMAL_STATUS.ACTIVE ? weightSummaryOf(weights, category, context) : null;
+    status === ANIMAL_STATUS.ACTIVE
+      ? weightSummaryOf(weights, category, facts.isBreeder, context)
+      : null;
   const alerts =
     status === ANIMAL_STATUS.ACTIVE
       ? animalAlerts({

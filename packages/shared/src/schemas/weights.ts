@@ -24,6 +24,7 @@ import {
   type WeightMethod,
   type WeightSource,
 } from '../enums.js';
+import type { SaleWeightProjection } from '../domain/weights.js';
 import type { Warning } from '../errors.js';
 import { weightKgSchema, type AnimalRef } from './animals.js';
 import { isoDateSchema, versionSchema } from './catalogs.js';
@@ -109,6 +110,11 @@ export type WeightSummary = {
   readonly weightLoss: boolean;
   /** Cuánto bajó el último pesaje respecto al anterior, en %; positivo si bajó. */
   readonly lossPercent: number | null;
+  /**
+   * Peso objetivo de venta y su fecha estimada (PES-06 CA2); `null` sin objetivo para su
+   * categoría, con la etiqueta «Reproductor», sin pesaje o sin ganancia de 90 días positiva.
+   */
+  readonly saleWeight: SaleWeightProjection | null;
 };
 
 /** `GET /animals/:id/weights` (PES-02, PES-05): la serie, de la más antigua a la más reciente. */

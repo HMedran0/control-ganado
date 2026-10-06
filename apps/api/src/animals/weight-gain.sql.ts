@@ -37,7 +37,7 @@ function twoPointMilli(deltaCents: Prisma.Sql, deltaDays: Prisma.Sql): Prisma.Sq
 }
 
 /**
- * CTE `weight_facts`: una fila por animal con al menos un pesaje válido, con `last_cents`,
+ * CTE `weight_facts`: una fila por animal con al menos un pesaje válido, con `last_on`, `last_cents`,
  * `prev_cents` (el último de una fecha anterior), `gain_last_two_milli`, `gain_90_milli` y
  * `gain_birth_milli`.
  */
@@ -109,7 +109,7 @@ export function weightGainCtes(params: WeightGainParams): Prisma.Sql {
         AND (last_on - first_on) >= ${WEIGHT_GAIN_MIN_SPAN_DAYS}::int
     ),
     weight_facts AS (
-      SELECT l.animal_id, l.last_cents, p.prev_cents,
+      SELECT l.animal_id, l.last_on, l.last_cents, p.prev_cents,
         CASE WHEN p.prev_on IS NOT NULL THEN
           ${twoPointMilli(Prisma.sql`(l.last_cents - p.prev_cents)`, Prisma.sql`(l.last_on - p.prev_on)`)}
         END AS gain_last_two_milli,

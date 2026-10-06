@@ -205,7 +205,7 @@ describe('animales sobre la finca de referencia', () => {
     });
 
     it('la paginación por cursor recorre todo sin repetir, en cada orden', async () => {
-      for (const sort of ['code', '-code', 'age', '-age', 'lastWeight', '-lastWeight']) {
+      for (const sort of ['code', '-code', 'age', '-age', 'lastWeight', '-lastWeight', 'calving']) {
         const items = await all(`sort=${sort}`, 37);
         const ids = new Set(items.map((item) => item.id));
         expect(items, sort).toHaveLength(EXPECTED_INVENTORY.active);
@@ -233,6 +233,53 @@ describe('animales sobre la finca de referencia', () => {
       }
     });
 
+    it('M8a: por parto estimado (CU-03), el más próximo primero y sin preñez al final', async () => {
+      const byCalving = await all('sort=calving', 60);
+      const dates = byCalving.flatMap((item) =>
+        item.expectedCalvingDate === null ? [] : [item.expectedCalvingDate],
+      );
+      expect(dates).toHaveLength(EXPECTED_REPRODUCTION.pregnant);
+      expect(dates).toEqual([...dates].sort());
+      expect(
+        byCalving.slice(0, dates.length).every((item) => item.expectedCalvingDate !== null),
+      ).toBe(true);
+      // Partos próximos ordenados: lo que abre «¿Cuáles paren pronto?».
+      const soon = await all('alerts=calving_soon&sort=calving');
+      expect(soon).toHaveLength(EXPECTED_REPRODUCTION.calvingsDueSoon);
+    });
+
+    it('M8a: nacidos entre dos fechas, ambas incluidas', async () => {
+      const born = await all('bornFrom=2026-02-01&bornTo=2026-02-28', 100);
+      expect(born.length).toBeGreaterThan(0);
+      expect(
+        born.every((item) => item.birthDate >= '2026-02-01' && item.birthDate <= '2026-02-28'),
+      ).toBe(true);
+      const firstDay = born.filter((item) => item.birthDate === '2026-02-01').length;
+      expect(await total('bornFrom=2026-02-01&bornTo=2026-02-01')).toBe(firstDay);
+      const response = await http()
+        .get('/api/v1/animals?bornFrom=2026-03-01&bornTo=2026-02-01')
+        .set(admin)
+        .expect(422);
+      expect(response.body.code).toBe('VALIDATION_FAILED');
+    });
+
+    it('M8a: peso de venta y retiro de leche: cada fila dice lo mismo que el filtro', async () => {
+      let counted = 0;
+      for (const status of ['reached', 'this_month', 'likely_reached', 'later']) {
+        const items = await all(`saleWeight=${status}`, 100);
+        counted += items.length;
+        expect(
+          items.every((item) => item.status === 'ACTIVE'),
+          status,
+        ).toBe(true);
+      }
+      // En la finca de referencia hay levantes con pesajes cada tres meses: alguno tiene situación.
+      expect(counted).toBeGreaterThan(0);
+      const milk = await total('milkWithdrawal=true');
+      const notMilk = await total('milkWithdrawal=false');
+      expect(milk + notMilk).toBe(EXPECTED_INVENTORY.active);
+    });
+
     it('los archivados solo los lista ADMIN', async () => {
       await http().get('/api/v1/animals?status=archived').set(operator).expect(403);
       await http().get('/api/v1/animals?status=archived').set(vet).expect(403);
@@ -240,7 +287,16 @@ describe('animales sobre la finca de referencia', () => {
     });
 
     it('rechaza filtros fuera de las listas cerradas', async () => {
-      for (const query of ['sort=name', 'category=VACA', 'alerts=todo', "tags=X'--", 'limit=500']) {
+      for (const query of [
+        'sort=name',
+        'category=VACA',
+        'alerts=todo',
+        "tags=X'--",
+        'limit=500',
+        'saleWeight=ya',
+        'bornFrom=2026-02-30',
+        'milkWithdrawal=si',
+      ]) {
         const response = await http().get(`/api/v1/animals?${query}`).set(admin).expect(422);
         expect(response.body.code).toBe('VALIDATION_FAILED');
       }

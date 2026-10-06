@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BREEDER_TAG_KEY,
   AUDIT_ACTION,
   DomainError,
   IDENTIFIED_BY,
@@ -85,7 +86,12 @@ export class WeightsService {
     });
     return {
       items: rows.map(toWeightView),
-      summary: weightSummaryOf(rows.map(toWeightLike), detail.category, context),
+      summary: weightSummaryOf(
+        rows.map(toWeightLike),
+        detail.category,
+        detail.manualTags.some((tag) => tag.key === BREEDER_TAG_KEY),
+        context,
+      ),
     };
   }
 

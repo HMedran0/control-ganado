@@ -192,6 +192,7 @@ describe('avisos de la ficha (06 §5.3)', () => {
           lowGain: true,
           weightLoss: true,
           lossPercent: 8,
+          saleWeight: null,
         },
       }),
       HOY,

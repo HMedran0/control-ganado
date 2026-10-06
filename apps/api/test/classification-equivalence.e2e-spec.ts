@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import {
+  BREEDER_TAG_KEY,
   BREED_GROUP,
   DEFAULT_FARM_SETTINGS,
   DERIVED_TAG,
@@ -9,13 +10,17 @@ import {
   ROLE,
   SERVICE_METHOD,
   SEX,
+  animalWithdrawals,
   derivedTags,
   isCalvingOverdue,
   isCalvingSoon,
   isServiceUnconfirmedOverdue,
+  isWithdrawalActive,
+  lastTwoWeights,
   managementCategory,
   monthsBetween,
   parseFarmSettings,
+  saleWeightProjection,
   summarizePregnancies,
   toIsoDate,
   uuidv7,
@@ -58,6 +63,8 @@ import { cleanDatabase, createAnimal, createFarm } from './helpers/fixtures.js';
  *   de alerta). Los parámetros se leen de la finca con `FarmContextService`, como en la API.
  * - Una finca con casos borde que el seed no tiene: preñeces y tratamientos anulados, partos
  *   un 31 de enero, nacimientos un 29 de febrero, retiro que vence hoy.
+ * - Desde M8a: el peso de venta de `saleWeightProjection` (situación y fecha estimada), el
+ *   retiro de leche y la etiqueta «Reproductor», con una finca de casos borde propia.
  */
 
 const PASSWORD = 'contraseña-de-prueba-del-seed';
@@ -82,6 +89,10 @@ type Expected = {
   gainBirthMilli: number | null;
   lowGain: boolean;
   weightLoss: boolean;
+  isBreeder: boolean;
+  milkWithdrawal: boolean;
+  saleWeightStatus: string | null;
+  saleWeightOn: IsoDate | null;
 };
 
 describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
@@ -123,8 +134,18 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       where: { farmId: scopeFarmId },
       include: {
         pregnancies: true,
-        treatments: { select: { withdrawalUntil: true, voidedAt: true } },
+        treatments: {
+          select: {
+            withdrawalUntil: true,
+            voidedAt: true,
+            startedOn: true,
+            durationDays: true,
+            withdrawalMeatDays: true,
+            withdrawalMilkDays: true,
+          },
+        },
         weights: true,
+        tags: { where: { removedAt: null }, include: { tag: { select: { key: true } } } },
       },
     });
     const scope: FarmScope = { farmId: scopeFarmId, userId: adminId, role: ROLE.ADMIN };
@@ -179,7 +200,30 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       });
       const weightResult = weightAlerts({ records: weights, category, settings, today });
       const statuses = (vaccineStatuses.get(animal.id) ?? []).map((status) => status.status);
+      const isBreeder = animal.tags.some((link) => link.tag.key === BREEDER_TAG_KEY);
+      const milkUntil = animalWithdrawals(
+        animal.treatments.map((treatment) => ({
+          startedOn: fromPrismaDate(treatment.startedOn),
+          durationDays: treatment.durationDays,
+          withdrawalMeatDays: treatment.withdrawalMeatDays,
+          withdrawalMilkDays: treatment.withdrawalMilkDays,
+          voided: treatment.voidedAt !== null,
+        })),
+      ).milkUntil;
+      const sale = active
+        ? saleWeightProjection({
+            targetKg: settings.targetSaleWeightKg[category],
+            isBreeder,
+            last: lastTwoWeights(weights)?.last ?? null,
+            gain90Milli: gains.last90DaysMilli,
+            today,
+          })
+        : null;
       result.set(animal.id, {
+        isBreeder,
+        milkWithdrawal: active && isWithdrawalActive(milkUntil, today),
+        saleWeightStatus: sale?.status ?? null,
+        saleWeightOn: sale?.estimatedOn ?? null,
         vaccineOverdue: active && statuses.includes('OVERDUE'),
         vaccineDue: active && statuses.some((kind) => kind === 'PENDING' || kind === 'UPCOMING'),
         gainLastTwoMilli: gains.lastTwoMilli,
@@ -254,6 +298,10 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
           gainBirthMilli: row.gain_birth_milli,
           lowGain: row.low_gain,
           weightLoss: row.weight_loss,
+          isBreeder: row.is_breeder,
+          milkWithdrawal: row.milk_withdrawal,
+          saleWeightStatus: row.sale_weight_status,
+          saleWeightOn: fromPrismaDateOrNull(row.sale_weight_on),
         },
       ]),
     );
@@ -333,6 +381,8 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
       weightGainAlertKgPerDay: { YOUNG_MALE: 0.42, HEIFER: 0.35 },
       weightLossAlertPercent: 2,
       weightGainAnchorMaxDays: 5,
+      // Otro peso de venta, también para novillas.
+      targetSaleWeightKg: { YOUNG_MALE: 320, HEIFER: 300 },
     };
     await prisma.farm.update({ where: { id: farmId }, data: { settings: changed } });
     try {
@@ -552,6 +602,150 @@ describe('clasificación: SQL ↔ @hato/shared (RN-27)', () => {
     // Y en un fin de mes corto, donde el recorte decide.
     setToday(toIsoDate('2027-02-28'));
     expect(await differences(edge, toIsoDate('2027-02-28'))).toEqual([]);
+    setToday(SEED_TODAY);
+  });
+
+  it('M8a: peso de venta en los límites del mes, reproductor, sin ganancia y retiro de leche', async () => {
+    const edge = uuidv7();
+    const breedId = uuidv7();
+    const breederTag = uuidv7();
+    await prisma.farm.create({
+      data: { id: edge, name: 'Finca de bordes de M8a', settings: DEFAULT_FARM_SETTINGS },
+    });
+    await prisma.breed.create({
+      data: {
+        id: breedId,
+        farmId: edge,
+        name: 'Brahman',
+        group: BREED_GROUP.INDICUS,
+        gestationDays: 293,
+      },
+    });
+    await prisma.tag.create({
+      data: {
+        id: breederTag,
+        farmId: edge,
+        key: BREEDER_TAG_KEY,
+        label: 'Reproductor',
+        isSystem: true,
+      },
+    });
+    const animal = async (
+      code: string,
+      sex: Sex,
+      birth: string,
+      exited = false,
+    ): Promise<string> => {
+      const id = uuidv7();
+      await prisma.animal.create({
+        data: {
+          id,
+          farmId: edge,
+          code,
+          sex,
+          breedId,
+          birthDate: toPrismaDate(toIsoDate(birth)),
+          origin: ORIGIN.BORN_ON_FARM,
+          entryDate: toPrismaDate(toIsoDate(birth)),
+          exitType: exited ? 'SALE' : null,
+          exitDate: exited ? toPrismaDate(toIsoDate('2026-09-20')) : null,
+          createdById: adminId,
+          updatedById: adminId,
+        },
+      });
+      return id;
+    };
+    const weigh = async (animalId: string, on: string, kg: number): Promise<void> => {
+      await prisma.weightRecord.create({
+        data: {
+          id: uuidv7(),
+          farmId: edge,
+          animalId,
+          weighedOn: toPrismaDate(toIsoDate(on)),
+          weightKg: new Prisma.Decimal(kg),
+          method: 'SCALE',
+          createdById: adminId,
+        },
+      });
+    };
+    const milkTreatment = async (animalId: string, started: string, milkDays: number) => {
+      await prisma.treatmentRecord.create({
+        data: {
+          id: uuidv7(),
+          farmId: edge,
+          animalId,
+          startedOn: toPrismaDate(toIsoDate(started)),
+          durationDays: 1,
+          withdrawalMeatDays: 0,
+          withdrawalMilkDays: milkDays,
+          withdrawalUntil: toPrismaDate(toIsoDate(started)),
+          reason: 'Mastitis',
+          medication: 'Cefalosporina',
+          createdById: adminId,
+        },
+      });
+    };
+    // Ganancia de 0,8 kg/día entre el 15/07 y el 14/09 (61 días, 48,8 kg).
+    const steer = async (code: string, lastKg: number, birth = '2025-01-10'): Promise<string> => {
+      const id = await animal(code, SEX.MALE, birth);
+      await weigh(id, '2026-07-15', lastKg - 48.8);
+      await weigh(id, '2026-09-14', lastKg);
+      return id;
+    };
+    const s1 = await steer('S-01', 438.8); // 11,2 kg / 0,8 = 14 → 28/09: este mes
+    const s2 = await steer('S-02', 437.6); // 12,4 / 0,8 = 15,5 → 16 días → 30/09: este mes
+    const s3 = await steer('S-03', 436.8); // 13,2 / 0,8 = 16,5 → 17 → 01/10: después
+    await steer('S-04', 450); // justo en el objetivo: medido
+    // Fecha estimada ya pasada con el último pesaje por debajo: posiblemente en el peso.
+    const s5 = await animal('S-05', SEX.MALE, '2025-01-10');
+    await weigh(s5, '2026-06-01', 400);
+    await weigh(s5, '2026-07-20', 445);
+    // Toro de más de 24 meses: también tiene peso de venta… salvo que sea reproductor.
+    const s6 = await steer('S-06', 438.8, '2023-05-01');
+    const s7 = await steer('S-07', 438.8, '2023-05-01');
+    await prisma.animalTag.create({
+      data: { id: uuidv7(), farmId: edge, animalId: s7, tagId: breederTag, createdById: adminId },
+    });
+    // Sin ganancia (perdió peso) y uno solo pesaje: sin situación.
+    const s8 = await animal('S-08', SEX.MALE, '2025-01-10');
+    await weigh(s8, '2026-07-15', 420);
+    await weigh(s8, '2026-09-14', 410);
+    const s9 = await animal('S-09', SEX.MALE, '2025-01-10');
+    await weigh(s9, '2026-09-14', 300);
+    // Vendido: no tiene situación aunque su peso dé.
+    const s10 = await animal('S-10', SEX.MALE, '2025-01-10', true);
+    await weigh(s10, '2026-07-15', 400);
+    await weigh(s10, '2026-09-14', 448);
+    // Retiro de leche que vence hoy (1 + 24 días desde el 31/08), que venció ayer y de 0 días.
+    const c1 = await animal('C-01', SEX.FEMALE, '2020-01-01');
+    await milkTreatment(c1, '2026-08-31', 24);
+    const c2 = await animal('C-02', SEX.FEMALE, '2020-01-01');
+    await milkTreatment(c2, '2026-08-31', 23);
+    const c3 = await animal('C-03', SEX.FEMALE, '2020-01-01');
+    await milkTreatment(c3, '2026-09-20', 0);
+
+    setToday(SEED_TODAY);
+    expect(await differences(edge, SEED_TODAY)).toEqual([]);
+    // No es una coincidencia en null: cada caso da lo que dice su comentario.
+    const sql = await actualBySql(edge);
+    const pick = (id: string) => {
+      const row = sql.get(id);
+      return [row?.saleWeightStatus, row?.saleWeightOn];
+    };
+    expect(pick(s1)).toEqual(['this_month', '2026-09-28']);
+    expect(pick(s2)).toEqual(['this_month', '2026-09-30']);
+    expect(pick(s3)).toEqual(['later', '2026-10-01']);
+    expect(pick(s5)[0]).toBe('likely_reached');
+    expect(pick(s6)).toEqual(['this_month', '2026-09-28']);
+    expect(pick(s7)).toEqual([null, null]);
+    expect(pick(s8)).toEqual([null, null]);
+    expect(pick(s9)).toEqual([null, null]);
+    expect(pick(s10)).toEqual([null, null]);
+    expect([c1, c2, c3].map((id) => sql.get(id)?.milkWithdrawal)).toEqual([true, false, false]);
+    expect(sql.get(s7)?.isBreeder).toBe(true);
+    // El 01/10, el mes cambió: lo de octubre ya es «este mes» y lo de septiembre ya pasó.
+    setToday(toIsoDate('2026-10-01'));
+    expect(await differences(edge, toIsoDate('2026-10-01'))).toEqual([]);
     setToday(SEED_TODAY);
   });
 

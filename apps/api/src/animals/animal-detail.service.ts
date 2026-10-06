@@ -1,5 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
 import {
+  BREEDER_TAG_KEY,
   systemQrUrl,
   DomainError,
   ROLE,
@@ -174,6 +175,7 @@ export class AnimalDetailService {
         withdrawalUntil,
         archived: animal.deletedAt !== null,
         exitType: animal.exitType,
+        isBreeder: animal.tags.some((link) => link.tag.key === BREEDER_TAG_KEY),
       },
       ctx,
       vaccines,
