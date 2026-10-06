@@ -201,6 +201,9 @@ describe('GET /dashboard (M8a)', () => {
       }
       expect(body.vaccines.overdue).toBe(body.alerts[ANIMAL_ALERT.VACCINE_OVERDUE]);
       expect(body.vaccines.due).toBe(body.alerts[ANIMAL_ALERT.VACCINE_DUE]);
+      // «¿Qué falta vacunar?» cuenta cada animal una vez: Alertas con los dos tipos (con «o»).
+      expect(await alertCount('types=vaccine_overdue,vaccine_due', h)).toBe(body.vaccines.pending);
+      expect(body.vaccines.pending).toBeLessThanOrEqual(body.vaccines.overdue + body.vaccines.due);
       // Nacidos del año: el reporte de nacimientos con su período por defecto.
       const births = await http().get('/api/v1/reports/births').set(h).expect(200);
       expect(births.body.totals).toMatchObject({

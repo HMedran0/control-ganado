@@ -63,6 +63,8 @@ export type DashboardResponse = {
   };
   /** ¿Qué falta vacunar? Animales con alguna vacuna vencida o pendiente o próxima. */
   readonly vaccines: {
+    /** Con alguna vacuna vencida o pendiente o próxima: cada animal una vez (Alertas con las dos). */
+    readonly pending: number;
     readonly overdue: number;
     readonly due: number;
     /** Ciclo oficial en curso hoy, para mostrar su avance (SAN-02 CA2); `null` si no hay. */

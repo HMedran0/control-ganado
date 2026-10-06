@@ -47,6 +47,7 @@ type SummaryRow = {
   calving_overdue: number;
   next_calving: { animal_id: string; code: string; expected: string } | null;
   alerts: number[];
+  vaccine_pending: number;
   for_sale: number;
   dry: number;
   milk_withdrawal: number;
@@ -149,6 +150,7 @@ export class DashboardService {
       },
       births: { from: yearStart, to: today, ...births },
       vaccines: {
+        pending: summary.vaccine_pending,
         overdue: alerts[ANIMAL_ALERT.VACCINE_OVERDUE],
         due: alerts[ANIMAL_ALERT.VACCINE_DUE],
         currentCycle: cycle,
@@ -255,6 +257,7 @@ export class DashboardService {
           ORDER BY c.open_expected_calving_date, c.animal_id)
           FILTER (WHERE c.calving_soon))[1] AS next_calving,
         ARRAY[${Prisma.join(alertCounts, ', ')}] AS alerts,
+        count(*) FILTER (WHERE c.vaccine_overdue OR c.vaccine_due)::int AS vaccine_pending,
         count(*) FILTER (WHERE ${forSale})::int AS for_sale,
         count(*) FILTER (WHERE c.dry)::int AS dry,
         count(*) FILTER (WHERE c.milk_withdrawal)::int AS milk_withdrawal,
