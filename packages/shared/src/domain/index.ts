@@ -13,6 +13,7 @@ export * from './finance.js';
 export * from './identifiers.js';
 export * from './pregnancy.js';
 export * from './qr.js';
+export * from './reports.js';
 export * from './reproduction.js';
 export * from './scale-import.js';
 export * from './treatments.js';

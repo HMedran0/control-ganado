@@ -9,6 +9,7 @@ import type {
   DerivedTag,
   ExitType,
   ExpenseType,
+  IcaAgeGroup,
   IdentifiedBy,
   IdentifierRetireReason,
   IdentifierType,
@@ -26,6 +27,8 @@ import type {
   WeightSource,
   WorkSessionStatus,
 } from '../enums.js';
+import type { ReportName } from '../domain/reports.js';
+import type { VaccineStatusKind } from '../domain/vaccination.js';
 
 /**
  * Textos de los valores del dominio, con el vocabulario del ganadero (06 §7 y glosario del SRS
@@ -227,4 +230,67 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
   IMPORT: 'Importación',
   REVOKE_SESSIONS: 'Cierre de sesiones',
   EXPORT: 'Exportación completa',
+};
+
+/** Estado de una vacuna para un animal (SAN-04). */
+export const VACCINE_STATUS_LABEL: Readonly<Record<VaccineStatusKind, string>> = {
+  NOT_APPLICABLE: 'No aplica',
+  UP_TO_DATE: 'Al día',
+  PENDING: 'Pendiente',
+  UPCOMING: 'Próxima',
+  OVERDUE: 'Vencida',
+};
+
+/** Grupos de edad del formato ICA (08 §2.2). */
+export const ICA_AGE_GROUP_LABEL: Readonly<Record<IcaAgeGroup, string>> = {
+  UNDER_3M: 'Menos de 3 meses',
+  M3_TO_9: '3 a 9 meses',
+  M9_TO_12: '9 a 12 meses',
+  Y1_TO_2: '1 a 2 años',
+  Y2_TO_3: '2 a 3 años',
+  Y3_TO_5: '3 a 5 años',
+  OVER_5Y: 'Más de 5 años',
+  OVER_3Y: 'Más de 3 años',
+};
+
+/** Nombre y para qué sirve cada reporte (RPT-02, 06 §5.19). */
+export const REPORT_LABEL: Readonly<
+  Record<ReportName, { readonly title: string; readonly description: string }>
+> = {
+  inventory: {
+    title: 'Inventario',
+    description: 'Animales activos por sexo, categoría, raza y lote.',
+  },
+  'inventory-ica': {
+    title: 'Grupos de edad (formato ICA)',
+    description: 'Hembras y machos por grupo de edad, para trámites y ciclos de vacunación.',
+  },
+  'cycle-progress': {
+    title: 'Avance del ciclo de vacunación',
+    description: 'Cuántos se vacunaron y cuántos faltan de cada vacuna del ciclo.',
+  },
+  births: {
+    title: 'Nacimientos',
+    description: 'Por período: machos, hembras, débiles y muertos al nacer, con la madre de cada cría.',
+  },
+  vaccinations: {
+    title: 'Vacunados',
+    description: 'Vacunas aplicadas en un período, por vacuna.',
+  },
+  'vaccination-pending': {
+    title: 'Pendientes de vacunación',
+    description: 'Animales con vacunas vencidas, pendientes o próximas.',
+  },
+  'calvings-upcoming': {
+    title: 'Partos próximos',
+    description: 'Preñadas que paren pronto o ya debían parir, por fecha estimada.',
+  },
+  exits: {
+    title: 'Vendidos y retirados',
+    description: 'Salidas de la finca en un período: ventas, muertes y demás.',
+  },
+  economic: {
+    title: 'Reporte económico',
+    description: 'Gastos, ventas, inversión del hato y resultado de los vendidos.',
+  },
 };

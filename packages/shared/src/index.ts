@@ -24,5 +24,6 @@ export * from './schemas/finance.js';
 export * from './schemas/health.js';
 export * from './schemas/imports.js';
 export * from './schemas/offline.js';
+export * from './schemas/reports.js';
 export * from './schemas/reproduction.js';
 export * from './schemas/weights.js';

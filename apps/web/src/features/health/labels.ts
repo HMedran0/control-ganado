@@ -1,14 +1,8 @@
-import type { BulkVaccinationSkip, VaccineStatusKind } from '@hato/shared';
+import type { BulkVaccinationSkip } from '@hato/shared';
 
 /** Textos de la sanidad (06 §7). */
 
-export const VACCINE_STATUS_LABEL: Readonly<Record<VaccineStatusKind, string>> = {
-  NOT_APPLICABLE: 'No aplica',
-  UP_TO_DATE: 'Al día',
-  PENDING: 'Pendiente',
-  UPCOMING: 'Próxima',
-  OVERDUE: 'Vencida',
-};
+export { VACCINE_STATUS_LABEL } from '@hato/shared';
 
 /** Por qué un animal no se vacuna en un registro por lote (SAN-03). */
 export const BULK_SKIP_LABEL: Readonly<Record<BulkVaccinationSkip, string>> = {
