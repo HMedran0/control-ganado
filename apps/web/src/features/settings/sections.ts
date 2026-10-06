@@ -4,6 +4,7 @@ import {
   CalendarRange,
   Dna,
   Fence,
+  HardDriveDownload,
   SlidersHorizontal,
   Syringe,
   Tag,
@@ -24,7 +25,8 @@ export type SettingsSection = {
     | '/settings/tags'
     | '/settings/users'
     | '/settings/archived'
-    | '/settings/import';
+    | '/settings/import'
+    | '/settings/export';
   readonly label: string;
   readonly description: string;
   readonly icon: LucideIcon;
@@ -90,6 +92,13 @@ export const SETTINGS_SECTIONS: readonly SettingsSection[] = [
     label: 'Importar inventario',
     description: 'Cargar animales desde Excel o CSV, con simulación antes de guardar.',
     icon: Upload,
+    roles: ['ADMIN'],
+  },
+  {
+    to: '/settings/export',
+    label: 'Exportar todos los datos',
+    description: 'Un archivo con la historia completa de la finca, en Excel.',
+    icon: HardDriveDownload,
     roles: ['ADMIN'],
   },
   {

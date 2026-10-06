@@ -41,6 +41,7 @@ describe('secciones de Configuración por rol (SRS §2.3)', () => {
       'Etiquetas',
       'Usuarios',
       'Importar inventario',
+      'Exportar todos los datos',
       'Archivados',
     ]);
     expect(sectionsFor('VET').map((s) => s.label)).toEqual(['Vacunas']);

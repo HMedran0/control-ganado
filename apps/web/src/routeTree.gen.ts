@@ -29,6 +29,7 @@ import { Route as AppReportsIndexRouteImport } from './routes/_app/reports/index
 import { Route as AppReportsBirthsRouteImport } from './routes/_app/reports/births'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsArchivedRouteImport } from './routes/_app/settings/archived'
+import { Route as AppSettingsExportRouteImport } from './routes/_app/settings/export'
 import { Route as AppSettingsFarmRouteImport } from './routes/_app/settings/farm'
 import { Route as AppSettingsImportRouteImport } from './routes/_app/settings/import'
 import { Route as AppVaccinationsBulkRouteImport } from './routes/_app/vaccinations/bulk'
@@ -161,6 +162,11 @@ const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
 const AppSettingsArchivedRoute = AppSettingsArchivedRouteImport.update({
   id: '/settings/archived',
   path: '/settings/archived',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSettingsExportRoute = AppSettingsExportRouteImport.update({
+  id: '/settings/export',
+  path: '/settings/export',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsFarmRoute = AppSettingsFarmRouteImport.update({
@@ -353,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/animals/new': typeof AppAnimalsNewRoute
   '/reports/births': typeof AppReportsBirthsRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
+  '/settings/export': typeof AppSettingsExportRoute
   '/settings/farm': typeof AppSettingsFarmRoute
   '/settings/import': typeof AppSettingsImportRoute
   '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/animals/new': typeof AppAnimalsNewRoute
   '/reports/births': typeof AppReportsBirthsRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
+  '/settings/export': typeof AppSettingsExportRoute
   '/settings/farm': typeof AppSettingsFarmRoute
   '/settings/import': typeof AppSettingsImportRoute
   '/vaccinations/bulk': typeof AppVaccinationsBulkRoute
@@ -465,6 +473,7 @@ export interface FileRoutesById {
   '/_app/animals/new': typeof AppAnimalsNewRoute
   '/_app/reports/births': typeof AppReportsBirthsRoute
   '/_app/settings/archived': typeof AppSettingsArchivedRoute
+  '/_app/settings/export': typeof AppSettingsExportRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
   '/_app/settings/import': typeof AppSettingsImportRoute
   '/_app/vaccinations/bulk': typeof AppVaccinationsBulkRoute
@@ -522,6 +531,7 @@ export interface FileRouteTypes {
     | '/animals/new'
     | '/reports/births'
     | '/settings/archived'
+    | '/settings/export'
     | '/settings/farm'
     | '/settings/import'
     | '/vaccinations/bulk'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/animals/new'
     | '/reports/births'
     | '/settings/archived'
+    | '/settings/export'
     | '/settings/farm'
     | '/settings/import'
     | '/vaccinations/bulk'
@@ -633,6 +644,7 @@ export interface FileRouteTypes {
     | '/_app/animals/new'
     | '/_app/reports/births'
     | '/_app/settings/archived'
+    | '/_app/settings/export'
     | '/_app/settings/farm'
     | '/_app/settings/import'
     | '/_app/vaccinations/bulk'
@@ -820,6 +832,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/archived'
       fullPath: '/settings/archived'
       preLoaderRoute: typeof AppSettingsArchivedRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/settings/export': {
+      id: '/_app/settings/export'
+      path: '/settings/export'
+      fullPath: '/settings/export'
+      preLoaderRoute: typeof AppSettingsExportRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/farm': {
@@ -1076,6 +1095,7 @@ interface AppRouteChildren {
   AppAnimalsNewRoute: typeof AppAnimalsNewRoute
   AppReportsBirthsRoute: typeof AppReportsBirthsRoute
   AppSettingsArchivedRoute: typeof AppSettingsArchivedRoute
+  AppSettingsExportRoute: typeof AppSettingsExportRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
   AppSettingsImportRoute: typeof AppSettingsImportRoute
   AppVaccinationsBulkRoute: typeof AppVaccinationsBulkRoute
@@ -1129,6 +1149,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnimalsNewRoute: AppAnimalsNewRoute,
   AppReportsBirthsRoute: AppReportsBirthsRoute,
   AppSettingsArchivedRoute: AppSettingsArchivedRoute,
+  AppSettingsExportRoute: AppSettingsExportRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,
   AppSettingsImportRoute: AppSettingsImportRoute,
   AppVaccinationsBulkRoute: AppVaccinationsBulkRoute,
