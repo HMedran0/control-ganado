@@ -98,5 +98,11 @@ export async function runReferenceSeed(
   const nueva = buildNuevaSeed();
   const nuevaCounts = await writeNuevaSeed(prisma, nueva, options.password, options.today);
 
+  // Estadísticas al día para el planificador: sin ellas, una consulta justo después de sembrar
+  // (la clasificación con el estado de vacunas, ADR-009) puede elegir un plan pensado para tablas
+  // casi vacías y tardar minutos. Pasaba en las pruebas cuando el seed seguía a una prueba con
+  // pocos datos (M7). No cambia ningún dato.
+  await prisma.$executeRawUnsafe('ANALYZE');
+
   return { seed, retiro, nueva, counts: { ...counts, ...retiroCounts, ...nuevaCounts } };
 }
