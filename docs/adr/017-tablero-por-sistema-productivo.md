@@ -89,7 +89,7 @@ abiertas varias preguntas:
    `index.html` con `modulepreload` y `data-precarga`, en paralelo con la carga inicial y el
    refresco. La precarga tiene su propio tope (`hato.preloadBudgetKb`, 30 KB; quedó en 24,9) y la
    carga inicial bajó de 162,5 a 155,4 KB (un archivo comprime mejor que cuatro). En `vite
-   preview`: de 62 a 10 peticiones, de 256 a 239 KB y la primera cifra de 8,9–10,2 s a 4,1–4,3 s.
+preview`: de 62 a 10 peticiones, de 256 a 239 KB y la primera cifra de 8,9–10,2 s a 4,1–4,3 s.
    Costo: quien abre directamente otra ruta también baja Inicio. M10b sigue midiendo con HTTP/2.
 
 ## Consecuencias

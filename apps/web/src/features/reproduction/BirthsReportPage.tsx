@@ -63,7 +63,9 @@ export function BirthsReportPage() {
       </div>
       {download.isError ? (
         <FormError
-          message={isApiError(download.error) ? download.error.detail : 'No se pudo descargar el archivo.'}
+          message={
+            isApiError(download.error) ? download.error.detail : 'No se pudo descargar el archivo.'
+          }
         />
       ) : null}
 

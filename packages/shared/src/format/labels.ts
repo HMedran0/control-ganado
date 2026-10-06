@@ -271,7 +271,8 @@ export const REPORT_LABEL: Readonly<
   },
   births: {
     title: 'Nacimientos',
-    description: 'Por período: machos, hembras, débiles y muertos al nacer, con la madre de cada cría.',
+    description:
+      'Por período: machos, hembras, débiles y muertos al nacer, con la madre de cada cría.',
   },
   vaccinations: {
     title: 'Vacunados',

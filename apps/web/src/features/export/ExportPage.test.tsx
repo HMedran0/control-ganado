@@ -14,15 +14,19 @@ describe('ExportPage', () => {
   it('descarga el ZIP con el nombre que manda la API', async () => {
     const created = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:zip');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
-    const { fetchMock } = await renderApp(<ExportPage />, () =>
-      new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
-        status: 200,
-        headers: {
-          'content-type': 'application/zip',
-          'content-disposition': 'attachment; filename="arreo-la-esperanza-2026-10-06.zip"',
-        },
-      }),
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    const { fetchMock } = await renderApp(
+      <ExportPage />,
+      () =>
+        new Response(new Uint8Array([0x50, 0x4b, 0x03, 0x04]), {
+          status: 200,
+          headers: {
+            'content-type': 'application/zip',
+            'content-disposition': 'attachment; filename="arreo-la-esperanza-2026-10-06.zip"',
+          },
+        }),
     );
 
     fireEvent.click(await screen.findByRole('button', { name: 'Descargar todo (ZIP)' }));

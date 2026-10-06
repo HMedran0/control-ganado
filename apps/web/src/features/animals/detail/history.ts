@@ -1,8 +1,4 @@
-import {
-  EXIT_TYPE_LABEL,
-  formatWeight,
-  type TimelineItem as ApiTimelineItem,
-} from '@hato/shared';
+import { EXIT_TYPE_LABEL, formatWeight, type TimelineItem as ApiTimelineItem } from '@hato/shared';
 import {
   ArrowRightLeft,
   Baby,

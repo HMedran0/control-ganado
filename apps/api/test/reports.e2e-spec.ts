@@ -82,13 +82,7 @@ describe('Reportes (RPT-02, RPT-03)', () => {
   const table = (sheet: ExcelJS.Worksheet | undefined, firstHeader: string): string[][] => {
     const rows: string[][] = [];
     sheet?.eachRow((row) => {
-      rows.push(
-        (row.values as unknown[])
-          .slice(1)
-          .map((value) =>
-            textOf(value),
-          ),
-      );
+      rows.push((row.values as unknown[]).slice(1).map((value) => textOf(value)));
     });
     const start = rows.findIndex((row) => row[0] === firstHeader);
     return rows.slice(start);

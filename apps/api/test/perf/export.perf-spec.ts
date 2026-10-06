@@ -109,7 +109,7 @@ describe('rendimiento de la exportación completa (BAK-02)', () => {
       `| Primer byte | ${(firstByteMs / 1000).toFixed(1)} s |`,
       `| Tiempo total | ${seconds.toFixed(1)} s (límite ${LIMIT_S} s) |`,
       `| ZIP | ${mb(zip.length)} MB (${entries.length} archivos, ${mb(unzipped)} MB sin comprimir) |`,
-      `| Memoria (${gc === undefined ? "RSS, sin --expose-gc" : "heap tras recolectar"}) | +${mb(rssPeak - rssBefore)} MB en el pico (incluye el ZIP que guarda la prueba) |`,
+      `| Memoria (${gc === undefined ? 'RSS, sin --expose-gc' : 'heap tras recolectar'}) | +${mb(rssPeak - rssBefore)} MB en el pico (incluye el ZIP que guarda la prueba) |`,
     );
     if (!CI) expect(seconds).toBeLessThanOrEqual(LIMIT_S);
   }, 300_000);

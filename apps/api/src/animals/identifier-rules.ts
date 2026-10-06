@@ -108,7 +108,8 @@ export function assertIdentifierFree(
   }
 
   const previousOwner = input.existing.find(
-    (use) => use.animalId !== input.animalId && use.retireReason !== IDENTIFIER_RETIRE_REASON.EXITED,
+    (use) =>
+      use.animalId !== input.animalId && use.retireReason !== IDENTIFIER_RETIRE_REASON.EXITED,
   );
   if (previousOwner !== undefined) {
     if (input.confirmReuse !== true) {

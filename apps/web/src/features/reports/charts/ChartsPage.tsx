@@ -25,9 +25,7 @@ export function ChartsPage() {
         <ChevronLeft aria-hidden="true" className="size-5" />
         Reportes
       </Link>
-      <PageHeader title="Gráficas">
-        Cómo ha cambiado el hato en el último año.
-      </PageHeader>
+      <PageHeader title="Gráficas">Cómo ha cambiado el hato en el último año.</PageHeader>
       <ReportStatus isPending={report.isPending} error={report.error} />
       {data === undefined ? null : (
         <div className="flex max-w-3xl flex-col gap-8">

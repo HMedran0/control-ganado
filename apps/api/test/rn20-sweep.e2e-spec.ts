@@ -363,7 +363,10 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
 
   it('M8b: la exportación completa (con todos los montos) es solo del ADMIN', async () => {
     for (const headers of [operator, vet]) {
-      const { status, leaks } = await sweep(headers, { method: 'GET', path: '/api/v1/export/full' });
+      const { status, leaks } = await sweep(headers, {
+        method: 'GET',
+        path: '/api/v1/export/full',
+      });
       expect(status).toBe(403);
       expect(leaks).toEqual([]);
     }
@@ -383,7 +386,10 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
     const board = await sweep(admin, { method: 'GET', path: '/api/v1/dashboard' });
     expect(board.leaks.length).toBeGreaterThan(0);
     // M8b: las salidas en JSON y en Excel traen el precio de venta para el ADMIN.
-    const exits = await sweep(admin, { method: 'GET', path: '/api/v1/reports/exits?from=2024-01-01' });
+    const exits = await sweep(admin, {
+      method: 'GET',
+      path: '/api/v1/reports/exits?from=2024-01-01',
+    });
     expect(exits.leaks.length).toBeGreaterThan(0);
     const exitsFile = await sweep(admin, {
       method: 'GET',

@@ -54,7 +54,9 @@ export function ReportFrame({
         {download.isError ? (
           <FormError
             message={
-              isApiError(download.error) ? download.error.detail : 'No se pudo descargar el archivo.'
+              isApiError(download.error)
+                ? download.error.detail
+                : 'No se pudo descargar el archivo.'
             }
           />
         ) : null}
@@ -65,13 +67,7 @@ export function ReportFrame({
 }
 
 /** Estados de carga y error de la consulta de un reporte. */
-export function ReportStatus({
-  isPending,
-  error,
-}: {
-  isPending: boolean;
-  error: unknown;
-}) {
+export function ReportStatus({ isPending, error }: { isPending: boolean; error: unknown }) {
   if (isPending) {
     return (
       <p role="status" className="text-texto-2">
@@ -80,7 +76,5 @@ export function ReportStatus({
     );
   }
   if (error === null || error === undefined) return null;
-  return (
-    <FormError message={isApiError(error) ? error.detail : 'No pudimos cargar el reporte.'} />
-  );
+  return <FormError message={isApiError(error) ? error.detail : 'No pudimos cargar el reporte.'} />;
 }
