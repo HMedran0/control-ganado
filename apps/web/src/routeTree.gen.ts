@@ -27,6 +27,14 @@ import { Route as AppAnimalsNewRouteImport } from './routes/_app/animals/new'
 import { Route as AppFinanceIndexRouteImport } from './routes/_app/finance/index'
 import { Route as AppReportsIndexRouteImport } from './routes/_app/reports/index'
 import { Route as AppReportsBirthsRouteImport } from './routes/_app/reports/births'
+import { Route as AppReportsCalvingsUpcomingRouteImport } from './routes/_app/reports/calvings-upcoming'
+import { Route as AppReportsChartsRouteImport } from './routes/_app/reports/charts'
+import { Route as AppReportsCycleProgressRouteImport } from './routes/_app/reports/cycle-progress'
+import { Route as AppReportsExitsRouteImport } from './routes/_app/reports/exits'
+import { Route as AppReportsInventoryRouteImport } from './routes/_app/reports/inventory'
+import { Route as AppReportsInventoryIcaRouteImport } from './routes/_app/reports/inventory-ica'
+import { Route as AppReportsVaccinationPendingRouteImport } from './routes/_app/reports/vaccination-pending'
+import { Route as AppReportsVaccinationsRouteImport } from './routes/_app/reports/vaccinations'
 import { Route as AppSettingsIndexRouteImport } from './routes/_app/settings/index'
 import { Route as AppSettingsArchivedRouteImport } from './routes/_app/settings/archived'
 import { Route as AppSettingsExportRouteImport } from './routes/_app/settings/export'
@@ -152,6 +160,48 @@ const AppReportsIndexRoute = AppReportsIndexRouteImport.update({
 const AppReportsBirthsRoute = AppReportsBirthsRouteImport.update({
   id: '/reports/births',
   path: '/reports/births',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsCalvingsUpcomingRoute =
+  AppReportsCalvingsUpcomingRouteImport.update({
+    id: '/reports/calvings-upcoming',
+    path: '/reports/calvings-upcoming',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppReportsChartsRoute = AppReportsChartsRouteImport.update({
+  id: '/reports/charts',
+  path: '/reports/charts',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsCycleProgressRoute = AppReportsCycleProgressRouteImport.update({
+  id: '/reports/cycle-progress',
+  path: '/reports/cycle-progress',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsExitsRoute = AppReportsExitsRouteImport.update({
+  id: '/reports/exits',
+  path: '/reports/exits',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsInventoryRoute = AppReportsInventoryRouteImport.update({
+  id: '/reports/inventory',
+  path: '/reports/inventory',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsInventoryIcaRoute = AppReportsInventoryIcaRouteImport.update({
+  id: '/reports/inventory-ica',
+  path: '/reports/inventory-ica',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReportsVaccinationPendingRoute =
+  AppReportsVaccinationPendingRouteImport.update({
+    id: '/reports/vaccination-pending',
+    path: '/reports/vaccination-pending',
+    getParentRoute: () => AppRoute,
+  } as any)
+const AppReportsVaccinationsRoute = AppReportsVaccinationsRouteImport.update({
+  id: '/reports/vaccinations',
+  path: '/reports/vaccinations',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSettingsIndexRoute = AppSettingsIndexRouteImport.update({
@@ -358,6 +408,14 @@ export interface FileRoutesByFullPath {
   '/animals/labels': typeof AppAnimalsLabelsRoute
   '/animals/new': typeof AppAnimalsNewRoute
   '/reports/births': typeof AppReportsBirthsRoute
+  '/reports/calvings-upcoming': typeof AppReportsCalvingsUpcomingRoute
+  '/reports/charts': typeof AppReportsChartsRoute
+  '/reports/cycle-progress': typeof AppReportsCycleProgressRoute
+  '/reports/exits': typeof AppReportsExitsRoute
+  '/reports/inventory': typeof AppReportsInventoryRoute
+  '/reports/inventory-ica': typeof AppReportsInventoryIcaRoute
+  '/reports/vaccination-pending': typeof AppReportsVaccinationPendingRoute
+  '/reports/vaccinations': typeof AppReportsVaccinationsRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/export': typeof AppSettingsExportRoute
   '/settings/farm': typeof AppSettingsFarmRoute
@@ -414,6 +472,14 @@ export interface FileRoutesByTo {
   '/animals/labels': typeof AppAnimalsLabelsRoute
   '/animals/new': typeof AppAnimalsNewRoute
   '/reports/births': typeof AppReportsBirthsRoute
+  '/reports/calvings-upcoming': typeof AppReportsCalvingsUpcomingRoute
+  '/reports/charts': typeof AppReportsChartsRoute
+  '/reports/cycle-progress': typeof AppReportsCycleProgressRoute
+  '/reports/exits': typeof AppReportsExitsRoute
+  '/reports/inventory': typeof AppReportsInventoryRoute
+  '/reports/inventory-ica': typeof AppReportsInventoryIcaRoute
+  '/reports/vaccination-pending': typeof AppReportsVaccinationPendingRoute
+  '/reports/vaccinations': typeof AppReportsVaccinationsRoute
   '/settings/archived': typeof AppSettingsArchivedRoute
   '/settings/export': typeof AppSettingsExportRoute
   '/settings/farm': typeof AppSettingsFarmRoute
@@ -472,6 +538,14 @@ export interface FileRoutesById {
   '/_app/animals/labels': typeof AppAnimalsLabelsRoute
   '/_app/animals/new': typeof AppAnimalsNewRoute
   '/_app/reports/births': typeof AppReportsBirthsRoute
+  '/_app/reports/calvings-upcoming': typeof AppReportsCalvingsUpcomingRoute
+  '/_app/reports/charts': typeof AppReportsChartsRoute
+  '/_app/reports/cycle-progress': typeof AppReportsCycleProgressRoute
+  '/_app/reports/exits': typeof AppReportsExitsRoute
+  '/_app/reports/inventory': typeof AppReportsInventoryRoute
+  '/_app/reports/inventory-ica': typeof AppReportsInventoryIcaRoute
+  '/_app/reports/vaccination-pending': typeof AppReportsVaccinationPendingRoute
+  '/_app/reports/vaccinations': typeof AppReportsVaccinationsRoute
   '/_app/settings/archived': typeof AppSettingsArchivedRoute
   '/_app/settings/export': typeof AppSettingsExportRoute
   '/_app/settings/farm': typeof AppSettingsFarmRoute
@@ -530,6 +604,14 @@ export interface FileRouteTypes {
     | '/animals/labels'
     | '/animals/new'
     | '/reports/births'
+    | '/reports/calvings-upcoming'
+    | '/reports/charts'
+    | '/reports/cycle-progress'
+    | '/reports/exits'
+    | '/reports/inventory'
+    | '/reports/inventory-ica'
+    | '/reports/vaccination-pending'
+    | '/reports/vaccinations'
     | '/settings/archived'
     | '/settings/export'
     | '/settings/farm'
@@ -586,6 +668,14 @@ export interface FileRouteTypes {
     | '/animals/labels'
     | '/animals/new'
     | '/reports/births'
+    | '/reports/calvings-upcoming'
+    | '/reports/charts'
+    | '/reports/cycle-progress'
+    | '/reports/exits'
+    | '/reports/inventory'
+    | '/reports/inventory-ica'
+    | '/reports/vaccination-pending'
+    | '/reports/vaccinations'
     | '/settings/archived'
     | '/settings/export'
     | '/settings/farm'
@@ -643,6 +733,14 @@ export interface FileRouteTypes {
     | '/_app/animals/labels'
     | '/_app/animals/new'
     | '/_app/reports/births'
+    | '/_app/reports/calvings-upcoming'
+    | '/_app/reports/charts'
+    | '/_app/reports/cycle-progress'
+    | '/_app/reports/exits'
+    | '/_app/reports/inventory'
+    | '/_app/reports/inventory-ica'
+    | '/_app/reports/vaccination-pending'
+    | '/_app/reports/vaccinations'
     | '/_app/settings/archived'
     | '/_app/settings/export'
     | '/_app/settings/farm'
@@ -818,6 +916,62 @@ declare module '@tanstack/react-router' {
       path: '/reports/births'
       fullPath: '/reports/births'
       preLoaderRoute: typeof AppReportsBirthsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/calvings-upcoming': {
+      id: '/_app/reports/calvings-upcoming'
+      path: '/reports/calvings-upcoming'
+      fullPath: '/reports/calvings-upcoming'
+      preLoaderRoute: typeof AppReportsCalvingsUpcomingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/charts': {
+      id: '/_app/reports/charts'
+      path: '/reports/charts'
+      fullPath: '/reports/charts'
+      preLoaderRoute: typeof AppReportsChartsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/cycle-progress': {
+      id: '/_app/reports/cycle-progress'
+      path: '/reports/cycle-progress'
+      fullPath: '/reports/cycle-progress'
+      preLoaderRoute: typeof AppReportsCycleProgressRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/exits': {
+      id: '/_app/reports/exits'
+      path: '/reports/exits'
+      fullPath: '/reports/exits'
+      preLoaderRoute: typeof AppReportsExitsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/inventory': {
+      id: '/_app/reports/inventory'
+      path: '/reports/inventory'
+      fullPath: '/reports/inventory'
+      preLoaderRoute: typeof AppReportsInventoryRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/inventory-ica': {
+      id: '/_app/reports/inventory-ica'
+      path: '/reports/inventory-ica'
+      fullPath: '/reports/inventory-ica'
+      preLoaderRoute: typeof AppReportsInventoryIcaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/vaccination-pending': {
+      id: '/_app/reports/vaccination-pending'
+      path: '/reports/vaccination-pending'
+      fullPath: '/reports/vaccination-pending'
+      preLoaderRoute: typeof AppReportsVaccinationPendingRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/reports/vaccinations': {
+      id: '/_app/reports/vaccinations'
+      path: '/reports/vaccinations'
+      fullPath: '/reports/vaccinations'
+      preLoaderRoute: typeof AppReportsVaccinationsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/settings/': {
@@ -1094,6 +1248,14 @@ interface AppRouteChildren {
   AppAnimalsLabelsRoute: typeof AppAnimalsLabelsRoute
   AppAnimalsNewRoute: typeof AppAnimalsNewRoute
   AppReportsBirthsRoute: typeof AppReportsBirthsRoute
+  AppReportsCalvingsUpcomingRoute: typeof AppReportsCalvingsUpcomingRoute
+  AppReportsChartsRoute: typeof AppReportsChartsRoute
+  AppReportsCycleProgressRoute: typeof AppReportsCycleProgressRoute
+  AppReportsExitsRoute: typeof AppReportsExitsRoute
+  AppReportsInventoryRoute: typeof AppReportsInventoryRoute
+  AppReportsInventoryIcaRoute: typeof AppReportsInventoryIcaRoute
+  AppReportsVaccinationPendingRoute: typeof AppReportsVaccinationPendingRoute
+  AppReportsVaccinationsRoute: typeof AppReportsVaccinationsRoute
   AppSettingsArchivedRoute: typeof AppSettingsArchivedRoute
   AppSettingsExportRoute: typeof AppSettingsExportRoute
   AppSettingsFarmRoute: typeof AppSettingsFarmRoute
@@ -1148,6 +1310,14 @@ const AppRouteChildren: AppRouteChildren = {
   AppAnimalsLabelsRoute: AppAnimalsLabelsRoute,
   AppAnimalsNewRoute: AppAnimalsNewRoute,
   AppReportsBirthsRoute: AppReportsBirthsRoute,
+  AppReportsCalvingsUpcomingRoute: AppReportsCalvingsUpcomingRoute,
+  AppReportsChartsRoute: AppReportsChartsRoute,
+  AppReportsCycleProgressRoute: AppReportsCycleProgressRoute,
+  AppReportsExitsRoute: AppReportsExitsRoute,
+  AppReportsInventoryRoute: AppReportsInventoryRoute,
+  AppReportsInventoryIcaRoute: AppReportsInventoryIcaRoute,
+  AppReportsVaccinationPendingRoute: AppReportsVaccinationPendingRoute,
+  AppReportsVaccinationsRoute: AppReportsVaccinationsRoute,
   AppSettingsArchivedRoute: AppSettingsArchivedRoute,
   AppSettingsExportRoute: AppSettingsExportRoute,
   AppSettingsFarmRoute: AppSettingsFarmRoute,

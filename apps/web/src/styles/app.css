@@ -42,6 +42,8 @@
   --color-aviso-intenso: var(--color-aviso-intenso);
   --color-info-intenso: var(--color-info-intenso);
   --color-chapeta-borde: var(--color-chapeta-borde);
+  --color-serie-1: var(--color-serie-1);
+  --color-serie-2: var(--color-serie-2);
 
   --font-sans: var(--font-interfaz);
   --font-cifras: var(--font-cifras);

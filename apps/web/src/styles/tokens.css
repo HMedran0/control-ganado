@@ -37,6 +37,12 @@
   /* Borde de la chapeta (docs/referencia/prototipo/LEEME.md). */
   --color-chapeta-borde: #c99e00;
 
+  /* Series de las gráficas (RPT-03, M8b): validadas con el validador de paletas (banda de
+     luminosidad, croma, separación para daltonismo ≥ 20, contraste ≥ 3:1 sobre la superficie).
+     Nunca colores de estado. Hembras = serie 1, machos = serie 2; una sola serie usa la 1. */
+  --color-serie-1: #2e7d4f;
+  --color-serie-2: #3b7dd8;
+
   /* §3.3 Tipografía */
   --font-interfaz: 'Atkinson Hyperlegible', system-ui, sans-serif;
   --font-cifras: 'Barlow Condensed', 'Arial Narrow', sans-serif;

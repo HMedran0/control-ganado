@@ -1,14 +1,16 @@
 import { formatDate, formatWeight, isIsoDate, isoDateFromParts, isoDateParts } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
-import { Baby } from 'lucide-react';
+import { Baby, FileSpreadsheet } from 'lucide-react';
 import { useState } from 'react';
 
+import { Button } from '../../components/ui/Button';
 import { EmptyState } from '../../components/ui/EmptyState';
 import { FormError } from '../../components/ui/FormError';
 import { TextField } from '../../components/ui/TextField';
 import { isApiError } from '../../lib/api/errors';
 import { useToday } from '../../lib/clock';
 import { SEX_LABEL } from '../animals/labels';
+import { useReportDownload } from '../reports/api';
 import { useBirthsReport } from './api';
 
 const CONDITION_LABEL = { HEALTHY: 'Sana', WEAK: 'Débil' } as const;
@@ -24,10 +26,11 @@ export function BirthsReportPage() {
   const [to, setTo] = useState<string>(today);
   const valid = isIsoDate(from) && isIsoDate(to) && from <= to;
   const report = useBirthsReport(valid ? from : today, valid ? to : today);
+  const download = useReportDownload();
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap gap-4">
+      <div className="flex flex-wrap items-end gap-4">
         <TextField
           label="Desde"
           type="date"
@@ -47,7 +50,22 @@ export function BirthsReportPage() {
           }}
           error={valid ? undefined : 'La fecha final no puede ser anterior a la inicial.'}
         />
+        <Button
+          variant="secondary"
+          disabled={!valid || download.isPending}
+          onClick={() => {
+            download.mutate(`/reports/births/export?from=${from}&to=${to}`);
+          }}
+        >
+          <FileSpreadsheet aria-hidden="true" className="size-5" />
+          {download.isPending ? 'Preparando…' : 'Descargar en Excel'}
+        </Button>
       </div>
+      {download.isError ? (
+        <FormError
+          message={isApiError(download.error) ? download.error.detail : 'No se pudo descargar el archivo.'}
+        />
+      ) : null}
 
       {report.isPending ? <p className="text-texto-2">Cargando nacimientos…</p> : null}
       {report.isError ? (
