@@ -7,6 +7,9 @@ import { ChevronRight } from 'lucide-react';
  *
  * La cifra se pinta en rojo solo con `tone="alerta"` (hay vencidas), y el resumen siempre dice
  * el porqué con palabras: el color nunca informa solo.
+ *
+ * Sin `to` es una cifra sin listado detrás (un promedio, como el intervalo entre partos, M8a): la
+ * misma fila, sin enlace ni flecha.
  */
 export function QuestionRow({
   question,
@@ -14,19 +17,19 @@ export function QuestionRow({
   value,
   tone = 'normal',
   to,
+  search,
 }: {
   question: string;
   summary?: string;
   /** Cifra ya formateada en es-CO («412», «$ 812 M»). */
   value: string;
   tone?: 'normal' | 'alerta';
-  to: LinkProps['to'];
+  to?: LinkProps['to'];
+  /** Filtros del listado al que lleva (M8a). */
+  search?: LinkProps['search'];
 }) {
-  return (
-    <Link
-      to={to}
-      className="grid min-h-touch-primary grid-cols-[1fr_auto_auto] items-center gap-x-3 py-4 hover:bg-potrero-claro/40"
-    >
+  const content = (
+    <>
       <span className="flex flex-col">
         <span className="text-md leading-snug font-bold">{question}</span>
         {summary === undefined ? null : <span className="text-texto-2">{summary}</span>}
@@ -36,6 +39,22 @@ export function QuestionRow({
       >
         {value}
       </span>
+    </>
+  );
+  if (to === undefined) {
+    return (
+      <div className="grid min-h-touch-primary grid-cols-[1fr_auto] items-center gap-x-3 py-4">
+        {content}
+      </div>
+    );
+  }
+  return (
+    <Link
+      to={to}
+      {...(search === undefined ? {} : { search })}
+      className="grid min-h-touch-primary grid-cols-[1fr_auto_auto] items-center gap-x-3 py-4 hover:bg-potrero-claro/40"
+    >
+      {content}
       <ChevronRight aria-hidden="true" className="size-5 text-texto-2" />
     </Link>
   );

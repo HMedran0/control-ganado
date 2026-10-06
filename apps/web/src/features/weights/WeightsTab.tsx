@@ -1,4 +1,11 @@
-import { formatDate, formatWeight, type AnimalDetail, type WeightView } from '@hato/shared';
+import {
+  SALE_WEIGHT_STATUS,
+  formatDate,
+  formatWeight,
+  type AnimalDetail,
+  type SaleWeightProjection,
+  type WeightView,
+} from '@hato/shared';
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
 
@@ -105,6 +112,15 @@ export default function WeightsTab({ animal }: { animal: AnimalDetail }) {
         </p>
       </Section>
 
+      {summary.saleWeight === null ? null : (
+        <Section title="Peso de venta">
+          <p>{saleWeightText(summary.saleWeight)}</p>
+          <p className="text-texto-2">
+            La fecha se estima con la ganancia de los últimos 90 días, desde el último pesaje.
+          </p>
+        </Section>
+      )}
+
       <Section title="Pesajes">
         {items.length === 0 ? (
           <p className="text-texto-2">Sin pesajes registrados.</p>
@@ -187,4 +203,19 @@ export default function WeightsTab({ animal }: { animal: AnimalDetail }) {
       )}
     </div>
   );
+}
+
+/**
+ * Peso objetivo de venta (PES-06 CA2): lo medido y lo estimado con palabras distintas. «Ya en el
+ * peso» es el último pesaje; las demás son estimaciones con la ganancia de 90 días.
+ */
+function saleWeightText(sale: SaleWeightProjection): string {
+  const target = formatWeight(sale.targetKg, { maxDecimals: 0 });
+  if (sale.status === SALE_WEIGHT_STATUS.REACHED || sale.estimatedOn === null) {
+    return `Ya está en el peso de venta (${target}) según su último pesaje.`;
+  }
+  if (sale.status === SALE_WEIGHT_STATUS.LIKELY_REACHED) {
+    return `Según su ganancia ya debería estar en ${target} desde el ${formatDate(sale.estimatedOn)}: pésalo para confirmar.`;
+  }
+  return `Llega a ${target} hacia el ${formatDate(sale.estimatedOn)} (estimado).`;
 }

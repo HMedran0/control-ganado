@@ -1,8 +1,10 @@
 import {
   ALERT_GROUPS,
   ALERT_LABEL,
+  DEFAULT_FARM_SETTINGS,
   formatDate,
   formatDecimalEsCo,
+  sortAlertGroups,
   type AlertItem,
   type AnimalAlert,
   type IsoDate,
@@ -22,7 +24,7 @@ import { useToday } from '../../lib/clock';
 import { gainText, relativeDays, withdrawalText } from '../animals/detail/banners';
 import { CATEGORY_LABEL } from '../animals/labels';
 import { VACCINE_STATUS_LABEL } from '../health/labels';
-import { useCatalog } from '../settings/api';
+import { useCatalog, useFarm } from '../settings/api';
 import { useAlerts } from './api';
 
 const ACTION =
@@ -46,6 +48,12 @@ export function AlertsPage({
 }) {
   const today = useToday();
   const lots = useCatalog('lots');
+  // El sistema productivo decide qué grupo sale primero (CFG-03 CA1, M8a).
+  const farm = useFarm();
+  const groups = sortAlertGroups(
+    ALERT_GROUPS,
+    farm.data?.settings.productionSystem ?? DEFAULT_FARM_SETTINGS.productionSystem,
+  );
   const selected = new Set(
     (search.types ?? '').split(',').filter((value) => value !== ''),
   ) as Set<AnimalAlert>;
@@ -69,7 +77,7 @@ export function AlertsPage({
       <PageHeader title="Alertas" />
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-4">
-          {ALERT_GROUPS.map((group) => (
+          {groups.map((group) => (
             <div
               key={group.key}
               role="group"
