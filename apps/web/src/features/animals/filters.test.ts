@@ -106,3 +106,44 @@ describe('filtros del listado ↔ URL (ANI-06 CA1)', () => {
     expect(hasFilters({ ...DEFAULT_FILTERS, forSale: true })).toBe(true);
   });
 });
+
+describe('filtros que enlaza Inicio (M8a)', () => {
+  it('nacidos entre fechas, peso de venta y retiro de leche: URL, consulta y chips', () => {
+    const filters = filtersFromSearch({
+      bornFrom: '2026-02-01',
+      bornTo: '2026-02-28',
+      saleWeight: 'likely_reached',
+      milkWithdrawal: true,
+      sort: 'calving',
+    });
+    expect(filters).toMatchObject({
+      bornFrom: '2026-02-01',
+      bornTo: '2026-02-28',
+      saleWeight: 'likely_reached',
+      milkWithdrawal: true,
+      sort: 'calving',
+    });
+    expect(filtersFromSearch(searchFromFilters(filters))).toEqual(filters);
+    expect(apiQuery(filters)).toBe(
+      'bornFrom=2026-02-01&bornTo=2026-02-28&milkWithdrawal=true&saleWeight=likely_reached&sort=calving&status=active',
+    );
+    expect(filterChips(filters, NAMES).map((chip) => chip.label)).toEqual([
+      'Nacidos del 01/02/2026 al 28/02/2026',
+      'Posiblemente en el peso (estimado)',
+      'En retiro de leche',
+    ]);
+    // Quitar el chip de nacimiento quita las dos fechas.
+    const born = filterChips(filters, NAMES).find((chip) => chip.id === 'born');
+    expect(born?.without).toMatchObject({ bornFrom: null, bornTo: null });
+  });
+
+  it('lo inválido se descarta, y unas fechas al revés se ordenan', () => {
+    expect(
+      filtersFromSearch({ bornFrom: '2026-02-30', saleWeight: 'ya', milkWithdrawal: 'si' }),
+    ).toEqual(DEFAULT_FILTERS);
+    expect(filtersFromSearch({ bornFrom: '2026-03-01', bornTo: '2026-02-01' })).toMatchObject({
+      bornFrom: '2026-02-01',
+      bornTo: '2026-03-01',
+    });
+  });
+});

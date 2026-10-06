@@ -35,6 +35,8 @@ const SORT_OF: Record<string, readonly [AnimalSort, AnimalSort]> = {
   code: ['code', '-code'],
   age: ['age', '-age'],
   lastWeight: ['lastWeight', '-lastWeight'],
+  // Solo del más próximo al más lejano (CU-03); sin preñez, al final.
+  calving: ['calving', 'calving'],
 };
 
 function sortState(sort: AnimalSort): SortState {
@@ -48,6 +50,7 @@ const SORT_OPTIONS: readonly { value: AnimalSort; label: string }[] = [
   { value: '-age', label: 'Mayor edad primero' },
   { value: '-lastWeight', label: 'Mayor peso primero' },
   { value: 'lastWeight', label: 'Menor peso primero' },
+  { value: 'calving', label: 'Parto más próximo primero' },
 ];
 
 const CHIP =
@@ -143,6 +146,7 @@ export function AnimalListPage({
       key: 'calving',
       header: 'Parto estimado',
       mobile: 'hidden',
+      sortable: true,
       cell: (animal) =>
         animal.expectedCalvingDate === null ? (
           <span className="text-texto-2">—</span>
@@ -416,6 +420,10 @@ function emptyFilters(): Omit<AnimalListFilters, 'sort'> {
     ageMin: null,
     ageMax: null,
     forSale: null,
+    bornFrom: null,
+    bornTo: null,
+    saleWeight: null,
+    milkWithdrawal: null,
     status: 'active',
   };
 }

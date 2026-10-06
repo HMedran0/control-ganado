@@ -3,11 +3,16 @@ import {
   ANIMAL_SORT,
   DERIVED_TAG,
   MANAGEMENT_CATEGORY,
+  SALE_WEIGHT_STATUS,
+  formatDate,
   isDerivedTagKey,
+  isIsoDate,
   isUuid,
   type AnimalAlert,
   type AnimalSort,
+  type IsoDate,
   type ManagementCategory,
+  type SaleWeightStatus,
   type Sex,
 } from '@hato/shared';
 
@@ -42,6 +47,13 @@ export type AnimalListFilters = {
   readonly ageMin: number | null;
   readonly ageMax: number | null;
   readonly forSale: boolean | null;
+  /** Nacidos entre estas fechas (M8a: destete del mes, enlazado desde Inicio). */
+  readonly bornFrom: IsoDate | null;
+  readonly bornTo: IsoDate | null;
+  /** Situación frente al peso de venta (PES-06, M8a). */
+  readonly saleWeight: SaleWeightStatus | null;
+  /** Con retiro de leche vigente (M8a). */
+  readonly milkWithdrawal: boolean | null;
   readonly status: AnimalListStatusFilter;
   readonly sort: AnimalSort;
 };
@@ -57,6 +69,10 @@ export type AnimalListSearch = {
   readonly ageMin?: number;
   readonly ageMax?: number;
   readonly forSale?: boolean;
+  readonly bornFrom?: string;
+  readonly bornTo?: string;
+  readonly saleWeight?: SaleWeightStatus;
+  readonly milkWithdrawal?: boolean;
   readonly status?: 'exited';
   readonly sort?: AnimalSort;
 };
@@ -71,6 +87,10 @@ export const DEFAULT_FILTERS: AnimalListFilters = {
   ageMin: null,
   ageMax: null,
   forSale: null,
+  bornFrom: null,
+  bornTo: null,
+  saleWeight: null,
+  milkWithdrawal: null,
   status: 'active',
   sort: 'code',
 };
@@ -78,6 +98,19 @@ export const DEFAULT_FILTERS: AnimalListFilters = {
 const CATEGORIES = new Set<string>(Object.values(MANAGEMENT_CATEGORY));
 const ALERTS = new Set<string>(Object.values(ANIMAL_ALERT));
 const SORTS = new Set<string>(ANIMAL_SORT);
+const SALE_WEIGHT = new Set<string>(Object.values(SALE_WEIGHT_STATUS));
+
+/** Etiqueta del filtro de peso de venta (PES-06): lo medido y lo estimado, con palabras distintas. */
+export const SALE_WEIGHT_FILTER_LABEL: Readonly<Record<SaleWeightStatus, string>> = {
+  [SALE_WEIGHT_STATUS.REACHED]: 'Ya en el peso de venta',
+  [SALE_WEIGHT_STATUS.THIS_MONTH]: 'Alcanzan el peso este mes',
+  [SALE_WEIGHT_STATUS.LIKELY_REACHED]: 'Posiblemente en el peso (estimado)',
+  [SALE_WEIGHT_STATUS.LATER]: 'Alcanzan el peso después de este mes',
+};
+
+function isoDate(value: unknown): IsoDate | null {
+  return typeof value === 'string' && isIsoDate(value) ? value : null;
+}
 const TAG_KEY = /^[A-Z0-9_]{1,60}$/;
 
 function list(value: unknown, accept: (item: string) => boolean): string[] {
@@ -109,6 +142,10 @@ export function filtersFromSearch(search: Record<string, unknown>): AnimalListFi
   let ageMax = months(search.ageMax);
   if (ageMin !== null && ageMax !== null && ageMin > ageMax) [ageMin, ageMax] = [ageMax, ageMin];
   const forSale = search.forSale === true || search.forSale === 'true' ? true : null;
+  let bornFrom = isoDate(search.bornFrom);
+  let bornTo = isoDate(search.bornTo);
+  if (bornFrom !== null && bornTo !== null && bornFrom > bornTo)
+    [bornFrom, bornTo] = [bornTo, bornFrom];
 
   return {
     sex: search.sex === 'FEMALE' || search.sex === 'MALE' ? search.sex : null,
@@ -120,6 +157,14 @@ export function filtersFromSearch(search: Record<string, unknown>): AnimalListFi
     ageMin,
     ageMax,
     forSale,
+    bornFrom,
+    bornTo,
+    saleWeight:
+      typeof search.saleWeight === 'string' && SALE_WEIGHT.has(search.saleWeight)
+        ? (search.saleWeight as SaleWeightStatus)
+        : null,
+    milkWithdrawal:
+      search.milkWithdrawal === true || search.milkWithdrawal === 'true' ? true : null,
     status: search.status === 'exited' ? 'exited' : 'active',
     sort:
       typeof search.sort === 'string' && SORTS.has(search.sort)
@@ -140,6 +185,10 @@ export function searchFromFilters(filters: AnimalListFilters): AnimalListSearch 
     ageMin: filters.ageMin ?? undefined,
     ageMax: filters.ageMax ?? undefined,
     forSale: filters.forSale === true ? true : undefined,
+    bornFrom: filters.bornFrom ?? undefined,
+    bornTo: filters.bornTo ?? undefined,
+    saleWeight: filters.saleWeight ?? undefined,
+    milkWithdrawal: filters.milkWithdrawal === true ? true : undefined,
     status: filters.status === 'exited' ? 'exited' : undefined,
     sort: filters.sort === 'code' ? undefined : filters.sort,
   };
@@ -166,6 +215,10 @@ export function apiQuery(filters: AnimalListFilters): string {
   add('ageMinMonths', filters.ageMin === null ? undefined : String(filters.ageMin));
   add('ageMaxMonths', filters.ageMax === null ? undefined : String(filters.ageMax));
   add('forSale', filters.forSale === true ? 'true' : undefined);
+  add('bornFrom', filters.bornFrom ?? undefined);
+  add('bornTo', filters.bornTo ?? undefined);
+  add('saleWeight', filters.saleWeight ?? undefined);
+  add('milkWithdrawal', filters.milkWithdrawal === true ? 'true' : undefined);
   add('status', filters.status);
   add('sort', filters.sort);
   params.sort();
@@ -261,7 +314,34 @@ export function filterChips(filters: AnimalListFilters, names: CatalogNames): Fi
       without: { ...filters, forSale: null },
     });
   }
+  if (filters.bornFrom !== null || filters.bornTo !== null) {
+    chips.push({
+      id: 'born',
+      label: bornLabel(filters.bornFrom, filters.bornTo),
+      without: { ...filters, bornFrom: null, bornTo: null },
+    });
+  }
+  if (filters.saleWeight !== null) {
+    chips.push({
+      id: 'saleWeight',
+      label: SALE_WEIGHT_FILTER_LABEL[filters.saleWeight],
+      without: { ...filters, saleWeight: null },
+    });
+  }
+  if (filters.milkWithdrawal === true) {
+    chips.push({
+      id: 'milkWithdrawal',
+      label: 'En retiro de leche',
+      without: { ...filters, milkWithdrawal: null },
+    });
+  }
   return chips;
+}
+
+function bornLabel(from: IsoDate | null, to: IsoDate | null): string {
+  if (from !== null && to !== null) return `Nacidos del ${formatDate(from)} al ${formatDate(to)}`;
+  if (from !== null) return `Nacidos desde el ${formatDate(from)}`;
+  return `Nacidos hasta el ${to === null ? '' : formatDate(to)}`;
 }
 
 function ageLabel(min: number | null, max: number | null): string {
