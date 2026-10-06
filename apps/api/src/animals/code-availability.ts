@@ -74,6 +74,62 @@ export async function findCodeHolder(
 }
 
 /**
+ * `findCodeHolder` para muchos códigos a la vez (la importación, ANI-09): mismo conjunto, mismo
+ * orden de preferencia y mismos candados, en dos consultas en lugar de dos por código.
+ *
+ * Los candados se toman en un orden determinista —código normalizado ascendente, por bytes— para
+ * no cruzarse con otra escritura que tome varios: dos transacciones que piden los mismos candados
+ * en el mismo orden no se bloquean en círculo. Un alta individual toma uno solo.
+ *
+ * @returns el que tiene cada código, por código normalizado (`hato_normalize_code`).
+ */
+export async function findCodeHolders(
+  tx: Tx,
+  scope: FarmScope,
+  check: { readonly codes: readonly string[]; readonly codeReuse: boolean },
+): Promise<Map<string, CodeHolder>> {
+  const holders = new Map<string, CodeHolder>();
+  if (check.codes.length === 0) return holders;
+  const codes = [...check.codes];
+
+  await tx.$queryRaw`
+    SELECT count(pg_advisory_xact_lock(hashtextextended(${scope.farmId}::text || ':' || s.key, 0)))
+      FROM (SELECT DISTINCT hato_normalize_code(c) COLLATE "C" AS key
+              FROM unnest(${codes}::text[]) AS c
+             ORDER BY 1) AS s`;
+
+  const onlyActive = check.codeReuse ? Prisma.sql`AND a.exit_type IS NULL` : Prisma.empty;
+  const rows = await tx.$queryRaw<
+    { id: string; code: string; exit_type: ExitType | null; key: string }[]
+  >`
+    SELECT a.id, a.code, a.exit_type::text AS exit_type, hato_normalize_code(a.code) AS key
+      FROM animals a
+     WHERE a.farm_id = ${scope.farmId}::uuid
+       AND hato_normalize_code(a.code) = ANY(
+             SELECT hato_normalize_code(c) FROM unnest(${codes}::text[]) AS c)
+       AND a.deleted_at IS NULL
+       ${onlyActive}
+     ORDER BY a.exit_type IS NULL DESC, a.created_at DESC`;
+  for (const row of rows) {
+    if (holders.has(row.key)) continue;
+    holders.set(row.key, { id: row.id, code: row.code, exitType: row.exit_type });
+  }
+  return holders;
+}
+
+/** El error de `assertCodeAvailable` para un código que ya tiene otro animal. */
+export function codeTakenError(
+  code: string,
+  holder: CodeHolder,
+  errorCode: ErrorCode = 'ANIMAL_CODE_TAKEN',
+): DomainError {
+  return new DomainError(errorCode, {
+    params: { code, holder: holder.code },
+    context: { animalId: holder.id, animalCode: holder.code },
+  });
+}
+
+/**
  * Única verificación de disponibilidad del código: la usan el registro, la edición, la
  * reversión de una salida, la restauración y, en M4d, la importación.
  *
@@ -88,8 +144,5 @@ export async function assertCodeAvailable(
 ): Promise<void> {
   const holder = await findCodeHolder(tx, scope, check);
   if (holder === null) return;
-  throw new DomainError(errorCode, {
-    params: { code: check.code, holder: holder.code },
-    context: { animalId: holder.id, animalCode: holder.code },
-  });
+  throw codeTakenError(check.code, holder, errorCode);
 }

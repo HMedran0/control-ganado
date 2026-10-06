@@ -3,6 +3,7 @@ import {
   IDENTIFIER_RETIRE_REASON,
   ROLE,
   validateIdentifier,
+  type IdentifierRetireReason,
   type IdentifierType,
   type Warning,
 } from '@hato/shared';
@@ -60,25 +61,60 @@ export async function checkIdentifier(
       animal: { select: { code: true } },
     },
   });
+  assertIdentifierFree(scope, {
+    value,
+    animalId: input.animalId,
+    confirmReuse: input.confirmReuse,
+    existing: existing.map((identifier) => ({
+      animalId: identifier.animalId,
+      animalCode: identifier.animal.code,
+      retired: identifier.retiredAt !== null,
+      retireReason: identifier.retireReason,
+    })),
+  });
 
-  const active = existing.find((identifier) => identifier.retiredAt === null);
+  return { type: input.type, value, warnings: validation.warnings };
+}
+
+/** Un uso, activo o retirado, de un valor de identificador en la finca. */
+export type IdentifierUse = {
+  readonly animalId: string;
+  readonly animalCode: string;
+  readonly retired: boolean;
+  readonly retireReason: IdentifierRetireReason | null;
+};
+
+/**
+ * Las reglas de `checkIdentifier` sobre los usos que ya tiene el valor: activo en otro animal →
+ * `IDENTIFIER_TAKEN`; retirado de otro animal sin la confirmación de un ADMIN →
+ * `IDENTIFIER_PREVIOUSLY_USED` o `FORBIDDEN_ROLE`, salvo la chapeta liberada por una salida.
+ */
+export function assertIdentifierFree(
+  scope: FarmScope,
+  input: {
+    readonly value: string;
+    readonly animalId: string | null;
+    readonly confirmReuse?: boolean | undefined;
+    readonly existing: readonly IdentifierUse[];
+  },
+): void {
+  const { value } = input;
+  const active = input.existing.find((use) => !use.retired);
   if (active !== undefined) {
     throw new DomainError('IDENTIFIER_TAKEN', {
-      params: { value, code: active.animal.code },
-      context: { animalId: active.animalId, animalCode: active.animal.code },
+      params: { value, code: active.animalCode },
+      context: { animalId: active.animalId, animalCode: active.animalCode },
     });
   }
 
-  const previousOwner = existing.find(
-    (identifier) =>
-      identifier.animalId !== input.animalId &&
-      identifier.retireReason !== IDENTIFIER_RETIRE_REASON.EXITED,
+  const previousOwner = input.existing.find(
+    (use) => use.animalId !== input.animalId && use.retireReason !== IDENTIFIER_RETIRE_REASON.EXITED,
   );
   if (previousOwner !== undefined) {
     if (input.confirmReuse !== true) {
       throw new DomainError('IDENTIFIER_PREVIOUSLY_USED', {
-        params: { value, code: previousOwner.animal.code },
-        context: { animalId: previousOwner.animalId, animalCode: previousOwner.animal.code },
+        params: { value, code: previousOwner.animalCode },
+        context: { animalId: previousOwner.animalId, animalCode: previousOwner.animalCode },
       });
     }
     if (scope.role !== ROLE.ADMIN) {
@@ -88,6 +124,51 @@ export async function checkIdentifier(
       });
     }
   }
-
-  return { type: input.type, value, warnings: validation.warnings };
 }
+
+/**
+ * Los usos de muchos identificadores ya normalizados en una consulta (la importación, ANI-09),
+ * por `${type}:${value}`, para pasarlos a `assertIdentifierFree`.
+ */
+export async function findIdentifierUses(
+  tx: Tx,
+  scope: FarmScope,
+  identifiers: readonly { readonly type: IdentifierType; readonly value: string }[],
+): Promise<Map<string, IdentifierUse[]>> {
+  const uses = new Map<string, IdentifierUse[]>();
+  if (identifiers.length === 0) return uses;
+  const values = identifiers.map((item) => item.value);
+  const rows = await tx.$queryRaw<
+    {
+      type: IdentifierType;
+      value: string;
+      animal_id: string;
+      code: string;
+      retired: boolean;
+      retire_reason: IdentifierRetireReason | null;
+    }[]
+  >`
+    SELECT i.type::text AS type, i.value, i.animal_id, a.code,
+           i.retired_at IS NOT NULL AS retired, i.retire_reason::text AS retire_reason
+      FROM identifiers i
+      JOIN animals a ON a.id = i.animal_id
+     WHERE i.farm_id = ${scope.farmId}::uuid
+       AND i.value = ANY(${values}::text[])
+       AND (i.type::text, i.value) IN (
+             SELECT * FROM unnest(${identifiers.map((item) => item.type)}::text[],
+                                  ${values}::text[]))`;
+  for (const row of rows) {
+    const key = identifierKey(row.type, row.value);
+    const list = uses.get(key) ?? [];
+    list.push({
+      animalId: row.animal_id,
+      animalCode: row.code,
+      retired: row.retired,
+      retireReason: row.retire_reason,
+    });
+    uses.set(key, list);
+  }
+  return uses;
+}
+
+export const identifierKey = (type: IdentifierType, value: string): string => `${type}:${value}`;

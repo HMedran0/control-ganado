@@ -599,6 +599,51 @@ describe('Importación del inventario (ANI-09)', () => {
     });
   });
 
+  describe('concurrencia con el alta individual', () => {
+    it('una importación y varias altas simultáneas con códigos cruzados: sin deadlock y como en serie', async () => {
+      // Las altas van de mayor a menor código: si la importación tomara sus candados en otro
+      // orden que no fuera uno fijo, este cruce es el que la bloquearía en círculo.
+      const codes = Array.from(
+        { length: 120 },
+        (_, index) => `C-${String(index + 1).padStart(3, '0')}`,
+      );
+      const contested = ['C-120', 'C-090', 'C-061', 'C-060', 'C-030', 'C-001'];
+      const rows = codes.map(
+        (code, index) =>
+          `${code};;${index % 2 === 0 ? 'Hembra' : 'Macho'};Brahman;01/01/2022;Levante`,
+      );
+      for (let round = 0; round < 3; round += 1) {
+        await prisma.animal.deleteMany({ where: { farmId: farm.farmId } });
+        const [imported, ...singles] = await Promise.all([
+          confirm(admin, csv([CSV_HEADER, ...rows].join('\n'))),
+          ...contested.map((code) =>
+            http().post('/api/v1/animals').set(operator).send({
+              code,
+              sex: 'FEMALE',
+              breedId: farm.breedId,
+              birthDate: '2022-01-01',
+              origin: 'PURCHASED',
+              entryDate: '2023-01-01',
+            }),
+          ),
+        ]);
+
+        expect(imported.status).toBe(201);
+        for (const single of singles) {
+          expect([201, 409]).toContain(single.status);
+          if (single.status === 409)
+            expect(single.body).toMatchObject({ code: 'ANIMAL_CODE_TAKEN' });
+        }
+        // En serie: las altas que ganaron el candado entran primero, la importación deja esas
+        // filas como error y crea las demás, y las altas que llegaron después encuentran el código.
+        const won = singles.filter((single) => single.status === 201).length;
+        expect((imported.body as AnimalImportResultView).created).toBe(codes.length - won);
+        const saved = await animalsOf(farm);
+        expect(saved.map((animal) => animal.code)).toEqual(codes);
+      }
+    }, 120_000);
+  });
+
   describe('rendimiento (CA7)', () => {
     it('5.000 filas válidas se confirman dentro del tiempo máximo de 60 s', async () => {
       const rows = Array.from(

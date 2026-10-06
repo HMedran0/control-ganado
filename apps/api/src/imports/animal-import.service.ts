@@ -16,11 +16,13 @@ import {
   parseAnimalImportRows,
   resolveAnimalImport,
   uuidv7,
+  validateIdentifier,
   type AnimalImportConfirmFields,
   type AnimalImportContext,
   type AnimalImportPreview,
   type AnimalImportResult,
   type AnimalImportResultView,
+  type IdentifierType,
   type ImportFarmAnimal,
   type ImportIssue,
   type ImportParentRef,
@@ -29,8 +31,13 @@ import {
 } from '@hato/shared';
 
 import { FarmContextService, type FarmContext } from '../animals/farm-context.service.js';
-import { assertCodeAvailable } from '../animals/code-availability.js';
-import { checkIdentifier } from '../animals/identifier-rules.js';
+import { codeTakenError, findCodeHolders } from '../animals/code-availability.js';
+import {
+  assertIdentifierFree,
+  findIdentifierUses,
+  identifierKey,
+  type IdentifierUse,
+} from '../animals/identifier-rules.js';
 import { EntitlementsService, PLAN_LIMIT } from '../common/entitlements/entitlements.service.js';
 import type { FarmScope } from '../common/farm-scope/farm-scope.types.js';
 import type { Tx } from '../common/persistence.js';
@@ -320,39 +327,40 @@ export class AnimalImportService {
           message: `La raza «${inactiveBreeds.get(catalogNameKey(row.breed.name)) ?? row.breed.name}» está desactivada. Actívala en Configuración → Razas.`,
         });
       }
+    }
+
+    // Código e identificadores contra la base, en bloque (unas pocas consultas en lugar de tres
+    // por fila): las mismas reglas y mensajes que el alta individual.
+    const holders = await findCodeHolders(tx, scope, {
+      codes: parsed.rows.flatMap((row) => (row.code === null ? [] : [row.code])),
+      codeReuse: context.settings.codeReuse,
+    });
+    const uses = await findIdentifierUses(
+      tx,
+      scope,
+      parsed.rows.flatMap((row) => row.identifiers),
+    );
+    for (const row of parsed.rows) {
       if (row.code !== null) {
-        try {
-          await assertCodeAvailable(tx, scope, {
-            code: row.code,
-            excludeAnimalId: null,
-            codeReuse: context.settings.codeReuse,
-            willBeActive: true,
-          });
-        } catch (error) {
-          if (!(error instanceof DomainError)) throw error;
+        const holder = holders.get(normalizeAnimalCode(row.code));
+        if (holder !== undefined) {
           extraIssues.push({
             row: row.row,
             column: 'code',
             severity: 'error',
-            message: error.detail,
+            message: codeTakenError(row.code, holder).detail,
           });
         }
       }
       for (const identifier of row.identifiers) {
-        try {
-          await checkIdentifier(tx, scope, {
-            type: identifier.type,
-            value: identifier.value,
-            animalId: null,
-          });
-        } catch (error) {
-          if (!(error instanceof DomainError)) throw error;
+        const issue = identifierIssue(scope, identifier, uses);
+        if (issue !== null) {
           extraIssues.push({
             row: row.row,
             column:
               identifier.type === 'DIN' ? 'din' : identifier.type === 'RFID' ? 'rfid' : 'visualTag',
             severity: 'error',
-            message: error.detail,
+            message: issue,
           });
         }
       }
@@ -610,6 +618,30 @@ export type ErrorRow = {
   readonly cells: ImportSourceRow['cells'];
   readonly error: string;
 };
+
+/**
+ * El error de un identificador del archivo, con las reglas de `checkIdentifier` sobre los usos ya
+ * consultados; `null` si se puede asignar.
+ */
+function identifierIssue(
+  scope: FarmScope,
+  identifier: { readonly type: IdentifierType; readonly value: string },
+  uses: ReadonlyMap<string, readonly IdentifierUse[]>,
+): string | null {
+  const validation = validateIdentifier(identifier.type, identifier.value);
+  if (validation.errorCode !== null) return new DomainError(validation.errorCode).detail;
+  try {
+    assertIdentifierFree(scope, {
+      value: validation.normalized,
+      animalId: null,
+      existing: uses.get(identifierKey(identifier.type, validation.normalized)) ?? [],
+    });
+    return null;
+  } catch (error) {
+    if (error instanceof DomainError) return error.detail;
+    throw error;
+  }
+}
 
 function sha256(data: Buffer): string {
   return createHash('sha256').update(data).digest('hex');
