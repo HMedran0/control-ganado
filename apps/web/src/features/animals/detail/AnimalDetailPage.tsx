@@ -115,7 +115,7 @@ function Detail({
   const title = animal.name ?? animal.code;
 
   useEffect(() => {
-    document.title = `${title} · Hato`;
+    document.title = `${title} · Arreo`;
   }, [title]);
 
   const items: TabItem<DetailTab>[] = [

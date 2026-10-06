@@ -55,7 +55,7 @@ export function SessionGate({
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center gap-6 px-4 text-center">
       <p className="font-cifras text-cifra text-potrero" aria-hidden="true">
-        Hato
+        Arreo
       </p>
       {state.status === 'loading' ? (
         <p role="status" className="text-texto-2">

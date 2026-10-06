@@ -31,14 +31,14 @@ import { useToday } from '../lib/clock';
  */
 export function UiShowcase() {
   useEffect(() => {
-    document.title = 'Muestra de componentes · Hato';
+    document.title = 'Muestra de componentes · Arreo';
   }, []);
 
   return (
     <UndoToastProvider>
       <main id="contenido" className="mx-auto flex max-w-5xl flex-col gap-12 px-4 py-8 lg:px-8">
         <header>
-          <p className="font-cifras text-xl text-potrero">Hato · solo en desarrollo</p>
+          <p className="font-cifras text-xl text-potrero">Arreo · solo en desarrollo</p>
           <h1 className="text-xl font-bold">Muestra de componentes</h1>
           <p className="text-texto-2">
             Cada componente de 06-ux-ui.md §6 en todos sus estados. Esta página no existe en el

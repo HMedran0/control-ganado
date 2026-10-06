@@ -30,7 +30,7 @@ export class FinanceExportService {
   ): Promise<{ fileName: string; data: Buffer }> {
     const summary = await this.reports.summary(scope, query);
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Hato';
+    workbook.creator = 'Arreo';
 
     const overview = sheet(workbook, 'Resumen', [
       { header: 'Concepto', width: 38 },

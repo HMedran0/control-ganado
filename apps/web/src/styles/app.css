@@ -17,7 +17,7 @@
 @import './tokens.css';
 
 @theme inline {
-  /* Solo la paleta de Hato: sin los colores por defecto de Tailwind, nadie puede usar por
+  /* Solo la paleta de Arreo: sin los colores por defecto de Tailwind, nadie puede usar por
      descuido un gris que no cumpla el contraste a pleno sol. */
   --color-*: initial;
   --color-white: #ffffff;

@@ -175,7 +175,7 @@ export class AnimalExportService {
     ];
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'Hato';
+    workbook.creator = 'Arreo';
     const sheet = workbook.addWorksheet('Animales', { views: [{ state: 'frozen', ySplit: 1 }] });
     sheet.columns = columns.map((column) => ({ header: column.header, width: column.width }));
     sheet.getRow(1).font = { bold: true };

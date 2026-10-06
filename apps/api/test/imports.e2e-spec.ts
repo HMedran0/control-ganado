@@ -569,7 +569,7 @@ describe('Importación del inventario (ANI-09)', () => {
           res.on('end', () => done(null, Buffer.concat(chunks)));
         })
         .expect(200);
-      expect(response.headers['content-disposition']).toContain('plantilla-importacion-hato.xlsx');
+      expect(response.headers['content-disposition']).toContain('plantilla-importacion-arreo.xlsx');
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.load(response.body as ArrayBuffer);
       expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([

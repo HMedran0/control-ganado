@@ -36,7 +36,7 @@ un origen; `/api` se reenvía a la API.
 Configuración de Caddy prevista para M10 (un solo dominio, HTTPS automático):
 
 ```caddyfile
-hato.example.co {
+arreo.example.co {
     encode zstd gzip
 
     # La API: mismo dominio, sin CORS.
@@ -82,5 +82,5 @@ desarrollo y no debe terminar dentro del paquete que se descarga el navegador.
 | Alternativa                                          | Por qué no                                                                                                                  |
 | ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
 | Orígenes distintos con CORS y `credentials: include` | Obliga a `SameSite=None` en cuanto los dominios difieren, y cada petición autenticada paga una consulta previa (`OPTIONS`). |
-| Subdominio para la API (`api.hato.example.co`)       | Mismo sitio pero distinto origen: sigue necesitando CORS con credenciales y un segundo certificado, sin ganar nada.         |
+| Subdominio para la API (`api.arreo.example.co`)      | Mismo sitio pero distinto origen: sigue necesitando CORS con credenciales y un segundo certificado, sin ganar nada.         |
 | Token de refresco en `localStorage`                  | Lo leería cualquier XSS; es exactamente lo que ADR-007 evita con la cookie `HttpOnly`.                                      |

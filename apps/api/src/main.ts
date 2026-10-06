@@ -49,7 +49,7 @@ export async function bootstrap(): Promise<NestFastifyApplication> {
       timezone: env.APP_TIMEZONE,
       clockFixedToday: env.CLOCK_FIXED_TODAY ?? null,
     },
-    'API de Hato lista en /api/v1',
+    'API de Arreo lista en /api/v1',
   );
 
   return app;

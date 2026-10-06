@@ -48,7 +48,7 @@ export class ImportsController {
         select: { name: true },
       }),
     ]);
-    attachment(reply, 'plantilla-importacion-hato.xlsx');
+    attachment(reply, 'plantilla-importacion-arreo.xlsx');
     return buildTemplate({
       breeds: breeds.map((item) => item.name),
       lots: lots.map((item) => item.name),

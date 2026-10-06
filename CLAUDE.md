@@ -1,4 +1,6 @@
-# Hato — Sistema de Gestión y Control de Ganado
+# Arreo — Sistema de Gestión y Control de Ganado
+
+Nombre comercial: Arreo. Nombre clave interno: hato (paquetes @hato/*, bases de datos, funciones SQL hato_*, variables). El nombre clave no se cambia.
 
 Responde siempre al usuario en español de Colombia, tuteando.
 

@@ -15,7 +15,7 @@ export function PageHeader({
   children?: ReactNode;
 }) {
   useEffect(() => {
-    document.title = `${documentTitle} · Hato`;
+    document.title = `${documentTitle} · Arreo`;
   }, [documentTitle]);
 
   return (

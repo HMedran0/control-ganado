@@ -24,10 +24,13 @@ export type ProblemDetails = {
   readonly requestId?: string;
 };
 
-/** Prefijo de las URI de tipo de problema. */
-export const PROBLEM_TYPE_BASE = 'https://hato.app/problems';
+/**
+ * Prefijo del `type` de problema (RFC 9457): una URN propia, sin depender de un dominio que no
+ * es nuestro. Si se compra el dominio, se decide en M10b si pasa a URL.
+ */
+export const PROBLEM_TYPE_BASE = 'urn:arreo:problem';
 
-/** `VALIDATION_FAILED` → `https://hato.app/problems/validation-failed`. */
+/** `VALIDATION_FAILED` → `urn:arreo:problem:validation-failed`. */
 export function problemTypeFor(code: string): string {
-  return `${PROBLEM_TYPE_BASE}/${code.toLowerCase().replace(/_/g, '-')}`;
+  return `${PROBLEM_TYPE_BASE}:${code.toLowerCase().replace(/_/g, '-')}`;
 }

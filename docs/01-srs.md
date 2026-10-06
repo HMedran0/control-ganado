@@ -1,5 +1,5 @@
 # Especificación de Requisitos de Software (SRS)
-## Sistema de Gestión y Control de Ganado — "Hato"
+## Sistema de Gestión y Control de Ganado — "Arreo"
 
 Versión 1.3 · Estructura basada en ISO/IEC/IEEE 29148:2018 (sucesora de IEEE 830)
 Estado: preguntas abiertas resueltas en `08-dominio-y-finca-referencia.md` con prácticas reales del sector y una finca de referencia ficticia (§9). La versión 1.3 integra los hallazgos de la validación con ganaderos (`09-ampliacion-validacion-ganaderos.md` v1.3, H1 a H4): numeración reutilizable, báscula y peso, sistema productivo y control de leche, y cuentas, sesión y correo.
@@ -25,7 +25,7 @@ El sistema reemplaza el registro manual del hato por una plataforma que permite:
 Fuera de alcance en la versión 1: integración directa con SINIGAN V6 del ICA (no se ha verificado que exista una API pública), registro abierto de fincas nuevas (REG-01, futuro), nómina, inventario de insumos, georreferenciación de potreros, identificación biométrica (queda como trabajo de investigación futuro). El control de leche, fuera de alcance en la v1.1, entra como alcance extendido (LEC, M9b) por la validación con ganaderos (09 §4).
 
 ### 1.3 Nombre de trabajo
-"Hato" es un nombre provisional. Puede cambiarse sin impacto técnico; en el código el producto se referencia como `hato`.
+El nombre comercial es **Arreo** (antes «Hato»). En el código el producto conserva el nombre clave interno `hato` (paquetes `@hato/*`, bases de datos, funciones SQL `hato_*`, variables), que no se cambia. La palabra «hato» en los textos es la común: el conjunto de animales de la finca.
 
 ### 1.4 Definiciones y glosario (lenguaje ubicuo)
 El código se escribe en inglés y la interfaz en español. Esta tabla es la correspondencia obligatoria entre ambos.
@@ -232,7 +232,7 @@ Entrar con usuario y contraseña cada vez que se quiere consultar algo desanima 
 - En la app móvil (fase 2) se usa el inicio nativo de Google y el token de actualización va en el almacenamiento seguro del sistema, no en cookie.
 
 **REG-01 — Registro de fincas nuevas** · C · futuro (fuera de alcance de F1)
-Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificación obligatoria) y su finca con un asistente de configuración inicial. Implica además protección contra cuentas falsas, términos de servicio, planes o cobro, soporte y borrado de cuenta y datos a solicitud. Se documenta para mostrar que la arquitectura multi-finca ya lo permite, pero no se programa: solo se hace si Hato se ofrece como producto.
+Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificación obligatoria) y su finca con un asistente de configuración inicial. Implica además protección contra cuentas falsas, términos de servicio, planes o cobro, soporte y borrado de cuenta y datos a solicitud. Se documenta para mostrar que la arquitectura multi-finca ya lo permite, pero no se programa: solo se hace si Arreo se ofrece como producto.
 
 ### 3.2 Gestión de animales (ANI)
 

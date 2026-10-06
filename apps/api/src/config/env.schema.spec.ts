@@ -32,9 +32,9 @@ describe('parseEnv', () => {
   it('parte CORS_ORIGINS por comas', () => {
     const env = parseEnv({
       ...validEnv(),
-      CORS_ORIGINS: 'http://localhost:5173, https://hato.example.com ',
+      CORS_ORIGINS: 'http://localhost:5173, https://arreo.example.com ',
     });
-    expect(env.CORS_ORIGINS).toEqual(['http://localhost:5173', 'https://hato.example.com']);
+    expect(env.CORS_ORIGINS).toEqual(['http://localhost:5173', 'https://arreo.example.com']);
   });
 
   it('convierte PORT a número', () => {

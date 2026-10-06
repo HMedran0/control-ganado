@@ -328,7 +328,7 @@ El enlace del correo abre `/invitacion#token=…`. La página lee el token del f
 │ [ G  Continuar con Google ]      │
 └──────────────────────────────────┘
 ```
-- Si el correo ya es de un usuario (de otra finca), la pantalla dice "Ya tienes una cuenta en Hato" y pide solo su contraseña, o usa la sesión abierta: **Unirme a Finca La Esperanza**.
+- Si el correo ya es de un usuario (de otra finca), la pantalla dice "Ya tienes una cuenta en Arreo" y pide solo su contraseña, o usa la sesión abierta: **Unirme a Finca La Esperanza**.
 - Enlace vencido, usado o anulado: "La invitación no es válida o ya venció. Pídele al administrador una nueva." (`INVITATION_INVALID`).
 - Al terminar, la sesión queda abierta y el correo verificado.
 
@@ -436,7 +436,7 @@ Desde M8a, Configuración → Finca empieza con «Sistema productivo»: «¿Qué
 
 | Componente | Descripción y reglas |
 |---|---|
-| `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños (ancho): s (listas, 56 px), m (ficha, 72 px), l (jornada, 96 px); alto 1,2 veces el ancho. Letra del código ≈ 0,4 del ancho (22, 30 y 40 px); los códigos largos (`26-045`) se achican, pero nunca por debajo de 18, 23 y 31 px respectivamente: en una lista al sol, menos de 18 px no se lee. La silueta también forma el logo (chapeta pequeña con «H» + «Hato»). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
+| `Chapeta` | Silueta de arete (rectángulo con parte superior redondeada y orificio), fondo `--color-chapeta`, código en Barlow Condensed. Tamaños (ancho): s (listas, 56 px), m (ficha, 72 px), l (jornada, 96 px); alto 1,2 veces el ancho. Letra del código ≈ 0,4 del ancho (22, 30 y 40 px); los códigos largos (`26-045`) se achican, pero nunca por debajo de 18, 23 y 31 px respectivamente: en una lista al sol, menos de 18 px no se lee. La silueta también forma el logo (chapeta pequeña con «A» + «Arreo»). Si el animal salió de la finca: fondo `--color-cerca` y texto tachado nunca; se agrega la etiqueta "Vendido" o "Retirado". |
 | `SearchBar` | Acepta texto y lecturas RFID (`useRfidReader`, 04 §6). Resultados agrupados: coincidencia exacta primero ("Chip 170…"). Estado "leyendo" con borde chapeta. Excepción aprobada en M2b a «etiquetas visibles» (§8): su etiqueta («Buscar animal») es solo para lectores de pantalla; se ven el ícono y el placeholder. |
 | `QuestionRow` | Pregunta + resumen + cifra; fila completa enlazada. |
 | `Tag` | Etiquetas de clasificación: fondo claro del color semántico, texto en el tono oscuro del mismo color, siempre con texto (no solo color). Con leche (M9b): «En ordeño · 84 d» y «Seca». |
@@ -461,7 +461,7 @@ Base técnica: primitivas accesibles de Radix UI estilizadas con Tailwind y toke
 - Errores que dicen qué pasó y cómo seguir: "Ya existe un animal con el código P-12. Usa otro código o abre la ficha de P-12." Nunca "Error de validación".
 - Vacíos que invitan: "Todavía no hay pesajes. Registra el primero para ver la curva de crecimiento."
 - «Horra» y «Seca» no son lo mismo y nunca se intercambian: Horra es la vaca sin preñez ni cría al pie (`DRY`); Seca, la que dejó de ordeñarse (`DRIED_OFF`).
-- Correos (AUT-12): asunto corto con el nombre de la finca ("Te invitaron a Finca La Esperanza en Hato", "Restablece tu contraseña de Hato"); cuerpo en texto plano y HTML simple, sin imágenes remotas; un solo botón o enlace con el verbo ("Aceptar la invitación", "Crear una contraseña nueva"); cuándo vence ("El enlace vence en 1 hora"); y qué hacer si no lo pidió ("Si no pediste esto, ignora este correo: tu contraseña no cambia").
+- Correos (AUT-12): asunto corto con el nombre de la finca ("Te invitaron a Finca La Esperanza en Arreo", "Restablece tu contraseña de Arreo"); cuerpo en texto plano y HTML simple, sin imágenes remotas; un solo botón o enlace con el verbo ("Aceptar la invitación", "Crear una contraseña nueva"); cuándo vence ("El enlace vence en 1 hora"); y qué hacer si no lo pidió ("Si no pediste esto, ignora este correo: tu contraseña no cambia").
 - Fechas `21/10/2026`; relativas cuando ayudan ("en 3 días", "hace 6 días"). Dinero `$ 1.250.000`. Peso `452 kg`. Edad "5 a 2 m".
 
 ## 8. Accesibilidad y condiciones de campo

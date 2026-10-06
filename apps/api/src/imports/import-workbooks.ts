@@ -71,12 +71,12 @@ export async function buildTemplate(catalog: {
   readonly lots: readonly string[];
 }): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Hato';
+  workbook.creator = 'Arreo';
 
   const instructions = workbook.addWorksheet('Instrucciones');
   instructions.getColumn(1).width = 110;
   const lines = [
-    'Plantilla de importación del inventario — Hato',
+    'Plantilla de importación del inventario — Arreo',
     '',
     'Cómo usarla',
     '1. Llena la hoja «Animales», una fila por animal. No cambies los nombres de las columnas.',
@@ -158,7 +158,7 @@ export async function buildTemplate(catalog: {
 /** Filas con error (CA5): las columnas de la plantilla con los valores originales y «Error». */
 export async function buildErrorsWorkbook(rows: readonly ErrorRow[]): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Hato';
+  workbook.creator = 'Arreo';
   const sheet = workbook.addWorksheet('Animales', { views: [{ state: 'frozen', ySplit: 1 }] });
   const headers = [
     ...IMPORT_COLUMNS.map((column) => (column.required ? `${column.label}*` : column.label)),

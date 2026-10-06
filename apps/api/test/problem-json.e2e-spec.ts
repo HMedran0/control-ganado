@@ -47,7 +47,7 @@ describe('Filtro de errores problem+json', () => {
 
     expect(response.headers['content-type']).toContain('application/problem+json');
     expect(response.body).toMatchObject({
-      type: 'https://hato.app/problems/animal-code-taken',
+      type: 'urn:arreo:problem:animal-code-taken',
       title: 'Conflicto',
       status: 409,
       code: 'ANIMAL_CODE_TAKEN',

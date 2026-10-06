@@ -1,5 +1,5 @@
 /*
- * Tokens de diseño de Hato (docs/06-ux-ui.md §3).
+ * Tokens de diseño de Arreo (docs/06-ux-ui.md §3).
  *
  * Única fuente de los valores de la identidad visual. Tailwind los toma en `app.css`
  * (`@theme inline`), así que una clase como `bg-potrero` siempre lee de aquí. El modo oscuro

@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 // Textos que solo existen en src/dev/UiShowcase.tsx.
-const MARKERS = ['Muestra de componentes', 'Hato · solo en desarrollo'];
+const MARKERS = ['Muestra de componentes', 'Arreo · solo en desarrollo'];
 
 async function* files(dir) {
   for (const entry of await readdir(dir, { withFileTypes: true })) {

@@ -256,7 +256,7 @@ La finca elige en Configuración:
 
 ### 5.4 Registro abierto (fuera de alcance de F1)
 
-**REG-01 — Registro de fincas nuevas** · C · futuro (solo si Hato se ofrece como producto)
+**REG-01 — Registro de fincas nuevas** · C · futuro (solo si Arreo se ofrece como producto)
 Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificación obligatoria) y su finca con asistente de configuración inicial. Implica además: protección contra cuentas falsas, términos de servicio, planes o cobro, soporte y borrado de cuenta y datos a solicitud. Se documenta para mostrar que la arquitectura multi-finca ya lo permite, pero no se programa.
 
 ### Modelo de datos

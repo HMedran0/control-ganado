@@ -2,7 +2,7 @@
   "name": "@hato/web",
   "version": "0.0.0",
   "private": true,
-  "description": "Aplicación web de Hato (React + Vite)",
+  "description": "Aplicación web de Arreo (React + Vite)",
   "type": "module",
   "scripts": {
     "dev": "vite",
