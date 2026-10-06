@@ -150,3 +150,76 @@ export function calvingIntervals(
           ),
   };
 }
+
+/**
+ * Rangos de la distribución del intervalo entre partos del hato (M8a), en días, con el límite
+ * inferior incluido y el superior excluido. Son rangos para leer la distribución, no umbrales:
+ * la referencia de UPRA (2024) para doble propósito, 387 a 439 días, se muestra solo como texto.
+ */
+export const CALVING_INTERVAL_BUCKETS = [
+  { key: 'UNDER_365', fromDays: 0, toDays: 365 },
+  { key: 'D365_399', fromDays: 365, toDays: 400 },
+  { key: 'D400_439', fromDays: 400, toDays: 440 },
+  { key: 'D440_499', fromDays: 440, toDays: 500 },
+  { key: 'D500_PLUS', fromDays: 500, toDays: null },
+] as const;
+export type CalvingIntervalBucket = (typeof CALVING_INTERVAL_BUCKETS)[number]['key'];
+
+/** Intervalo entre partos del hato (RN-38). */
+export type HerdCalvingIntervals = {
+  /** Intervalos válidos que entran en el cálculo. */
+  readonly count: number;
+  /** Hembras con al menos un intervalo válido. */
+  readonly females: number;
+  /** Promedio redondeado de todos los intervalos; `null` sin ninguno. */
+  readonly averageDays: number | null;
+  /** Cuántos intervalos caen en cada rango, en el orden de `CALVING_INTERVAL_BUCKETS`. */
+  readonly distribution: readonly {
+    readonly bucket: CalvingIntervalBucket;
+    readonly count: number;
+  }[];
+};
+
+/** Rango de un intervalo. */
+export function calvingIntervalBucket(days: number): CalvingIntervalBucket {
+  const bucket = CALVING_INTERVAL_BUCKETS.find(
+    (candidate) =>
+      days >= candidate.fromDays && (candidate.toDays === null || days < candidate.toDays),
+  );
+  return bucket?.key ?? 'UNDER_365';
+}
+
+/**
+ * Intervalo entre partos del hato (M8a, RN-38): todos los intervalos válidos de cada hembra según
+ * `calvingIntervals` (que ya excluye los pares con servicio estimado), juntos. El promedio es el
+ * de los intervalos, no el de los promedios de cada hembra: una vaca con cinco partos pesa más
+ * que una con dos, como en un registro de partos. Quién entra (las hembras activas) lo decide
+ * quien llama.
+ */
+export function herdCalvingIntervals(
+  perFemale: readonly (readonly CalvingIntervalPregnancy[])[],
+): HerdCalvingIntervals {
+  const days = perFemale.flatMap((pregnancies) =>
+    calvingIntervals(pregnancies).intervals.map((interval) => interval.days),
+  );
+  const females = perFemale.filter(
+    (pregnancies) => calvingIntervals(pregnancies).intervals.length > 0,
+  ).length;
+  const counts = new Map<CalvingIntervalBucket, number>();
+  for (const value of days) {
+    const bucket = calvingIntervalBucket(value);
+    counts.set(bucket, (counts.get(bucket) ?? 0) + 1);
+  }
+  return {
+    count: days.length,
+    females,
+    averageDays:
+      days.length === 0
+        ? null
+        : Math.round(days.reduce((sum, value) => sum + value, 0) / days.length),
+    distribution: CALVING_INTERVAL_BUCKETS.map(({ key }) => ({
+      bucket: key,
+      count: counts.get(key) ?? 0,
+    })),
+  };
+}

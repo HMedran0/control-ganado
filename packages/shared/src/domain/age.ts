@@ -3,7 +3,13 @@
  * Convención de meses cumplidos con recorte a fin de mes: docs/adr/002-fechas-de-negocio.md.
  */
 
-import { daysBetween, isoDateParts, lastDayOfMonth, type IsoDate } from '../date.js';
+import {
+  daysBetween,
+  isoDateFromParts,
+  isoDateParts,
+  lastDayOfMonth,
+  type IsoDate,
+} from '../date.js';
 import { ICA_AGE_GROUP, SEX, type IcaAgeGroup, type Sex } from '../enums.js';
 
 /**
@@ -72,4 +78,26 @@ export function icaAgeGroup(sex: Sex, ageMonths: number): IcaAgeGroup {
 /** Grupo de edad del ICA a partir de la fecha de nacimiento. */
 export function icaAgeGroupFor(sex: Sex, birthDate: IsoDate, today: IsoDate): IcaAgeGroup {
   return icaAgeGroup(sex, ageInMonths(birthDate, today));
+}
+
+/**
+ * Nacimientos que cumplen la edad de destete en el mes de `date` (CFG-03, pregunta de cría
+ * «¿Cuántos terneros se destetan este mes?»).
+ *
+ * Con meses cumplidos y recorte a fin de mes (ADR-002), quien nace en el mes M − W cumple W meses
+ * dentro del mes M (el 31 de enero cumple un mes el 28 de febrero), y nadie más lo hace. Así que
+ * el rango es el mes calendario completo, W meses antes: del primero al último día.
+ */
+export function weaningBirthRange(
+  date: IsoDate,
+  weaningAgeMonths: number,
+): { readonly from: IsoDate; readonly to: IsoDate } {
+  const { year, month } = isoDateParts(date);
+  const index = year * 12 + (month - 1) - weaningAgeMonths;
+  const birthYear = Math.floor(index / 12);
+  const birthMonth = (index % 12) + 1;
+  return {
+    from: isoDateFromParts(birthYear, birthMonth, 1),
+    to: isoDateFromParts(birthYear, birthMonth, lastDayOfMonth(birthYear, birthMonth)),
+  };
 }

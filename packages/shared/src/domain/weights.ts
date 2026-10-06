@@ -12,8 +12,15 @@
  * resultado en los dos lados: no hay coma flotante antes de comparar.
  */
 
-import { addDays, daysBetween, type IsoDate } from '../date.js';
-import type { ManagementCategory } from '../enums.js';
+import {
+  addDays,
+  daysBetween,
+  isoDateFromParts,
+  isoDateParts,
+  lastDayOfMonth,
+  type IsoDate,
+} from '../date.js';
+import { SALE_WEIGHT_STATUS, type ManagementCategory, type SaleWeightStatus } from '../enums.js';
 
 /** Ventana de la ganancia «de los últimos 90 días» (PES-05 CA1). */
 export const WEIGHT_GAIN_WINDOW_DAYS = 90;
@@ -283,4 +290,66 @@ export function previousWeightFor(
       .filter((record) => record.weighedOn <= on)
       .at(-1) ?? null
   );
+}
+
+/** Entrada de `saleWeightProjection` (PES-06). */
+export type SaleWeightInput = {
+  /** Peso objetivo de su categoría (`targetSaleWeightKg`); `undefined` si no tiene. */
+  readonly targetKg: number | undefined;
+  /** Con la etiqueta del sistema «Reproductor»: no tiene peso de venta. */
+  readonly isBreeder: boolean;
+  /** Último pesaje válido; `null` si no tiene. */
+  readonly last: { readonly weighedOn: IsoDate; readonly weightKg: number } | null;
+  /** Ganancia de los últimos 90 días (ADR-015), en milésimas de kg/día. */
+  readonly gain90Milli: number | null;
+  readonly today: IsoDate;
+};
+
+/** Situación frente al peso de venta. */
+export type SaleWeightProjection = {
+  readonly targetKg: number;
+  readonly status: SaleWeightStatus;
+  /**
+   * Fecha estimada en que llega al objetivo: el último pesaje más los días que faltan con su
+   * ganancia de 90 días, redondeados hacia arriba. `null` si ya está en el peso (dato medido).
+   */
+  readonly estimatedOn: IsoDate | null;
+};
+
+/**
+ * Peso objetivo de venta (PES-06 CA2 y CA3).
+ *
+ * Solo hay situación con un objetivo para su categoría, sin la etiqueta «Reproductor» y con un
+ * pesaje. Si el último pesaje ya llega al objetivo, está en el peso (medido). Si no, hace falta
+ * una ganancia de 90 días positiva (que ya exige dos pesajes y 30 días, ADR-015): los días que
+ * faltan son ⌈(objetivo − último) / ganancia⌉, en enteros (centésimas de kilo y milésimas de
+ * kg/día), la misma cuenta que el SQL. La fecha se compara con hoy y con el fin del mes.
+ */
+export function saleWeightProjection(input: SaleWeightInput): SaleWeightProjection | null {
+  const { targetKg, last } = input;
+  if (targetKg === undefined || input.isBreeder || last === null) return null;
+
+  const missingCents = weightCents(targetKg) - weightCents(last.weightKg);
+  if (missingCents <= 0) {
+    return { targetKg, status: SALE_WEIGHT_STATUS.REACHED, estimatedOn: null };
+  }
+  const gain = input.gain90Milli;
+  if (gain === null || gain <= 0) return null;
+
+  // centésimas de kg / (milésimas de kg/día) = 10 · centésimas / milésimas días, hacia arriba.
+  const days = Math.floor((10 * missingCents + gain - 1) / gain);
+  const estimatedOn = addDays(last.weighedOn, days);
+  const status =
+    estimatedOn < input.today
+      ? SALE_WEIGHT_STATUS.LIKELY_REACHED
+      : estimatedOn <= endOfMonth(input.today)
+        ? SALE_WEIGHT_STATUS.THIS_MONTH
+        : SALE_WEIGHT_STATUS.LATER;
+  return { targetKg, status, estimatedOn };
+}
+
+/** Último día del mes de `date`. */
+export function endOfMonth(date: IsoDate): IsoDate {
+  const { year, month } = isoDateParts(date);
+  return isoDateFromParts(year, month, lastDayOfMonth(year, month));
 }

@@ -18,6 +18,7 @@ export * from './schemas/animals.js';
 export * from './schemas/audit.js';
 export * from './schemas/auth.js';
 export * from './schemas/catalogs.js';
+export * from './schemas/dashboard.js';
 export * from './schemas/farm-settings.js';
 export * from './schemas/finance.js';
 export * from './schemas/health.js';

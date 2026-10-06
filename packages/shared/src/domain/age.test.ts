@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toIsoDate } from '../date.js';
+import { addDays, addMonths, toIsoDate } from '../date.js';
 import { ICA_AGE_GROUP, SEX } from '../enums.js';
 import {
   ageInDays,
@@ -9,6 +9,7 @@ import {
   icaAgeGroup,
   icaAgeGroupFor,
   monthsBetween,
+  weaningBirthRange,
 } from './age.js';
 
 const d = toIsoDate;
@@ -119,5 +120,45 @@ describe('icaAgeGroup (08 §2.2)', () => {
       ICA_AGE_GROUP.M3_TO_9,
     );
     expect(icaAgeGroupFor(SEX.MALE, d('2020-01-15'), d('2026-09-26'))).toBe(ICA_AGE_GROUP.OVER_3Y);
+  });
+});
+
+describe('weaningBirthRange (destete del mes, M8a)', () => {
+  it('los que se destetan en septiembre a los 7 meses nacieron en febrero', () => {
+    expect(weaningBirthRange(toIsoDate('2026-09-25'), 7)).toEqual({
+      from: '2026-02-01',
+      to: '2026-02-28',
+    });
+  });
+
+  it('cruza el año y respeta el 29 de febrero', () => {
+    expect(weaningBirthRange(toIsoDate('2025-01-10'), 7)).toEqual({
+      from: '2024-06-01',
+      to: '2024-06-30',
+    });
+    expect(weaningBirthRange(toIsoDate('2028-09-01'), 7)).toEqual({
+      from: '2028-02-01',
+      to: '2028-02-29',
+    });
+  });
+
+  it('coincide con monthsBetween: cada nacido del rango cumple la edad dentro del mes, y nadie más', () => {
+    for (const [month, weaning] of [
+      ['2026-02', 1],
+      ['2026-09', 7],
+      ['2026-03', 1],
+    ] as const) {
+      const start = toIsoDate(month + '-01');
+      const range = weaningBirthRange(start, weaning);
+      const end = addDays(addMonths(start, 1), -1);
+      for (let day = addMonths(start, -weaning - 1); day <= end; day = addDays(day, 1)) {
+        // El primer día en que cumple los meses de destete.
+        let reachedOn = day;
+        while (monthsBetween(day, reachedOn) < weaning) reachedOn = addDays(reachedOn, 1);
+        const weansInMonth = reachedOn >= start && reachedOn <= end;
+        const inRange = day >= range.from && day <= range.to;
+        expect(inRange, month + ' ' + day).toBe(weansInMonth);
+      }
+    }
   });
 });

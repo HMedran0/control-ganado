@@ -4,8 +4,10 @@ import { toIsoDate } from '../date.js';
 import { PREGNANCY_OUTCOME, type PregnancyOutcome } from '../enums.js';
 import { suggestCodes } from './codes.js';
 import {
+  calvingIntervalBucket,
   calvingIntervals,
   estimatedServiceDate,
+  herdCalvingIntervals,
   gestationDaysElapsed,
   isBreedingAgeLow,
   isCalvingOverdue,
@@ -150,5 +152,46 @@ describe('suggestCodes (REP-04 CA3, ANI-10)', () => {
         count: 3,
       }),
     ).toEqual(['3', '5', '7']);
+  });
+});
+
+describe('herdCalvingIntervals (M8a, RN-38)', () => {
+  it('junta los intervalos válidos de todas las hembras: promedio de intervalos, no de promedios', () => {
+    const result = herdCalvingIntervals([
+      // 382 y 405
+      [calving('2023-09-15'), calving('2024-10-01'), calving('2025-11-10')],
+      // 450
+      [calving('2024-01-01'), calving('2025-03-26')],
+      // Un solo parto: no suma intervalos ni hembras.
+      [calving('2025-05-05')],
+      // El par con servicio estimado no entra (RN-38).
+      [calving('2024-02-01', { estimated: true }), calving('2025-02-20')],
+    ]);
+    expect(result.count).toBe(3);
+    expect(result.females).toBe(2);
+    expect(result.averageDays).toBe(Math.round((382 + 405 + 450) / 3));
+    expect(result.distribution).toEqual([
+      { bucket: 'UNDER_365', count: 0 },
+      { bucket: 'D365_399', count: 1 },
+      { bucket: 'D400_439', count: 1 },
+      { bucket: 'D440_499', count: 1 },
+      { bucket: 'D500_PLUS', count: 0 },
+    ]);
+  });
+
+  it('sin intervalos: promedio null y la distribución en ceros', () => {
+    const result = herdCalvingIntervals([]);
+    expect(result).toMatchObject({ count: 0, females: 0, averageDays: null });
+    expect(result.distribution.every((item) => item.count === 0)).toBe(true);
+  });
+
+  it('los rangos incluyen el límite inferior y excluyen el superior', () => {
+    expect(calvingIntervalBucket(364)).toBe('UNDER_365');
+    expect(calvingIntervalBucket(365)).toBe('D365_399');
+    expect(calvingIntervalBucket(399)).toBe('D365_399');
+    expect(calvingIntervalBucket(400)).toBe('D400_439');
+    expect(calvingIntervalBucket(440)).toBe('D440_499');
+    expect(calvingIntervalBucket(500)).toBe('D500_PLUS');
+    expect(calvingIntervalBucket(900)).toBe('D500_PLUS');
   });
 });

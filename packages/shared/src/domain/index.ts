@@ -7,6 +7,7 @@ export * from './animal-import.js';
 export * from './animal-status.js';
 export * from './classification.js';
 export * from './codes.js';
+export * from './dashboard.js';
 export * from './exits.js';
 export * from './finance.js';
 export * from './identifiers.js';

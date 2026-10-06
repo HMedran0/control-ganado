@@ -7,6 +7,7 @@
 import { z } from 'zod';
 
 import type { IsoDate } from '../date.js';
+import type { AlertGroupKey } from '../domain/dashboard.js';
 import { ANIMAL_ALERT, type AnimalAlert } from '../enums.js';
 import type { AnimalListItem, VaccineStatusView } from './animals.js';
 import type { WeightSummary } from './weights.js';
@@ -69,7 +70,7 @@ export type AlertsResponse = {
 
 /** Grupos de la página, en el orden en que se muestran. */
 export const ALERT_GROUPS: readonly {
-  readonly key: 'vaccines' | 'reproduction' | 'withdrawal' | 'weights';
+  readonly key: AlertGroupKey;
   readonly label: string;
   readonly types: readonly AnimalAlert[];
 }[] = [

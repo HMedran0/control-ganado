@@ -330,6 +330,54 @@ export const ANIMAL_ALERT = {
 } as const;
 export type AnimalAlert = (typeof ANIMAL_ALERT)[keyof typeof ANIMAL_ALERT];
 
+/**
+ * Sistema productivo de la finca (CFG-03, 09 §4.1). No cambia datos ni reglas: cambia qué
+ * preguntas destaca el tablero y qué alertas salen primero.
+ */
+export const PRODUCTION_SYSTEM = {
+  CRIA: 'CRIA',
+  LEVANTE_CEBA: 'LEVANTE_CEBA',
+  LECHERIA: 'LECHERIA',
+  DOBLE_PROPOSITO: 'DOBLE_PROPOSITO',
+  CICLO_COMPLETO: 'CICLO_COMPLETO',
+} as const;
+export type ProductionSystem = (typeof PRODUCTION_SYSTEM)[keyof typeof PRODUCTION_SYSTEM];
+
+/** Qué vende principalmente la finca (CFG-03 CA3): centra «Disponibles para venta» en ese sexo. */
+export const SALES_FOCUS = {
+  MALES: 'MALES',
+  FEMALES: 'FEMALES',
+  BOTH: 'BOTH',
+} as const;
+export type SalesFocus = (typeof SALES_FOCUS)[keyof typeof SALES_FOCUS];
+
+/**
+ * Situación de un animal frente al peso objetivo de venta (PES-06). Separa lo medido de lo
+ * estimado:
+ *
+ * - `REACHED`: el último pesaje ya está en el objetivo o por encima (dato medido);
+ * - `THIS_MONTH`: la fecha estimada cae entre hoy y el último día del mes;
+ * - `LIKELY_REACHED`: la fecha estimada ya pasó pero el último pesaje está por debajo: «Según su
+ *   ganancia ya debería estar en el peso: pésalo para confirmar»;
+ * - `LATER`: la fecha estimada es de un mes siguiente.
+ *
+ * Son los valores del filtro `saleWeight` de `GET /animals`. Sin objetivo, sin pesaje o sin
+ * ganancia positiva de 90 días no hay situación.
+ */
+export const SALE_WEIGHT_STATUS = {
+  REACHED: 'reached',
+  THIS_MONTH: 'this_month',
+  LIKELY_REACHED: 'likely_reached',
+  LATER: 'later',
+} as const;
+export type SaleWeightStatus = (typeof SALE_WEIGHT_STATUS)[keyof typeof SALE_WEIGHT_STATUS];
+
+/**
+ * Clave de la etiqueta del sistema «Reproductor» (M8a). Un macho con ella no tiene peso objetivo
+ * de venta (PES-06): es un toro de la finca, no un novillo de ceba.
+ */
+export const BREEDER_TAG_KEY = 'REPRODUCTOR';
+
 /** Grupos de edad del reporte ICA (08 §2.2). `OVER_3Y` es solo de machos; `Y3_TO_5` y `OVER_5Y`, solo de hembras. */
 export const ICA_AGE_GROUP = {
   UNDER_3M: 'UNDER_3M',

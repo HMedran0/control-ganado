@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { addDays, toIsoDate, type IsoDate } from '../date.js';
 import {
+  endOfMonth,
   gainFromMilli,
   gainToMilli,
   isWeightLoss,
@@ -10,6 +11,7 @@ import {
   lastTwoWeights,
   previousWeightFor,
   regressionGainMilli,
+  saleWeightProjection,
   weightAlerts,
   weightGains,
   type WeightAlertSettings,
@@ -240,5 +242,92 @@ describe('peso atípico (PES-01 CA2)', () => {
     expect(previousWeightFor(records, d('2026-09-15'))?.weightKg).toBe(300);
     expect(previousWeightFor(records, d('2026-01-01'))).toBeNull();
     expect(previousWeightFor(records, addDays(d('2026-10-15'), 0))?.weightKg).toBe(360);
+  });
+});
+
+describe('saleWeightProjection (PES-06)', () => {
+  const base = {
+    targetKg: 450,
+    isBreeder: false,
+    last: { weighedOn: d('2026-09-15'), weightKg: 440 },
+    gain90Milli: 800,
+    today: HOY,
+  };
+
+  it('CA2: fecha estimada = último pesaje + días que faltan con su ganancia, hacia arriba', () => {
+    // 10 kg a 0,8 kg/día = 12,5 → 13 días: 28/09, dentro del mes.
+    expect(saleWeightProjection(base)).toEqual({
+      targetKg: 450,
+      status: 'this_month',
+      estimatedOn: '2026-09-28',
+    });
+  });
+
+  it('el último día del mes todavía es «este mes»; el primero del siguiente, no', () => {
+    // 12 kg a 0,8 = 15 días → 30/09.
+    expect(saleWeightProjection({ ...base, last: { ...base.last, weightKg: 438 } })).toMatchObject({
+      status: 'this_month',
+      estimatedOn: '2026-09-30',
+    });
+    // 12,8 kg a 0,8 = 16 días → 01/10.
+    expect(
+      saleWeightProjection({ ...base, last: { ...base.last, weightKg: 437.2 } }),
+    ).toMatchObject({ status: 'later', estimatedOn: '2026-10-01' });
+  });
+
+  it('ya en el peso: dato medido, sin fecha estimada (también justo en el objetivo)', () => {
+    expect(saleWeightProjection({ ...base, last: { ...base.last, weightKg: 450 } })).toEqual({
+      targetKg: 450,
+      status: 'reached',
+      estimatedOn: null,
+    });
+    // Sin ganancia también: el peso medido basta.
+    expect(
+      saleWeightProjection({ ...base, gain90Milli: null, last: { ...base.last, weightKg: 452 } }),
+    ).toMatchObject({ status: 'reached' });
+  });
+
+  it('posiblemente en el peso: la fecha estimada ya pasó y el último pesaje está por debajo', () => {
+    // 10 kg a 0,8 desde el 15/06 → 28/06, antes de hoy.
+    expect(
+      saleWeightProjection({ ...base, last: { weighedOn: d('2026-06-15'), weightKg: 440 } }),
+    ).toEqual({ targetKg: 450, status: 'likely_reached', estimatedOn: '2026-06-28' });
+    // Hoy mismo todavía no «pasó».
+    expect(
+      saleWeightProjection({ ...base, last: { weighedOn: d('2026-09-12'), weightKg: 440 } }),
+    ).toMatchObject({ status: 'this_month', estimatedOn: '2026-09-25' });
+  });
+
+  it('sin objetivo, reproductor, sin pesaje o sin ganancia positiva: no hay situación', () => {
+    expect(saleWeightProjection({ ...base, targetKg: undefined })).toBeNull();
+    expect(saleWeightProjection({ ...base, isBreeder: true })).toBeNull();
+    expect(
+      saleWeightProjection({ ...base, isBreeder: true, last: { ...base.last, weightKg: 600 } }),
+    ).toBeNull();
+    expect(saleWeightProjection({ ...base, last: null })).toBeNull();
+    expect(saleWeightProjection({ ...base, gain90Milli: null })).toBeNull();
+    expect(saleWeightProjection({ ...base, gain90Milli: 0 })).toBeNull();
+    expect(saleWeightProjection({ ...base, gain90Milli: -120 })).toBeNull();
+  });
+
+  it('aritmética entera: un faltante exacto no suma un día de más', () => {
+    // 8 kg a 0,8 kg/día = 10 días exactos.
+    expect(
+      saleWeightProjection({ ...base, last: { ...base.last, weightKg: 442 } })?.estimatedOn,
+    ).toBe('2026-09-25');
+    // 0,01 kg a 0,001 kg/día = 10 días exactos.
+    expect(
+      saleWeightProjection({
+        ...base,
+        gain90Milli: 1,
+        last: { ...base.last, weightKg: 449.99 },
+      })?.estimatedOn,
+    ).toBe('2026-09-25');
+  });
+
+  it('endOfMonth respeta febrero bisiesto', () => {
+    expect(endOfMonth(d('2028-02-10'))).toBe('2028-02-29');
+    expect(endOfMonth(d('2026-02-10'))).toBe('2026-02-28');
+    expect(endOfMonth(d('2026-12-31'))).toBe('2026-12-31');
   });
 });

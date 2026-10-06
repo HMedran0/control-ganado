@@ -12,7 +12,14 @@ import { z } from 'zod';
 import { DEFAULT_CALF_CODE_PATTERN, isValidCalfCodePattern } from '../domain/codes.js';
 import { DEFAULT_FARM_GESTATION_DAYS } from '../domain/pregnancy.js';
 import { DEFAULT_WEIGHT_GAIN_ANCHOR_MAX_DAYS } from '../domain/weights.js';
-import { MANAGEMENT_CATEGORY, type ManagementCategory } from '../enums.js';
+import {
+  MANAGEMENT_CATEGORY,
+  PRODUCTION_SYSTEM,
+  SALES_FOCUS,
+  type ManagementCategory,
+  type ProductionSystem,
+  type SalesFocus,
+} from '../enums.js';
 
 /** «Parto vencido sin registrar» a los 15 días del parto estimado [Validar] (M5). */
 export const DEFAULT_OVERDUE_CALVING_ALERT_DAYS = 15;
@@ -23,6 +30,17 @@ export const DEFAULT_WEIGHT_GAIN_ALERT_KG_PER_DAY: Partial<Record<ManagementCate
 };
 /** «Perdió peso» si el último pesaje baja más de 5 % [Validar] (PES-05 CA3, 08 §3.7). */
 export const DEFAULT_WEIGHT_LOSS_ALERT_PERCENT = 5;
+
+/**
+ * Peso objetivo de venta por categoría (PES-06 CA1, 08 §3.7): 450 kg en los machos de Levante y
+ * en los mayores de 24 meses [Validar]. En la ceba se venden novillos de 24 a 36 meses, que la
+ * clasificación por edad llama «Toro»; los reproductores se excluyen con la etiqueta del sistema
+ * «Reproductor» (`BREEDER_TAG_KEY`).
+ */
+export const DEFAULT_TARGET_SALE_WEIGHT_KG: Partial<Record<ManagementCategory, number>> = {
+  [MANAGEMENT_CATEGORY.YOUNG_MALE]: 450,
+  [MANAGEMENT_CATEGORY.ADULT_MALE]: 450,
+};
 
 /** Umbral de ganancia en kg/día: de 0 a 3 kg/día, con hasta tres decimales (ADR-015). */
 const gainThresholdSchema = z
@@ -48,6 +66,10 @@ export type CodeSuggestion = (typeof CODE_SUGGESTION)[keyof typeof CODE_SUGGESTI
  * `.partial()` sigue aplicando los `.default()`: un cambio parcial («solo el destete») habría
  * devuelto el resto de la configuración a sus valores de fábrica.
  */
+const categoryKeySchema = z.enum(
+  Object.values(MANAGEMENT_CATEGORY) as [ManagementCategory, ...ManagementCategory[]],
+);
+
 const settingsFields = {
   /** Días de gestación de la finca, usados cuando la raza no tiene valor (RN-04). */
   gestationDays: z.int().min(240).max(330),
@@ -86,7 +108,7 @@ const settingsFields = {
    * Montos positivos como cadena decimal. Una categoría sin precio no se puede avaluar por peso.
    */
   pricePerKgByCategory: z.partialRecord(
-    z.enum(Object.values(MANAGEMENT_CATEGORY) as [ManagementCategory, ...ManagementCategory[]]),
+    categoryKeySchema,
     z
       .string()
       .regex(/^\d{1,9}(\.\d{1,2})?$/, {
@@ -98,10 +120,7 @@ const settingsFields = {
    * Umbral de «Ganancia baja» por categoría de manejo, en kg/día (PES-05 CA2). Una categoría sin
    * umbral no genera la alerta.
    */
-  weightGainAlertKgPerDay: z.partialRecord(
-    z.enum(Object.values(MANAGEMENT_CATEGORY) as [ManagementCategory, ...ManagementCategory[]]),
-    gainThresholdSchema,
-  ),
+  weightGainAlertKgPerDay: z.partialRecord(categoryKeySchema, gainThresholdSchema),
   /** «Perdió peso»: porcentaje entero de baja respecto al pesaje anterior (PES-05 CA3). */
   weightLossAlertPercent: z
     .int({ message: 'Escribe un porcentaje sin decimales.' })
@@ -115,6 +134,31 @@ const settingsFields = {
     .int({ message: 'Escribe los días sin decimales.' })
     .min(0, { message: 'Entre 0 y 365 días.' })
     .max(365, { message: 'Entre 0 y 365 días.' }),
+  /**
+   * Sistema productivo (CFG-03): cambia qué destaca el tablero y el orden de las alertas, no los
+   * datos ni las reglas.
+   */
+  productionSystem: z.enum(
+    Object.values(PRODUCTION_SYSTEM) as [ProductionSystem, ...ProductionSystem[]],
+    { message: 'Elige el sistema productivo.' },
+  ),
+  /** Qué vende principalmente la finca (CFG-03 CA3); `null` si no se ha dicho. */
+  salesFocus: z
+    .enum(Object.values(SALES_FOCUS) as [SalesFocus, ...SalesFocus[]], {
+      message: 'Elige qué vende la finca.',
+    })
+    .nullable(),
+  /**
+   * Peso objetivo de venta por categoría de manejo, en kilos enteros (PES-06 CA1). Una categoría
+   * sin peso no tiene fecha estimada de venta.
+   */
+  targetSaleWeightKg: z.partialRecord(
+    categoryKeySchema,
+    z
+      .int({ message: 'Escribe el peso en kilos, sin decimales.' })
+      .min(50, { message: 'Entre 50 y 1.500 kg.' })
+      .max(1500, { message: 'Entre 50 y 1.500 kg.' }),
+  ),
 };
 
 /** Esquema de `Farm.settings`. Rechaza claves desconocidas para que una errata no pase callada. */
@@ -143,6 +187,9 @@ export const farmSettingsSchema = z
     weightGainAnchorMaxDays: settingsFields.weightGainAnchorMaxDays.default(
       DEFAULT_WEIGHT_GAIN_ANCHOR_MAX_DAYS,
     ),
+    productionSystem: settingsFields.productionSystem.default(PRODUCTION_SYSTEM.DOBLE_PROPOSITO),
+    salesFocus: settingsFields.salesFocus.default(null),
+    targetSaleWeightKg: settingsFields.targetSaleWeightKg.default(DEFAULT_TARGET_SALE_WEIGHT_KG),
   })
   .strict();
 
