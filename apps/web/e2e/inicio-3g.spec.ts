@@ -14,10 +14,11 @@ import { login } from './helpers';
  * desde la navegación a «/» hasta que se ve la cifra de «¿Cuántos animales hay?».
  *
  * **Solo reporta, no falla por el tiempo.** `vite preview` sirve HTTP/1.1 (tiene proxy, y con
- * proxy Vite no usa HTTP/2): el navegador abre 6 conexiones y las ~60 peticiones de Inicio van de
- * a 6, a medio segundo cada tanda. En M8a medimos 8,1 a 8,6 s aquí. En producción Caddy sirve
- * HTTP/2 y se espera unos 4 s; se confirma en M10b (07). La lista dice qué terminó antes de la
- * primera cifra, en orden, para ver qué se puede adelantar o juntar.
+ * proxy Vite no usa HTTP/2): el navegador abre 6 conexiones y las peticiones van de a 6, a medio
+ * segundo cada tanda. En M8a eran ~60 peticiones y 8,1 a 8,6 s; en M8b, con los chunks agrupados y
+ * precargados desde `index.html` (`vite.config.ts`, ADR-017 decisión 8), 10 peticiones y 4,1 a
+ * 4,3 s. En producción Caddy sirve HTTP/2; se confirma en M10b (07). La lista dice qué terminó
+ * antes de la primera cifra, en orden, para ver qué se puede adelantar o juntar.
  */
 
 const GOAL_MS = 4_000;

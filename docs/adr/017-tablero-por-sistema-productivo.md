@@ -83,6 +83,15 @@ abiertas varias preguntas:
    sirve HTTP/1.1 (con proxy no usa HTTP/2) y las ~60 peticiones van de a 6 (8,1 a 8,6 s). La meta
    de 4 s se comprueba en M10b con HTTP/2 detrás de Caddy.
 
+   **Actualización M8b.** Se aplicó la palanca de la última consecuencia: `vite.config.ts` agrupa los
+   chunks con `codeSplitting.groups` de Rolldown (`inicial` con lo que ya cargaba `index.html`,
+   `app-shell` con el layout y `inicio` con el tablero) y un plugin los precarga desde
+   `index.html` con `modulepreload` y `data-precarga`, en paralelo con la carga inicial y el
+   refresco. La precarga tiene su propio tope (`hato.preloadBudgetKb`, 30 KB; quedó en 24,9) y la
+   carga inicial bajó de 162,5 a 155,4 KB (un archivo comprime mejor que cuatro). En `vite
+   preview`: de 62 a 10 peticiones, de 256 a 239 KB y la primera cifra de 8,9–10,2 s a 4,1–4,3 s.
+   Costo: quien abre directamente otra ruta también baja Inicio. M10b sigue midiendo con HTTP/2.
+
 ## Consecuencias
 
 - El tablero, el listado y Alertas cuentan con la misma CTE: cambiar una regla de clasificación
@@ -96,4 +105,4 @@ abiertas varias preguntas:
 - En HTTP/1.1, Inicio no llega a 4 s en 3G: hacen falta HTTP/2 o menos archivos. Si en M10b no
   alcanza, la siguiente palanca es juntar los chunks del layout y de Inicio (unos 36 archivos
   pequeños) y precargar su código mientras se refresca la sesión, que en HTTP/1.1 compite con el
-  refresco y por eso no se dejó en M8a.
+  refresco y por eso no se dejó en M8a. (Hecho en M8b: ver la actualización de la decisión 8.)
