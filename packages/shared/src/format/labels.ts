@@ -2,13 +2,29 @@ import type {
   AllocationMethod,
   AnimalAlert,
   AnimalStatus,
+  AuditAction,
+  BirthCondition,
+  BreedGroup,
+  CalvingType,
   DerivedTag,
+  ExitType,
   ExpenseType,
+  IdentifiedBy,
+  IdentifierRetireReason,
   IdentifierType,
+  ImportKind,
   ManagementCategory,
   Origin,
+  PregnancyOutcome,
+  Role,
+  ScaleFileFormat,
+  ServiceMethod,
   Sex,
   ValuationMethod,
+  VaccineScheduleType,
+  WeightMethod,
+  WeightSource,
+  WorkSessionStatus,
 } from '../enums.js';
 
 /**
@@ -91,4 +107,124 @@ export const ALLOCATION_METHOD_LABEL: Readonly<Record<AllocationMethod, string>>
 export const VALUATION_METHOD_LABEL: Readonly<Record<ValuationMethod, string>> = {
   MANUAL: 'A mano',
   PRICE_PER_KG: 'Peso × precio por kilo',
+};
+
+// Desde M8b, también los textos que antes vivían solo en la web: la exportación completa
+// (BAK-02) y los reportes en Excel (RPT-02) dicen lo mismo que la pantalla.
+
+/** Nombre de cada rol (glosario del SRS §2.2). */
+export const ROLE_LABEL: Readonly<Record<Role, string>> = {
+  ADMIN: 'Administrador',
+  OPERATOR: 'Operario',
+  VET: 'Veterinario',
+};
+
+/** Tipo de salida de la finca (ANI-08). */
+export const EXIT_TYPE_LABEL: Readonly<Record<ExitType, string>> = {
+  SALE: 'Venta',
+  DEATH: 'Muerte',
+  SLAUGHTER: 'Sacrificio',
+  THEFT: 'Robo',
+  TRANSFER: 'Traslado a otra finca',
+  OTHER: 'Otra salida',
+};
+
+/** Por qué se retiró un identificador (IDN-06). */
+export const RETIRE_REASON_LABEL: Readonly<Record<IdentifierRetireReason, string>> = {
+  LOST: 'Pérdida',
+  DAMAGED: 'Daño',
+  REASSIGNED: 'Reasignación oficial',
+  EXITED: 'Liberada al salir de la finca',
+  ARCHIVED: 'Retirado al archivar el animal',
+  OTHER: 'Otro motivo',
+};
+
+export const SERVICE_METHOD_LABEL: Readonly<Record<ServiceMethod, string>> = {
+  NATURAL: 'Monta natural',
+  AI: 'Inseminación',
+  UNKNOWN: 'Sin servicio conocido',
+};
+
+export const CALVING_TYPE_LABEL: Readonly<Record<CalvingType, string>> = {
+  NORMAL: 'Normal',
+  ASSISTED: 'Asistido',
+  CESAREAN: 'Cesárea',
+};
+
+/** Desenlace de una preñez. */
+export const PREGNANCY_OUTCOME_LABEL: Readonly<Record<PregnancyOutcome, string>> = {
+  PENDING: 'Abierta',
+  CALVED: 'Parto',
+  ABORTED: 'Aborto',
+  FAILED: 'Vacía en la palpación',
+};
+
+/** Estado de la cría al nacer (NAC-01). */
+export const BIRTH_CONDITION_LABEL: Readonly<Record<BirthCondition, string>> = {
+  HEALTHY: 'Sana',
+  WEAK: 'Débil',
+};
+
+export const WEIGHT_METHOD_LABEL: Readonly<Record<WeightMethod, string>> = {
+  SCALE: 'Báscula',
+  TAPE: 'Cinta',
+  ESTIMATE: 'Estimado',
+};
+
+export const IDENTIFIED_BY_LABEL: Readonly<Record<IdentifiedBy, string>> = {
+  SEARCH: 'Búsqueda',
+  RFID_READER: 'Lector de chip',
+  QR: 'QR',
+  IMPORT: 'Archivo de la báscula',
+};
+
+export const WEIGHT_SOURCE_LABEL: Readonly<Record<WeightSource, string>> = {
+  MANUAL: 'Digitado',
+  SCALE_FILE: 'Archivo de la báscula',
+  SCALE_LIVE: 'Báscula en vivo',
+};
+
+/** Grupo racial (08 §1.4). */
+export const BREED_GROUP_LABEL: Readonly<Record<BreedGroup, string>> = {
+  INDICUS: 'Cebuino',
+  TAURUS: 'Europeo',
+  CROSS: 'Cruce',
+};
+
+/** Programación de una vacuna (08 §1.5). */
+export const VACCINE_SCHEDULE_LABEL: Readonly<Record<VaccineScheduleType, string>> = {
+  OFFICIAL_CYCLE: 'Ciclo oficial',
+  AGE_WINDOW: 'Por edad',
+  INTERVAL: 'Por intervalo',
+  NONE: 'Sin alerta',
+};
+
+export const WORK_SESSION_STATUS_LABEL: Readonly<Record<WorkSessionStatus, string>> = {
+  OPEN: 'Abierta',
+  CLOSED: 'Cerrada',
+};
+
+export const IMPORT_KIND_LABEL: Readonly<Record<ImportKind, string>> = {
+  ANIMALS: 'Inventario',
+  WEIGHTS: 'Pesaje de la báscula',
+};
+
+export const SCALE_FILE_FORMAT_LABEL: Readonly<Record<ScaleFileFormat, string>> = {
+  CSV: 'CSV',
+  XLSX: 'Excel',
+};
+
+/** Acción de la auditoría (AUD-01), como sustantivo para una columna. */
+export const AUDIT_ACTION_LABEL: Readonly<Record<AuditAction, string>> = {
+  CREATE: 'Registro',
+  UPDATE: 'Cambio',
+  ARCHIVE: 'Archivo',
+  RESTORE: 'Restauración',
+  VOID: 'Anulación',
+  EXIT: 'Salida',
+  REVERT_EXIT: 'Reversión de salida',
+  LOGIN: 'Inicio de sesión',
+  IMPORT: 'Importación',
+  REVOKE_SESSIONS: 'Cierre de sesiones',
+  EXPORT: 'Exportación completa',
 };

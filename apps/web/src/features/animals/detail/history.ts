@@ -1,4 +1,8 @@
-import { formatWeight, type ExitType, type TimelineItem as ApiTimelineItem } from '@hato/shared';
+import {
+  EXIT_TYPE_LABEL,
+  formatWeight,
+  type TimelineItem as ApiTimelineItem,
+} from '@hato/shared';
 import {
   ArrowRightLeft,
   Baby,
@@ -17,14 +21,7 @@ import {
 import type { TimelineItem } from '../../../components/ui/Timeline';
 import { IDENTIFIER_TYPE_LABEL, RETIRE_REASON_LABEL } from '../labels';
 
-export const EXIT_TYPE_LABEL: Readonly<Record<ExitType, string>> = {
-  SALE: 'Venta',
-  DEATH: 'Muerte',
-  SLAUGHTER: 'Sacrificio',
-  THEFT: 'Robo',
-  TRANSFER: 'Traslado a otra finca',
-  OTHER: 'Otra salida',
-};
+export { EXIT_TYPE_LABEL } from '@hato/shared';
 
 /** Nombre de cada campo editable en la línea de tiempo («Edición: nombre, lote»). */
 export const FIELD_LABEL: Readonly<Record<string, string>> = {

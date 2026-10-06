@@ -1,7 +1,6 @@
 import type {
   AnimalStatus,
   DerivedTag,
-  IdentifierRetireReason,
   IdentifierType,
   ManagementCategory,
   Sex,
@@ -69,14 +68,7 @@ export const DERIVED_TAG_TONE: Readonly<Record<DerivedTag, TagTone>> = {
   WITHDRAWAL: 'aviso',
 };
 
-export const RETIRE_REASON_LABEL: Readonly<Record<IdentifierRetireReason, string>> = {
-  LOST: 'Pérdida',
-  DAMAGED: 'Daño',
-  REASSIGNED: 'Reasignación oficial',
-  EXITED: 'Liberada al salir de la finca',
-  ARCHIVED: 'Retirado al archivar el animal',
-  OTHER: 'Otro motivo',
-};
+export { RETIRE_REASON_LABEL } from '@hato/shared';
 
 export const WEIGHT_METHOD_LABEL: Readonly<Record<WeightMethod, string>> = {
   SCALE: 'báscula',

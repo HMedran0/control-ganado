@@ -1,24 +1,8 @@
-import type {
-  CalfHealth,
-  CalvingType,
-  DiagnosisResult,
-  PregnancyOutcome,
-  ServiceMethod,
-} from '@hato/shared';
+import type { CalfHealth, DiagnosisResult } from '@hato/shared';
 
 /** Textos del control reproductivo en el vocabulario del ganadero (06 §7). */
 
-export const SERVICE_METHOD_LABEL: Readonly<Record<ServiceMethod, string>> = {
-  NATURAL: 'Monta natural',
-  AI: 'Inseminación',
-  UNKNOWN: 'Sin servicio conocido',
-};
-
-export const CALVING_TYPE_LABEL: Readonly<Record<CalvingType, string>> = {
-  NORMAL: 'Normal',
-  ASSISTED: 'Asistido',
-  CESAREAN: 'Cesárea',
-};
+export { CALVING_TYPE_LABEL, SERVICE_METHOD_LABEL } from '@hato/shared';
 
 export const CALF_HEALTH_LABEL: Readonly<Record<CalfHealth, string>> = {
   ALIVE: 'Sana',
@@ -31,12 +15,7 @@ export const DIAGNOSIS_RESULT_LABEL: Readonly<Record<DiagnosisResult, string>> =
   NEGATIVE: 'Vacía',
 };
 
-export const OUTCOME_LABEL: Readonly<Record<PregnancyOutcome, string>> = {
-  PENDING: 'Abierta',
-  CALVED: 'Parto',
-  ABORTED: 'Aborto',
-  FAILED: 'Vacía en la palpación',
-};
+export { PREGNANCY_OUTCOME_LABEL as OUTCOME_LABEL } from '@hato/shared';
 
 /** «1 cría», «2 crías». */
 export function calvesText(count: number): string {
