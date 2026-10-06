@@ -14,5 +14,6 @@ import {
 @Module({
   controllers: [PregnanciesController, CalvingsController, BirthsReportController],
   providers: [FarmContextService, PregnanciesService, CalvingsService, BirthsReportService],
+  exports: [BirthsReportService],
 })
 export class ReproductionModule {}

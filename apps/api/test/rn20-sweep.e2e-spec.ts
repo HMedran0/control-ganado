@@ -23,6 +23,7 @@ import {
   createMember,
   type TestFarm,
 } from './helpers/fixtures.js';
+import { EXPORTABLE_REPORTS } from '../src/reports/reports-export.service.js';
 
 /**
  * Barrido de RN-20 (M7): quien no es ADMIN nunca recibe montos, ni en campos anidados.
@@ -249,6 +250,14 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
   /** Llena los parámetros con datos de la finca. Una ruta desconocida hace fallar la prueba. */
   function fill(path: string): string[] {
     if (!path.includes(':')) return [path];
+    // M8b: cada reporte exportable en Excel (el de salidas trae precios para el ADMIN).
+    if (path === '/api/v1/reports/:name/export') {
+      return EXPORTABLE_REPORTS.map((name) =>
+        name === 'cycle-progress'
+          ? `/api/v1/reports/${name}/export?cycleId=${ids.cycle ?? ''}`
+          : `/api/v1/reports/${name}/export?from=2024-01-01`,
+      );
+    }
     const byPrefix: [RegExp, string[]][] = [
       [/^\/api\/v1\/animals\/:id/, [ids.animal ?? '', ids.sold ?? '']],
       [/^\/api\/v1\/expenses\/:id/, [ids.expense ?? '']],
@@ -373,6 +382,14 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
     // M8a: el tablero del ADMIN trae la inversión del hato; el barrido la reconoce.
     const board = await sweep(admin, { method: 'GET', path: '/api/v1/dashboard' });
     expect(board.leaks.length).toBeGreaterThan(0);
+    // M8b: las salidas en JSON y en Excel traen el precio de venta para el ADMIN.
+    const exits = await sweep(admin, { method: 'GET', path: '/api/v1/reports/exits?from=2024-01-01' });
+    expect(exits.leaks.length).toBeGreaterThan(0);
+    const exitsFile = await sweep(admin, {
+      method: 'GET',
+      path: '/api/v1/reports/exits/export?from=2024-01-01',
+    });
+    expect(exitsFile.leaks.length).toBeGreaterThan(0);
 
     const results: string[] = [];
     let checked = 0;

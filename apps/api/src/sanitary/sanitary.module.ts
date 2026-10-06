@@ -21,5 +21,6 @@ import { VaccinationsService } from './vaccinations.service.js';
     VaccinationsService,
     TreatmentsService,
   ],
+  exports: [VaccinationsService],
 })
 export class SanitaryModule {}

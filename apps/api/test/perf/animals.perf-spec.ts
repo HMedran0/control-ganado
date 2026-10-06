@@ -141,6 +141,11 @@ describe('rendimiento con el seed de carga (RNF-01)', () => {
     list('máximo por página (200)', 'limit=200&sort=code'),
     // M8a: todas las cifras de Inicio en una pasada de la clasificación (RPT-01 CA2).
     { name: 'Tablero (Inicio)', path: '/api/v1/dashboard', limitMs: LIST_LIMIT_MS },
+    // M8b: los reportes que agregan sobre la clasificación o sobre todo el hato.
+    { name: 'Reporte de inventario', path: '/api/v1/reports/inventory', limitMs: LIST_LIMIT_MS },
+    { name: 'Grupos de edad ICA', path: '/api/v1/reports/inventory-ica', limitMs: LIST_LIMIT_MS },
+    { name: 'Pendientes de vacunación', path: '/api/v1/reports/vaccination-pending', limitMs: LIST_LIMIT_MS },
+    { name: 'Gráficas', path: '/api/v1/reports/charts', limitMs: LIST_LIMIT_MS },
   ];
 
   for (const scenario of scenarios) {
