@@ -12,8 +12,10 @@ import {
 } from './errors.js';
 
 describe('catálogo', () => {
-  it('tiene los 49 códigos de error de 05-api.md implementados hasta M7', () => {
-    expect(Object.keys(ERROR_CATALOG)).toHaveLength(49);
+  it('tiene los 51 códigos de error de 05-api.md implementados hasta M8b', () => {
+    expect(Object.keys(ERROR_CATALOG)).toHaveLength(51);
+    expect(ERROR_CATALOG.EXPORT_LIMIT_REACHED.status).toBe(429);
+    expect(ERROR_CATALOG.EXPORT_IN_PROGRESS.status).toBe(429);
     expect(ERROR_CATALOG.SCALE_FILE_INVALID.status).toBe(422);
     expect(ERROR_CATALOG.SYSTEM_TEMPLATE_READONLY.status).toBe(409);
     expect(ERROR_CATALOG.EXPENSE_VOIDED.status).toBe(409);

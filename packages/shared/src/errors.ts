@@ -145,6 +145,17 @@ export const ERROR_CATALOG = {
     detail:
       'Hay números repetidos entre animales activos y animales que salieron ({codes}). Cámbialos antes de desactivar la reutilización.',
   },
+  /** BAK-02 (M8b, ADR-018): tres exportaciones completas por hora y por finca. Con `Retry-After`. */
+  EXPORT_LIMIT_REACHED: {
+    status: 429,
+    detail:
+      'Ya se exportaron los datos de la finca 3 veces en la última hora. Intenta de nuevo en {minutes} minutos.',
+  },
+  /** BAK-02 (ADR-018): una exportación completa a la vez en todo el servidor. Con `Retry-After`. */
+  EXPORT_IN_PROGRESS: {
+    status: 429,
+    detail: 'Hay otra exportación en curso; intenta en un minuto.',
+  },
   RATE_LIMITED: { status: 429, detail: 'Demasiadas solicitudes. Espera un momento.' },
   INTERNAL_ERROR: { status: 500, detail: 'Ocurrió un error inesperado. Ya quedó registrado.' },
 } as const satisfies Record<string, ErrorDefinition>;
@@ -237,6 +248,8 @@ export type DomainErrorOptions = {
   readonly cause?: unknown;
   /** Datos del caso para la interfaz (ver `ErrorContext`). */
   readonly context?: ErrorContext;
+  /** Segundos para reintentar: la API los manda en la cabecera `Retry-After` (429). */
+  readonly retryAfterSeconds?: number;
 };
 
 /**
@@ -249,6 +262,7 @@ export class DomainError extends Error {
   readonly detail: string;
   readonly fieldErrors: Readonly<Record<string, readonly string[]>> | undefined;
   readonly context: ErrorContext | undefined;
+  readonly retryAfterSeconds: number | undefined;
 
   constructor(code: ErrorCode, options: DomainErrorOptions = {}) {
     const detail = options.detail ?? errorDetail(code, options.params);
@@ -259,6 +273,7 @@ export class DomainError extends Error {
     this.detail = detail;
     this.fieldErrors = options.fieldErrors;
     this.context = options.context;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }
 

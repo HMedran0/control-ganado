@@ -172,6 +172,7 @@ enum AuditAction {
   LOGIN
   IMPORT
   REVOKE_SESSIONS
+  EXPORT
 }
 
 model Farm {

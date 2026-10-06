@@ -260,6 +260,7 @@ export const AUDIT_ACTION = {
   LOGIN: 'LOGIN',
   IMPORT: 'IMPORT',
   REVOKE_SESSIONS: 'REVOKE_SESSIONS',
+  EXPORT: 'EXPORT',
 } as const;
 export type AuditAction = (typeof AUDIT_ACTION)[keyof typeof AUDIT_ACTION];
 

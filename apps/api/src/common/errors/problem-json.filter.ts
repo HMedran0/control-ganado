@@ -63,6 +63,9 @@ export class ProblemJsonFilter implements ExceptionFilter {
       );
     }
 
+    if (isDomainError(exception) && exception.retryAfterSeconds !== undefined) {
+      void reply.header('retry-after', String(Math.max(1, Math.ceil(exception.retryAfterSeconds))));
+    }
     void reply.status(problem.status).type('application/problem+json').send(problem);
   }
 

@@ -22,6 +22,7 @@ import { UsersModule } from './users/users.module.js';
 import { WeightsModule } from './weights/weights.module.js';
 import { FinanceModule } from './finance/finance.module.js';
 import { DashboardModule } from './dashboard/dashboard.module.js';
+import { ExportModule } from './export/export.module.js';
 
 /**
  * Módulo raíz.
@@ -51,6 +52,7 @@ import { DashboardModule } from './dashboard/dashboard.module.js';
     FinanceModule,
     AlertsModule,
     DashboardModule,
+    ExportModule,
     ImportsModule,
     AuditModule,
     HealthModule,

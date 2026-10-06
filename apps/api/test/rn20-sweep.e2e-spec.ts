@@ -347,8 +347,17 @@ describe('RN-20: ningún monto para quien no es ADMIN', () => {
         'GET /api/v1/audit',
         'PATCH /api/v1/sales/:id',
         'GET /api/v1/dashboard',
+        'GET /api/v1/export/full',
       ]),
     );
+  });
+
+  it('M8b: la exportación completa (con todos los montos) es solo del ADMIN', async () => {
+    for (const headers of [operator, vet]) {
+      const { status, leaks } = await sweep(headers, { method: 'GET', path: '/api/v1/export/full' });
+      expect(status).toBe(403);
+      expect(leaks).toEqual([]);
+    }
   });
 
   it.each([

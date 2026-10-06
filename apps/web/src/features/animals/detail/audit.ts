@@ -232,6 +232,7 @@ const ACTION_VERB: Readonly<Record<AuditAction, string>> = {
   LOGIN: 'inició sesión en',
   IMPORT: 'importó',
   REVOKE_SESSIONS: 'cerró las sesiones de',
+  EXPORT: 'exportó todos los datos de',
 };
 
 /** Una preñez que cambia de desenlace es un parto, un aborto o una palpación vacía. */
