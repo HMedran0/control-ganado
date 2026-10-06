@@ -15,9 +15,11 @@ import ExcelJS from 'exceljs';
 import request from 'supertest';
 
 import { PrismaService } from '../src/infra/prisma.service.js';
+import { TableStatsService } from '../src/infra/table-stats.service.js';
 import { bearer, createTestAppWithClock, signTestToken } from './helpers/app.js';
 import { craftZip, windows1252, zipBomb } from './helpers/crafted-files.js';
 import { cleanDatabase, createFarm, createMember, type TestFarm } from './helpers/fixtures.js';
+import { lastAnalyzed } from './helpers/table-stats.js';
 
 /**
  * Importación del inventario (ANI-09, ADR-011) contra PostgreSQL real: la plantilla de
@@ -240,6 +242,18 @@ describe('Importación del inventario (ANI-09)', () => {
           where: { farmId: farm.farmId, action: 'CREATE', entity: 'Animal' },
         }),
       ).toBe(11);
+    });
+
+    it('después de confirmar actualiza las estadísticas de las tablas, sin hacer esperar la respuesta', async () => {
+      const tables = ['animals', 'identifiers', 'pregnancies', 'weight_records', 'import_batches'];
+      const before = await lastAnalyzed(prisma, tables);
+      await confirm(admin, xlsx(TEMPLATE)).expect(201);
+      await app.get(TableStatsService).settled();
+      const after = await lastAnalyzed(prisma, tables);
+      for (const table of tables) {
+        const previous = before.get(table)?.getTime() ?? 0;
+        expect(after.get(table)?.getTime() ?? 0, table).toBeGreaterThan(previous);
+      }
     });
 
     it('el mismo archivo otra vez: la simulación avisa y cada código ya existe', async () => {

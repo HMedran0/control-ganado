@@ -50,6 +50,7 @@ import {
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { ANALYZABLE_TABLE, TableStatsService } from '../infra/table-stats.service.js';
 import { ScaleProfilesService } from './scale-profiles.service.js';
 
 /** Una confirmación de 5.000 filas cabe holgada en un minuto (ADR-011). */
@@ -90,6 +91,7 @@ export class WeightImportService {
     private readonly prisma: PrismaService,
     private readonly clock: Clock,
     private readonly profiles: ScaleProfilesService,
+    private readonly tableStats: TableStatsService,
   ) {}
 
   async preview(
@@ -151,7 +153,7 @@ export class WeightImportService {
     const hash = sha256(file.data);
     const at = this.clock.now();
     try {
-      return await this.prisma.$transaction(
+      const result = await this.prisma.$transaction(
         async (tx) => {
           // El mismo candado que la importación del inventario: una importación a la vez por finca.
           await tx.$executeRaw`
@@ -173,6 +175,18 @@ export class WeightImportService {
         },
         { timeout: CONFIRM_TIMEOUT_MS, maxWait: 10_000 },
       );
+      // Después de la transacción y sin esperarlo, como la importación del inventario.
+      this.tableStats.analyzeInBackground(
+        [
+          ANALYZABLE_TABLE.WEIGHT_RECORDS,
+          ANALYZABLE_TABLE.WORK_SESSIONS,
+          ANALYZABLE_TABLE.WORK_SESSION_ENTRIES,
+          ANALYZABLE_TABLE.IDENTIFIERS,
+          ANALYZABLE_TABLE.IMPORT_BATCHES,
+        ],
+        'weight-import',
+      );
+      return result;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
         const existing = await this.replayOf(scope, importKey);

@@ -16,7 +16,9 @@ import request from 'supertest';
 
 import { toPrismaDate } from '../src/infra/date-mapper.js';
 import { PrismaService } from '../src/infra/prisma.service.js';
+import { TableStatsService } from '../src/infra/table-stats.service.js';
 import { bearer, createTestAppWithClock, signTestToken, type FakeClock } from './helpers/app.js';
+import { lastAnalyzed } from './helpers/table-stats.js';
 import {
   cleanDatabase,
   createAnimal,
@@ -374,9 +376,19 @@ describe('Pesos y báscula', () => {
       expect(preview.importable).toBe(4);
       expect(preview.chipNotices).toEqual([]);
 
+      const analyzedTables = ['weight_records', 'work_sessions', 'identifiers', 'import_batches'];
+      const analyzedBefore = await lastAnalyzed(prisma, analyzedTables);
       const done = (await upload(session, vet, fields, false).expect(201))
         .body as WeightImportResult;
       expect(done).toMatchObject({ created: 4, skipped: 1, chipsSaved: 1, replayed: false });
+      // Después de la transacción, en segundo plano: estadísticas frescas para el planificador.
+      await app.get(TableStatsService).settled();
+      const analyzedAfter = await lastAnalyzed(prisma, analyzedTables);
+      for (const table of analyzedTables) {
+        expect(analyzedAfter.get(table)?.getTime() ?? 0, table).toBeGreaterThan(
+          analyzedBefore.get(table)?.getTime() ?? 0,
+        );
+      }
 
       const weights = await prisma.weightRecord.findMany({
         where: { workSessionId: done.workSessionId },

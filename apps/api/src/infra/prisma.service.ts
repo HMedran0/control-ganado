@@ -21,6 +21,9 @@ export const CONNECTION_TIMEOUT_MS = 10_000;
  */
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  /** Trabajo en segundo plano contra la base (`TableStatsService`), que se espera al apagar. */
+  private readonly background = new Set<Promise<void>>();
+
   constructor(@Inject(ENV) env: Env) {
     super({
       adapter: new PrismaPg({
@@ -36,7 +39,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   }
 
   async onModuleDestroy(): Promise<void> {
+    // Nest llama este gancho antes que los de apagado de los demás servicios: lo que corre en
+    // segundo plano termina aquí, antes de cerrar las conexiones.
+    await this.backgroundSettled();
     await this.$disconnect();
+  }
+
+  /** Registra una tarea en segundo plano (que ya atrapa sus errores) para esperarla al apagar. */
+  track(task: Promise<void>): void {
+    this.background.add(task);
+    void task.finally(() => this.background.delete(task));
+  }
+
+  /** Espera las tareas en segundo plano en curso. */
+  async backgroundSettled(): Promise<void> {
+    await Promise.all([...this.background]);
   }
 
   /** Comprobación de vida de la base de datos, para `GET /health`. */

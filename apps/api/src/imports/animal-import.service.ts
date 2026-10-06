@@ -38,6 +38,7 @@ import { Prisma } from '../generated/prisma/client.js';
 import { Clock } from '../infra/clock.service.js';
 import { fromPrismaDate, toPrismaDate } from '../infra/date-mapper.js';
 import { PrismaService } from '../infra/prisma.service.js';
+import { ANALYZABLE_TABLE, TableStatsService } from '../infra/table-stats.service.js';
 import { readSpreadsheet, type SheetContent, type UploadedFile } from './spreadsheet-reader.js';
 
 /**
@@ -72,6 +73,7 @@ export class AnimalImportService {
     private readonly farmContext: FarmContextService,
     private readonly clock: Clock,
     private readonly entitlements: EntitlementsService,
+    private readonly tableStats: TableStatsService,
   ) {}
 
   /** Simulación (CA3): nada se guarda. */
@@ -131,7 +133,7 @@ export class AnimalImportService {
     const hash = sha256(file.data);
 
     try {
-      return await this.prisma.$transaction(
+      const view = await this.prisma.$transaction(
         async (tx) => {
           // Una importación a la vez por finca: dos confirmaciones del mismo archivo (o de dos
           // archivos con los mismos códigos) no se cruzan.
@@ -170,6 +172,19 @@ export class AnimalImportService {
         },
         { timeout: CONFIRM_TIMEOUT_MS, maxWait: 10_000 },
       );
+      // Después de la transacción y sin esperarlo: la tabla puede haber crecido mucho de golpe.
+      this.tableStats.analyzeInBackground(
+        [
+          ANALYZABLE_TABLE.ANIMALS,
+          ANALYZABLE_TABLE.BREEDS,
+          ANALYZABLE_TABLE.IDENTIFIERS,
+          ANALYZABLE_TABLE.PREGNANCIES,
+          ANALYZABLE_TABLE.WEIGHT_RECORDS,
+          ANALYZABLE_TABLE.IMPORT_BATCHES,
+        ],
+        'animal-import',
+      );
+      return view;
     } catch (error) {
       // Respaldo del candado: si aun así la misma clave entró dos veces, gana la primera.
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
