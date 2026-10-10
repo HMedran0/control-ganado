@@ -297,6 +297,7 @@ Cualquier ganadero crea su cuenta (correo y contraseña o Google, con verificaci
 8. (M8a) El peso objetivo de venta (450 kg para Levante y Toro) y si cambia por sexo, raza o temporada.
 9. (M8b) Qué reportes consulta primero según lo que hace la finca: el orden propuesto (`reportOrder`, 08 §3.7) pone los partos y los nacimientos primero en cría y doble propósito, y el inventario, las salidas y la plata primero en ceba.
 10. (M8b) Si el inventario por grupos de edad que entrega Arreo (una tabla por sexo con los grupos del 08 §2.2, la finca, el código de predio y la fecha de corte) sirve tal cual para los trámites y los ciclos de vacunación, o si el ICA o el vacunador de Fedegán piden otra presentación (por ejemplo, el cuadro de población con los grupos en columnas).
+11. (Ajuste previo de M9) Si usan o piensan usar chips inyectables (o bolos ruminales) y dónde los aplican (base de la oreja, cuello u otro sitio), para indicarlo al vaquero en la manga y al lector, y si el lector de la finca lee FDX-B y HDX.
 
 ## Fuentes
 - Datamars Colombia (s. f.). Básculas Tru-Test. https://www.datamarscolombia.com/Basculas.aspx

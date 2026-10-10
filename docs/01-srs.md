@@ -317,7 +317,8 @@ Muchas fincas numeran sus animales 1, 2, 3… y le dan el número de un animal v
 Tipos: `VISUAL_TAG`, `DIN`, `RFID`, `QR`, `BRAND` (hierro/marca), `OTHER`.
 - CA1: Un animal puede tener varios identificadores activos de distinto tipo.
 - CA2: Un valor de identificador activo es único por finca y tipo (RN-19).
-- CA3: El RFID se valida como 15 dígitos numéricos (ISO 11784). Si no empieza por `170` (Colombia) se muestra una advertencia (animal importado), sin bloquear.
+- CA3: El RFID se valida como 15 dígitos numéricos (ISO 11784/11785, FDX-B o HDX). Si el prefijo no es `170` (Colombia) ni un código de fabricante (`900` a `998`), se advierte «Prefijo poco común: verifica el número» (`RFID_UNCOMMON_PREFIX`), sin bloquear; igual en la importación del inventario y en la de la báscula (08 §1.6).
+- CA5 (ajuste previo de M9): Un RFID puede indicar dónde va el chip (arete, inyectable o bolo ruminal), opcional; se elige al registrarlo, se ve en la ficha y se importa con la columna «Dónde va el chip». En la jornada entra en M9.
 - CA4: El DIN se guarda normalizado (mayúsculas, sin espacios ni guiones), sin patrón estricto hasta verificar el formato oficial vigente (08 §1.6).
 
 **IDN-02 — Reemplazo por pérdida o daño** · M · F1

@@ -150,6 +150,7 @@ Restricciones:
 | retired_at | date? | Nulo = activo. |
 | retire_reason | enum? `LOST`/`DAMAGED`/`REASSIGNED`/`EXITED`/`ARCHIVED`/`OTHER` | Los pone el sistema, nunca una persona: `EXITED` (M4c, IDN-06), chapeta liberada al registrar la salida en una finca con numeración reutilizable, nunca con DIN ni RFID (RN-32); `ARCHIVED` (M4c, ANI-03 CA4), cualquier identificador retirado al archivar el animal, DIN y RFID incluidos (única excepción de RN-32). Revertir la salida o restaurar el animal los reactiva si siguen libres. Un valor `EXITED` se reasigna sin confirmación; uno `ARCHIVED`, con la del ADMIN (RN-19). |
 | replaced_by_id | uuid? FK → identifiers | |
+| carrier | enum? `EAR_TAG`/`INJECTABLE`/`BOLUS` | Dónde va el chip (ajuste previo de M9). Solo con `type = 'RFID'` (CHECK `identifiers_carrier_only_rfid_chk`); nulo = sin indicar. Un reemplazo hereda el del anterior. |
 
 Índice único parcial: (`farm_id`, `type`, `value`) `WHERE retired_at IS NULL` (RN-19). Índice no único en (`farm_id`, `value`) para la búsqueda global por cualquier tipo.
 
