@@ -593,9 +593,7 @@ describe('reglas por fila', () => {
     expect(messagesOf(result, 3)).toEqual([
       'El RFID 32000012345678 tiene menos de 15 dígitos: Excel le quitó los ceros iniciales. Escríbelo como texto.',
     ]);
-    expect(messagesOf(result, 4)).toEqual([
-      'El RFID 032000012345678 no empieza por 170 (Colombia): ¿es un animal importado?',
-    ]);
+    expect(messagesOf(result, 4)).toEqual(['Prefijo poco común: verifica el número.']);
   });
 
   it('partos: solo hembras, enteros, y con fecha al menos uno', () => {

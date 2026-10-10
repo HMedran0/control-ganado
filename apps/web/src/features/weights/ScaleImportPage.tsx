@@ -3,6 +3,7 @@ import {
   formatWeight,
   isoDateFromInstant,
   uuidv7,
+  WARNING_CATALOG,
   type AnimalRef,
   type ScaleAssociation,
   type ScaleColumnMapping,
@@ -402,6 +403,9 @@ function Simulation({
                   Chip {chip.chip} · {formatWeight(chip.weightKg)} · {formatDate(chip.date)} (fila{' '}
                   {chip.rows.join(', ')})
                 </p>
+                {chip.uncommonPrefix ? (
+                  <p className="text-aviso-intenso">{WARNING_CATALOG.RFID_UNCOMMON_PREFIX}</p>
+                ) : null}
                 <AnimalPicker
                   label={`Asociar el chip ${chip.chip} a un animal`}
                   value={choice.animal}

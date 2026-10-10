@@ -25,7 +25,7 @@ describe('catálogo', () => {
   it('tiene las 12 advertencias de 05-api.md implementadas hasta M6', () => {
     expect(Object.keys(WARNING_CATALOG)).toEqual([
       'WEIGHT_OUTLIER',
-      'RFID_FOREIGN_COUNTRY',
+      'RFID_UNCOMMON_PREFIX',
       'BREEDING_AGE_LOW',
       'DAM_AGE_LOW',
       'VACCINE_AGE_OUTSIDE_WINDOW',
@@ -82,9 +82,9 @@ describe('errorDetail', () => {
 
 describe('advertencias', () => {
   it('construye código y mensaje', () => {
-    expect(warning('RFID_FOREIGN_COUNTRY')).toEqual({
-      code: 'RFID_FOREIGN_COUNTRY',
-      message: WARNING_CATALOG.RFID_FOREIGN_COUNTRY,
+    expect(warning('RFID_UNCOMMON_PREFIX')).toEqual({
+      code: 'RFID_UNCOMMON_PREFIX',
+      message: WARNING_CATALOG.RFID_UNCOMMON_PREFIX,
     });
   });
 

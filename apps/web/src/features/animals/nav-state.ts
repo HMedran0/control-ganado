@@ -2,7 +2,7 @@ import type { Warning } from '@hato/shared';
 
 /**
  * Estado que viaja con la navegación al guardar un animal: las advertencias de la API
- * (`DAM_AGE_LOW`, `RFID_FOREIGN_COUNTRY`…) y el mensaje de lo guardado. La ficha los muestra al
+ * (`DAM_AGE_LOW`, `RFID_UNCOMMON_PREFIX`…) y el mensaje de lo guardado. La ficha los muestra al
  * llegar; no van en la URL porque no tiene sentido compartirlos ni volver a verlos al recargar.
  */
 declare module '@tanstack/react-router' {

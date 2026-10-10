@@ -15,7 +15,7 @@
 
 import { daysBetween, type IsoDate } from '../date.js';
 import { SCALE_FILE_FORMAT, SCALE_UNIT, type ScaleFileFormat, type ScaleUnit } from '../enums.js';
-import { warning, type Warning } from '../errors.js';
+import { WARNING_CATALOG, warning, type Warning } from '../errors.js';
 import { formatDate } from '../format/date.js';
 import {
   cellText,
@@ -27,7 +27,7 @@ import {
 } from '../format/parse.js';
 import { formatWeight } from '../format/weight.js';
 import { normalizeAnimalCode } from './codes.js';
-import { isValidRfid, normalizeIdentifier } from './identifiers.js';
+import { isValidRfid, normalizeIdentifier, rfidPrefixIsCommon } from './identifiers.js';
 import { isWeightOutlier, previousWeightFor, type WeightRecordLike } from './weights.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -447,6 +447,8 @@ export type UnknownChip = {
   readonly weightKg: number;
   readonly date: IsoDate;
   readonly visualId: string | null;
+  /** Prefijo que no es 170 ni de fabricante (900 a 998): se advierte, no se bloquea (08 §1.6). */
+  readonly uncommonPrefix: boolean;
 };
 
 /** Resultado de `planScaleImport`. */
@@ -588,11 +590,14 @@ export function planScaleImport(input: ScaleImportPlanInput): ScaleImportPlan {
           weightKg: parsed.weightKg,
           date: parsed.date,
           visualId: parsed.visualId,
+          uncommonPrefix: !rfidPrefixIsCommon(parsed.eid),
         });
         planRows.set(parsed.row, {
           ...base,
           status: SCALE_ROW_STATUS.UNKNOWN_CHIP,
-          message: 'Ningún animal activo tiene este chip. Asócialo a un animal o no lo importes.',
+          message: rfidPrefixIsCommon(parsed.eid)
+            ? 'Ningún animal activo tiene este chip. Asócialo a un animal o no lo importes.'
+            : `Ningún animal activo tiene este chip. Asócialo a un animal o no lo importes. ${WARNING_CATALOG.RFID_UNCOMMON_PREFIX}`,
         });
       } else {
         planRows.set(parsed.row, {

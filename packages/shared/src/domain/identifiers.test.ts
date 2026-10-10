@@ -4,8 +4,9 @@ import { IDENTIFIER_TYPE } from '../enums.js';
 import {
   COLOMBIA_COUNTRY_CODE,
   RFID_LENGTH,
-  isColombianRfid,
+  RFID_MANUFACTURER_CODES,
   isValidRfid,
+  rfidPrefixIsCommon,
   normalizeIdentifier,
   validateIdentifier,
 } from './identifiers.js';
@@ -29,11 +30,25 @@ describe('isValidRfid (08 §1.6)', () => {
   });
 });
 
-describe('isColombianRfid', () => {
+describe('rfidPrefixIsCommon (ISO 11784, 08 §1.6)', () => {
+  it('Colombia (170) y los fabricantes (900 a 998) son comunes', () => {
+    expect(rfidPrefixIsCommon('170123456789012')).toBe(true);
+    expect(rfidPrefixIsCommon('900123456789012')).toBe(true);
+    expect(rfidPrefixIsCommon('982000123456789')).toBe(true);
+    expect(rfidPrefixIsCommon('998123456789012')).toBe(true);
+    expect(RFID_MANUFACTURER_CODES).toEqual({ min: 900, max: 998 });
+  });
+
+  it('los vecinos del 170, otros países, el 899 y el 999 de prueba no lo son', () => {
+    for (const prefix of ['169', '171', '076', '032', '899', '999', '000']) {
+      expect(rfidPrefixIsCommon(`${prefix}123456789012`), prefix).toBe(false);
+    }
+  });
+});
+
+describe('COLOMBIA_COUNTRY_CODE', () => {
   it('reconoce el código de país 170', () => {
     expect(COLOMBIA_COUNTRY_CODE).toBe('170');
-    expect(isColombianRfid('170123456789012')).toBe(true);
-    expect(isColombianRfid('076123456789012')).toBe(false);
   });
 });
 
@@ -82,12 +97,16 @@ describe('validateIdentifier', () => {
     expect(resultado.warnings).toEqual([]);
   });
 
-  it('RFID extranjero: advertencia, no bloqueo', () => {
+  it('RFID con prefijo poco común: advertencia, no bloqueo', () => {
     const resultado = validateIdentifier(IDENTIFIER_TYPE.RFID, '076123456789012');
     expect(resultado.errorCode).toBeNull();
-    expect(resultado.warnings).toHaveLength(1);
-    expect(resultado.warnings[0]?.code).toBe('RFID_FOREIGN_COUNTRY');
-    expect(resultado.warnings[0]?.message).toContain('170');
+    expect(resultado.warnings).toEqual([
+      { code: 'RFID_UNCOMMON_PREFIX', message: 'Prefijo poco común: verifica el número.' },
+    ]);
+  });
+
+  it('chip de fabricante (inyectable o bolo): sin advertencia', () => {
+    expect(validateIdentifier(IDENTIFIER_TYPE.RFID, '982 000 123 456 789').warnings).toEqual([]);
   });
 
   it('valor vacío: error para cualquier tipo', () => {

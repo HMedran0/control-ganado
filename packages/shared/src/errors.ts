@@ -169,8 +169,8 @@ export type ErrorCode = keyof typeof ERROR_CATALOG;
  */
 export const WARNING_CATALOG = {
   WEIGHT_OUTLIER: 'El peso {weight} kg se aleja mucho del último registrado. Verifícalo.',
-  RFID_FOREIGN_COUNTRY:
-    'El código RFID no empieza por 170 (Colombia); parece de un animal importado.',
+  /** El prefijo del chip no es 170 (Colombia) ni de fabricante (900 a 998): 08 §1.6. */
+  RFID_UNCOMMON_PREFIX: 'Prefijo poco común: verifica el número.',
   BREEDING_AGE_LOW: 'La hembra tiene {age} y la edad mínima de servicio es {minAge}.',
   DAM_AGE_LOW:
     'La madre {code} tenía {age} al nacer la cría; la edad mínima reproductiva es {minAge}.',

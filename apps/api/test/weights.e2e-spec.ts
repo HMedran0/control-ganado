@@ -354,7 +354,14 @@ describe('Pesos y báscula', () => {
       expect(body.rows[0]).toMatchObject({ outlier: true, previousKg: 300 });
       expect(body.warnings[0]?.code).toBe('SCALE_DUPLICATE_READING');
       expect(body.unknownChips).toEqual([
-        { chip: CHIP_UNKNOWN, rows: [6], weightKg: 275, date: '2026-09-15', visualId: null },
+        {
+          chip: CHIP_UNKNOWN,
+          rows: [6],
+          weightKg: 275,
+          date: '2026-09-15',
+          visualId: null,
+          uncommonPrefix: false,
+        },
       ]);
       expect(await prisma.weightRecord.count({ where: { weightSource: 'SCALE_FILE' } })).toBe(0);
     });

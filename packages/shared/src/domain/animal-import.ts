@@ -28,6 +28,7 @@ import {
   type Origin,
   type Sex,
 } from '../enums.js';
+import { WARNING_CATALOG } from '../errors.js';
 import { formatDate } from '../format/date.js';
 import {
   cellText,
@@ -41,7 +42,7 @@ import {
 import { catalogNameKey, normalizeCatalogName } from '../schemas/catalogs.js';
 import { monthsBetween } from './age.js';
 import { cleanAnimalCode, normalizeAnimalCode } from './codes.js';
-import { isColombianRfid, isValidRfid, normalizeIdentifier } from './identifiers.js';
+import { isValidRfid, normalizeIdentifier, rfidPrefixIsCommon } from './identifiers.js';
 import { DEFAULT_GESTATION_DAYS_BY_GROUP, gestationDaysFor } from './pregnancy.js';
 
 // ---------------------------------------------------------------------------------------------
@@ -500,8 +501,8 @@ function parseRow(
       );
     } else {
       identifiers.push({ type: IDENTIFIER_TYPE.RFID, value: rfid });
-      if (!isColombianRfid(rfid)) {
-        warn('rfid', `El RFID ${rfid} no empieza por 170 (Colombia): ¿es un animal importado?`);
+      if (!rfidPrefixIsCommon(rfid)) {
+        warn('rfid', WARNING_CATALOG.RFID_UNCOMMON_PREFIX);
       }
     }
   }

@@ -136,8 +136,33 @@ describe('Animales e identificadores', () => {
         weighedOn: '2026-03-01',
         method: 'TAPE',
       });
-      // RFID que no empieza por 170: advertencia, no bloqueo (IDN-01 CA3).
-      expect(animal.warnings.map((warning) => warning.code)).toEqual(['RFID_FOREIGN_COUNTRY']);
+      // 982: código de fabricante (ISO 11784), sin advertencia desde el ajuste previo de M9.
+      expect(animal.warnings).toEqual([]);
+    });
+
+    it('prefijo poco común (ni 170 ni fabricante): advertencia en el alta y al agregar el chip', async () => {
+      const animal = await create({
+        ...base(),
+        identifiers: [{ type: 'RFID', value: '076000000000555' }],
+      });
+      expect(animal.warnings).toEqual([
+        { code: 'RFID_UNCOMMON_PREFIX', message: 'Prefijo poco común: verifica el número.' },
+      ]);
+      const other = await create({ ...base(), code: '26-002' });
+      const added = await http()
+        .post(`/api/v1/animals/${other.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'RFID', value: '999000000000001' })
+        .expect(201);
+      expect(added.body.warnings.map((warning: { code: string }) => warning.code)).toEqual([
+        'RFID_UNCOMMON_PREFIX',
+      ]);
+      const colombian = await http()
+        .post(`/api/v1/animals/${other.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'BRAND', value: 'H-1' })
+        .expect(201);
+      expect(colombian.body.warnings).toEqual([]);
     });
 
     it('repetir la misma petición con el mismo id no duplica: 200 (ADR-012 §1)', async () => {

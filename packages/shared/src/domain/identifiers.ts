@@ -1,8 +1,9 @@
 /**
  * Validación y normalización de identificadores (08 §1.6).
  *
- * - `RFID`: exactamente 15 dígitos (ISO 11784/11785). Bloquea si no cumple. Si no empieza por
- *   `170` (Colombia), advierte que parece un animal importado, pero no bloquea.
+ * - `RFID`: exactamente 15 dígitos (ISO 11784/11785, FDX-B o HDX). Bloquea si no cumple. Si
+ *   el prefijo no es `170` (Colombia) ni un código de fabricante (900 a 998), advierte «Prefijo
+ *   poco común: verifica el número», sin bloquear.
  * - `DIN`: se guarda en mayúsculas, sin espacios ni guiones. Sin patrón estricto hasta
  *   verificar el formato oficial vigente.
  * - Los demás tipos: texto libre normalizado.
@@ -25,9 +26,21 @@ export function isValidRfid(value: string): boolean {
   return trimmed.length === RFID_LENGTH && DIGITS_ONLY.test(trimmed);
 }
 
-/** ¿El RFID corresponde a Colombia (empieza por 170)? */
-export function isColombianRfid(value: string): boolean {
-  return value.trim().startsWith(COLOMBIA_COUNTRY_CODE);
+/** Códigos de fabricante del estándar ISO 11784: del 900 al 998 (el 999 es de prueba). */
+export const RFID_MANUFACTURER_CODES = { min: 900, max: 998 } as const;
+
+/**
+ * ¿El prefijo del chip es el de siempre? Los tres primeros dígitos son el código de país (ISO
+ * 3166, 170 para Colombia) o el de un fabricante (900 a 998), que es como vienen muchos chips
+ * inyectables y bolos. Cualquier otro —otro país, el 999 de prueba— suele ser un error al
+ * digitarlo o un chip que no es de la finca, y se advierte sin bloquear (08 §1.6).
+ */
+export function rfidPrefixIsCommon(value: string): boolean {
+  const prefix = value.trim().slice(0, 3);
+  if (prefix === COLOMBIA_COUNTRY_CODE) return true;
+  if (!/^\d{3}$/.test(prefix)) return false;
+  const code = Number(prefix);
+  return code >= RFID_MANUFACTURER_CODES.min && code <= RFID_MANUFACTURER_CODES.max;
 }
 
 /**
@@ -79,6 +92,6 @@ export function validateIdentifier(type: IdentifierType, value: string): Identif
   return {
     normalized,
     errorCode: null,
-    warnings: isColombianRfid(normalized) ? [] : [warning('RFID_FOREIGN_COUNTRY')],
+    warnings: rfidPrefixIsCommon(normalized) ? [] : [warning('RFID_UNCOMMON_PREFIX')],
   };
 }

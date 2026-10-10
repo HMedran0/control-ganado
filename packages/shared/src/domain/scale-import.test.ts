@@ -194,7 +194,14 @@ describe('planScaleImport (PES-04 CA2 y CA3)', () => {
     };
     const pending = planScaleImport({ ...input, associations: [] });
     expect(pending.unknownChips).toEqual([
-      { chip: CHIP_X, rows: [2, 3], weightKg: 251, date: '2026-09-16', visualId: null },
+      {
+        chip: CHIP_X,
+        rows: [2, 3],
+        weightKg: 251,
+        date: '2026-09-16',
+        visualId: null,
+        uncommonPrefix: false,
+      },
     ]);
     expect(pending.weights).toHaveLength(0);
 
@@ -207,6 +214,26 @@ describe('planScaleImport (PES-04 CA2 y CA3)', () => {
 
     const skipped = planScaleImport({ ...input, associations: [], skip: [CHIP_X] });
     expect(skipped.counts).toMatchObject({ skipped: 2, unknownChips: 0, matched: 0 });
+  });
+
+  it('chip desconocido con prefijo poco común: lo advierte, sin bloquear (08 §1.6)', () => {
+    const plan = planScaleImport({
+      rows: rows(
+        ['076000000000123', '', '250', '15/09/2026'],
+        ['982000000000123', '', '260', '15/09/2026'],
+      ),
+      lookup,
+      associations: [],
+      skip: [],
+      today: HOY,
+    });
+    expect(plan.unknownChips.map((chip) => [chip.chip, chip.uncommonPrefix])).toEqual([
+      ['076000000000123', true],
+      ['982000000000123', false],
+    ]);
+    expect(plan.rows[0]?.message).toContain('Prefijo poco común: verifica el número.');
+    expect(plan.rows[1]?.message).not.toContain('Prefijo');
+    expect(plan.rows.every((row) => row.status === 'UNKNOWN_CHIP')).toBe(true);
   });
 
   it('el mismo animal el mismo día: conserva la última fila y avisa', () => {
