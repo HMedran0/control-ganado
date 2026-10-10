@@ -596,6 +596,44 @@ describe('Importación del inventario (ANI-09)', () => {
         'Fecha de nacimiento*',
       ]);
       expect(header).toContain('Fecha de ingreso');
+      // Ajuste previo de M9: «Dónde va el chip» después del RFID, con su lista.
+      expect(header.indexOf('Dónde va el chip')).toBe(header.indexOf('RFID (15 dígitos)') + 1);
+      const chipList = workbook.getWorksheet('Listas');
+      expect(chipList?.getCell(1, 6).value).toBe('Chip');
+      expect([2, 3, 4].map((row) => chipList?.getCell(row, 6).value)).toEqual([
+        'Arete',
+        'Inyectable',
+        'Bolo',
+      ]);
+    });
+  });
+
+  describe('dónde va el chip (ajuste previo de M9)', () => {
+    it('se guarda con el chip; sin RFID se avisa y se ignora; un valor raro es error', async () => {
+      const header = `${CSV_HEADER};RFID;Dónde va el chip`;
+      const file = csv(
+        [
+          header,
+          'K-1;;Hembra;Brahman;01/01/2022;Levante;982000000000201;Inyectable',
+          'K-2;;Macho;Brahman;01/01/2022;Levante;;Bolo',
+          'K-3;;Macho;Brahman;01/01/2022;Levante;170000000000203;Collar',
+        ].join('\n'),
+      );
+      const dry = (await preview(admin, file).expect(200)).body as AnimalImportPreview;
+      const messages = JSON.stringify(dry);
+      expect(messages).toContain('La fila no trae RFID: se ignora «Dónde va el chip».');
+      expect(messages).toContain('Escribe Arete, Inyectable o Bolo, o deja la columna vacía.');
+
+      await confirm(admin, file, { skipRows: '4' }).expect(201);
+      const chip = await prisma.identifier.findFirstOrThrow({
+        where: { farmId: farm.farmId, value: '982000000000201' },
+      });
+      expect(chip.carrier).toBe('INJECTABLE');
+      const second = await prisma.animal.findFirstOrThrow({
+        where: { farmId: farm.farmId, code: 'K-2' },
+        include: { identifiers: true },
+      });
+      expect(second.identifiers).toEqual([]);
     });
   });
 

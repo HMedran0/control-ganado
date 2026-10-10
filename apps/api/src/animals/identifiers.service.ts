@@ -64,6 +64,7 @@ export class IdentifiersService {
             type: input.type,
             value: normalizeIdentifier(input.type, input.value),
             assignedAt: input.assignedAt,
+            carrier: input.carrier ?? null,
           },
           { ...toIdentifierView(existing) },
         );
@@ -87,6 +88,7 @@ export class IdentifiersService {
           animalId,
           type: checked.type,
           value: checked.value,
+          carrier: input.carrier ?? null,
           assignedAt: toPrismaDate(assignedAt),
           createdAt: at,
         },
@@ -143,6 +145,8 @@ export class IdentifiersService {
           animalId: current.animalId,
           type: current.type,
           value: checked.value,
+          // El reemplazo va donde iba el anterior (un arete por otro arete).
+          carrier: current.carrier,
           assignedAt: toPrismaDate(date),
           createdAt: at,
         },

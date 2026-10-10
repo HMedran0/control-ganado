@@ -13,6 +13,7 @@ import {
   warning,
   type AnimalDetailWithWarnings,
   type BulkLotInput,
+  type RfidCarrier,
   type BulkLotResult,
   type BulkTagsInput,
   type BulkTagsResult,
@@ -235,7 +236,7 @@ export class AnimalsService {
           willBeActive: true,
         });
 
-        const identifiers: CheckedIdentifier[] = [];
+        const identifiers: (CheckedIdentifier & { readonly carrier: RfidCarrier | null })[] = [];
         for (const [index, identifier] of (input.identifiers ?? []).entries()) {
           const checked = await checkIdentifier(tx, scope, {
             type: identifier.type,
@@ -262,7 +263,7 @@ export class AnimalsService {
               'Ese identificador está repetido.',
             );
           }
-          identifiers.push(checked);
+          identifiers.push({ ...checked, carrier: identifier.carrier ?? null });
           found.push(...checked.warnings);
         }
 
@@ -299,6 +300,7 @@ export class AnimalsService {
               animalId: id,
               type: identifier.type,
               value: identifier.value,
+              carrier: identifier.carrier,
               assignedAt: toPrismaDate(entryDate),
               createdAt: at,
             },
@@ -350,9 +352,7 @@ export class AnimalsService {
           diff: {
             after: {
               ...snapshot(animal),
-              identifiers: identifiers.map(
-                (identifier) => `${identifier.type}:${identifier.value}`,
-              ),
+              identifiers: identifiers.map((identifier) => identifierKeyOf(identifier)),
               tagIds: input.tagIds ?? [],
               initialWeightKg: input.initialWeight?.weightKg ?? null,
             },
@@ -923,7 +923,7 @@ export class AnimalsService {
       }),
       this.prisma.identifier.findMany({
         where: { animalId: existing.id, retiredAt: null },
-        select: { type: true, value: true },
+        select: { type: true, value: true, carrier: true },
       }),
       this.prisma.weightRecord.findFirst({
         where: { animalId: existing.id, voidedAt: null },
@@ -937,9 +937,12 @@ export class AnimalsService {
             .then((detail) => detail.economics?.purchasePrice ?? null),
     ]);
 
-    const requestedIdentifiers = (input.identifiers ?? []).map(
-      (identifier) =>
-        `${identifier.type}:${normalizeIdentifier(identifier.type, identifier.value)}`,
+    const requestedIdentifiers = (input.identifiers ?? []).map((identifier) =>
+      identifierKeyOf({
+        type: identifier.type,
+        value: normalizeIdentifier(identifier.type, identifier.value),
+        carrier: identifier.carrier ?? null,
+      }),
     );
     assertSameContent(
       {
@@ -964,9 +967,7 @@ export class AnimalsService {
       {
         ...snapshot(existing),
         tagIds: tags.map((tag) => tag.tagId).sort(),
-        identifiers: identifiers
-          .map((identifier) => `${identifier.type}:${identifier.value}`)
-          .sort(),
+        identifiers: identifiers.map((identifier) => identifierKeyOf(identifier)).sort(),
         initialWeight:
           firstWeight === null
             ? null
@@ -1047,4 +1048,14 @@ export class AnimalsService {
       input.at,
     );
   }
+}
+
+/** «RFID:982000123456789:INJECTABLE»: el identificador en la auditoría y al comparar reintentos. */
+function identifierKeyOf(identifier: {
+  readonly type: string;
+  readonly value: string;
+  readonly carrier: RfidCarrier | null;
+}): string {
+  const key = `${identifier.type}:${identifier.value}`;
+  return identifier.carrier === null ? key : `${key}:${identifier.carrier}`;
 }

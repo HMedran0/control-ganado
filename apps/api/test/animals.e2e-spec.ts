@@ -851,6 +851,113 @@ describe('Animales e identificadores', () => {
     });
   });
 
+  describe('dónde va el chip (IDN-01, ajuste previo de M9)', () => {
+    it('al registrar el animal y al agregar el chip; se ve en la ficha y queda en la auditoría', async () => {
+      const animal = await create({
+        ...base(),
+        identifiers: [{ type: 'RFID', value: '982000000000777', carrier: 'INJECTABLE' }],
+      });
+      expect(animal.identifiers).toEqual([
+        expect.objectContaining({ type: 'RFID', value: '982000000000777', carrier: 'INJECTABLE' }),
+      ]);
+      const created = await prisma.auditLog.findFirstOrThrow({
+        where: { entity: 'Animal', entityId: animal.id, action: 'CREATE' },
+      });
+      expect(JSON.stringify(created.diff)).toContain('RFID:982000000000777:INJECTABLE');
+
+      const other = await create({ ...base(), code: '26-002' });
+      const bolus = await http()
+        .post(`/api/v1/animals/${other.id}/identifiers`)
+        .set(vet)
+        .send({ type: 'RFID', value: '170000000000778', carrier: 'BOLUS' })
+        .expect(201);
+      expect(bolus.body).toMatchObject({ carrier: 'BOLUS', warnings: [] });
+      const plain = await http()
+        .post(`/api/v1/animals/${other.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'DIN', value: 'CO9' })
+        .expect(201);
+      expect(plain.body.carrier).toBeNull();
+      const detail = (await http().get(`/api/v1/animals/${other.id}`).set(operator).expect(200))
+        .body as { identifiers: { type: string; carrier: string | null }[] };
+      expect(detail.identifiers.find((item) => item.type === 'RFID')?.carrier).toBe('BOLUS');
+      const added = await prisma.auditLog.findFirstOrThrow({
+        where: { entity: 'Identifier', entityId: bolus.body.id, action: 'CREATE' },
+      });
+      expect(added.diff).toMatchObject({ after: { carrier: 'BOLUS' } });
+    });
+
+    it('sin indicar queda null; en un identificador que no es chip, 422', async () => {
+      const animal = await create(base());
+      const none = await http()
+        .post(`/api/v1/animals/${animal.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'RFID', value: '170000000000779' })
+        .expect(201);
+      expect(none.body.carrier).toBeNull();
+      const wrong = await http()
+        .post(`/api/v1/animals/${animal.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'VISUAL_TAG', value: '55', carrier: 'EAR_TAG' })
+        .expect(422);
+      expect(wrong.body.errors).toHaveProperty('carrier');
+      await http()
+        .post('/api/v1/animals')
+        .set(operator)
+        .send({
+          ...base(),
+          code: '26-003',
+          identifiers: [{ type: 'DIN', value: 'CO1', carrier: 'BOLUS' }],
+        })
+        .expect(422);
+      await http()
+        .post(`/api/v1/animals/${animal.id}/identifiers`)
+        .set(operator)
+        .send({ type: 'RFID', value: '170000000000780', carrier: 'COLLAR' })
+        .expect(422);
+    });
+
+    it('el reemplazo va donde iba el anterior; la base rechaza un carrier fuera de un chip', async () => {
+      const animal = await create({
+        ...base(),
+        identifiers: [{ type: 'RFID', value: '982000000000781', carrier: 'EAR_TAG' }],
+      });
+      const chip = animal.identifiers[0];
+      const replaced = await http()
+        .post(`/api/v1/identifiers/${chip?.id ?? ''}/replace`)
+        .set(operator)
+        .send({ reason: 'LOST', newValue: '982000000000782', date: '2026-09-01' })
+        .expect(201);
+      expect(replaced.body.current).toMatchObject({ value: '982000000000782', carrier: 'EAR_TAG' });
+      await expect(
+        prisma.identifier.create({
+          data: {
+            id: uuidv7(),
+            farmId: esperanza.farmId,
+            animalId: animal.id,
+            type: 'VISUAL_TAG',
+            value: '99',
+            carrier: 'BOLUS',
+            assignedAt: new Date('2026-09-01'),
+          },
+        }),
+      ).rejects.toThrow();
+    });
+
+    it('otra finca: 404; sin sesión: 401', async () => {
+      const animal = await create(base());
+      await http()
+        .post(`/api/v1/animals/${animal.id}/identifiers`)
+        .set(otherAdmin)
+        .send({ type: 'RFID', value: '170000000000783', carrier: 'INJECTABLE' })
+        .expect(404);
+      await http()
+        .post(`/api/v1/animals/${animal.id}/identifiers`)
+        .send({ type: 'RFID', value: '170000000000783', carrier: 'INJECTABLE' })
+        .expect(401);
+    });
+  });
+
   describe('GET /animals/next-code (RN-28)', () => {
     it('usa el patrón de la finca y todos los roles lo consultan; otra finca tiene su propia cuenta', async () => {
       await create(base());

@@ -12,6 +12,8 @@ import type { IsoDate } from '../date.js';
 import { cleanAnimalCode } from '../domain/codes.js';
 import type { VaccineStatusKind, VaccineStatusReason } from '../domain/vaccination.js';
 import {
+  RFID_CARRIER,
+  type RfidCarrier,
   ANIMAL_ALERT,
   DERIVED_TAG,
   EXIT_TYPE,
@@ -119,11 +121,25 @@ const identifierValueSchema = z
   .string({ message: 'Escribe el identificador.' })
   .max(64, { message: 'El identificador es demasiado largo (máximo 64 caracteres).' });
 
-export const addIdentifierSchema = z.object({
+export const rfidCarrierSchema = z.enum(
+  [RFID_CARRIER.EAR_TAG, RFID_CARRIER.INJECTABLE, RFID_CARRIER.BOLUS],
+  { message: 'Elige dónde va el chip.' },
+);
+
+/** `carrier` solo tiene sentido en un chip: en otro tipo de identificador es un error. */
+const carrierOnlyOnRfid = {
+  check: (value: { type: string; carrier?: unknown }) =>
+    value.carrier === undefined || value.carrier === null || value.type === IDENTIFIER_TYPE.RFID,
+  error: { path: ['carrier'], message: 'Solo un chip tiene dónde va el chip.' },
+};
+
+const addIdentifierFields = z.object({
   /** `id` del cliente (ADR-012 §1): repetir la creación con el mismo `id` no duplica. */
   id: clientIdSchema.optional(),
   type: identifierTypeSchema,
   value: identifierValueSchema,
+  /** Dónde va el chip (solo RFID, opcional). Sin valor, «sin indicar». */
+  carrier: rfidCarrierSchema.nullable().optional(),
   /** Sin valor, hoy. */
   assignedAt: isoDateSchema.optional(),
   /**
@@ -132,6 +148,10 @@ export const addIdentifierSchema = z.object({
    */
   confirmReuse: z.boolean().optional(),
 });
+export const addIdentifierSchema = addIdentifierFields.refine(
+  carrierOnlyOnRfid.check,
+  carrierOnlyOnRfid.error,
+);
 export type AddIdentifierInput = z.infer<typeof addIdentifierSchema>;
 
 export const replaceIdentifierSchema = z.object({
@@ -159,6 +179,8 @@ export type IdentifierView = {
   readonly retireReason: IdentifierRetireReason | null;
   /** Identificador que lo reemplazó (IDN-02). */
   readonly replacedById: string | null;
+  /** Dónde va el chip; `null` sin indicar o si no es un chip. */
+  readonly carrier: RfidCarrier | null;
 };
 
 /** Respuesta de reemplazar un identificador: el anterior (ya retirado) y el nuevo. */
@@ -207,7 +229,11 @@ export const createAnimalSchema = z
     forSale: z.boolean().optional(),
     tagIds: z.array(uuidSchema).max(20).optional(),
     identifiers: z
-      .array(addIdentifierSchema.omit({ assignedAt: true, id: true }))
+      .array(
+        addIdentifierFields
+          .omit({ assignedAt: true, id: true })
+          .refine(carrierOnlyOnRfid.check, carrierOnlyOnRfid.error),
+      )
       .max(10, { message: 'Máximo 10 identificadores.' })
       .optional(),
     initialWeight: initialWeightSchema.optional(),

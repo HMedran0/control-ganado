@@ -480,6 +480,7 @@ export class AnimalImportService {
           animalId: idOf(row.row),
           type: identifier.type,
           value: identifier.value,
+          carrier: identifier.carrier ?? null,
           assignedAt: toPrismaDate(row.entryDate),
           createdAt: at,
         })),

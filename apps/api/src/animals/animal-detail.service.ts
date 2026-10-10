@@ -65,6 +65,7 @@ export function toIdentifierView(identifier: {
   retiredAt: Date | null;
   retireReason: IdentifierView['retireReason'];
   replacedById: string | null;
+  carrier: IdentifierView['carrier'];
 }): IdentifierView {
   return {
     id: identifier.id,
@@ -75,6 +76,7 @@ export function toIdentifierView(identifier: {
     retiredAt: fromPrismaDateOrNull(identifier.retiredAt),
     retireReason: identifier.retireReason,
     replacedById: identifier.replacedById,
+    carrier: identifier.carrier,
   };
 }
 

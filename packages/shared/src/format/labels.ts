@@ -17,6 +17,7 @@ import type {
   ManagementCategory,
   Origin,
   PregnancyOutcome,
+  RfidCarrier,
   Role,
   ScaleFileFormat,
   ServiceMethod,
@@ -294,4 +295,18 @@ export const REPORT_LABEL: Readonly<
     title: 'Reporte económico',
     description: 'Gastos, ventas, inversión del hato y resultado de los vendidos.',
   },
+};
+
+/** Dónde va el chip, como se muestra en la ficha: «Chip inyectable · 982000123456789». */
+export const RFID_CARRIER_LABEL: Readonly<Record<RfidCarrier, string>> = {
+  EAR_TAG: 'Chip en arete',
+  INJECTABLE: 'Chip inyectable',
+  BOLUS: 'Bolo ruminal',
+};
+
+/** Las opciones de «Dónde va el chip» en formularios y en la plantilla de importación. */
+export const RFID_CARRIER_CHOICE: Readonly<Record<RfidCarrier, string>> = {
+  EAR_TAG: 'Arete',
+  INJECTABLE: 'Inyectable',
+  BOLUS: 'Bolo',
 };

@@ -7,6 +7,7 @@ import {
   IMPORT_COLUMNS,
   formatImportIssue,
   importHeaderKey,
+  parseRfidCarrier,
   mapImportHeaders,
   parseAnimalImportRows,
   resolveAnimalImport,
@@ -486,7 +487,7 @@ describe('plantilla de referencia (ANI-09, 07 M4d)', () => {
     const calf = result.plan.find((item) => item.code === '26-012');
     expect(calf?.identifiers).toEqual([
       { type: 'DIN', value: 'CO0100000234567' },
-      { type: 'RFID', value: '170000123456789' },
+      { type: 'RFID', value: '170000123456789', carrier: null },
     ]);
     expect(result.plan.find((item) => item.code === '26-031')?.lastWeight).toEqual({
       weightKg: 34,
@@ -594,6 +595,36 @@ describe('reglas por fila', () => {
       'El RFID 32000012345678 tiene menos de 15 dígitos: Excel le quitó los ceros iniciales. Escríbelo como texto.',
     ]);
     expect(messagesOf(result, 4)).toEqual(['Prefijo poco común: verifica el número.']);
+  });
+
+  it('dónde va el chip: Arete, Inyectable o Bolo junto al RFID; sin RFID se avisa y se ignora', () => {
+    const result = run([
+      row(2, { code: 'C-2', rfid: '982000000000102', rfidCarrier: 'Inyectable' }),
+      row(3, { code: 'C-3', rfid: '170000000000103', rfidCarrier: ' bolo ruminal ' }),
+      row(4, { code: 'C-4', rfid: '170000000000104', rfidCarrier: 'ARETE' }),
+      row(5, { code: 'C-5', rfidCarrier: 'Arete' }),
+      row(6, { code: 'C-6', rfid: '170000000000106', rfidCarrier: 'Collar' }),
+      row(7, { code: 'C-7', rfid: '170000000000107' }),
+    ]);
+    const chip = (code: string) =>
+      result.plan.find((item) => item.code === code)?.identifiers.find((id) => id.type === 'RFID');
+    expect(chip('C-2')).toEqual({ type: 'RFID', value: '982000000000102', carrier: 'INJECTABLE' });
+    expect(chip('C-3')?.carrier).toBe('BOLUS');
+    expect(chip('C-4')?.carrier).toBe('EAR_TAG');
+    expect(chip('C-7')?.carrier).toBeNull();
+    expect(messagesOf(result, 5)).toEqual(['La fila no trae RFID: se ignora «Dónde va el chip».']);
+    expect(result.plan.find((item) => item.code === 'C-5')?.identifiers).toEqual([]);
+    expect(messagesOf(result, 6)).toEqual([
+      'Escribe Arete, Inyectable o Bolo, o deja la columna vacía.',
+    ]);
+    expect(result.plan.some((item) => item.code === 'C-6')).toBe(false);
+  });
+
+  it('parseRfidCarrier', () => {
+    expect(parseRfidCarrier('Chip inyectable')).toBe('INJECTABLE');
+    expect(parseRfidCarrier('Bolo')).toBe('BOLUS');
+    expect(parseRfidCarrier('chip en arete')).toBe('EAR_TAG');
+    expect(parseRfidCarrier('collar')).toBeUndefined();
   });
 
   it('partos: solo hembras, enteros, y con fecha al menos uno', () => {

@@ -19,12 +19,14 @@
 
 import { addDays, compareIsoDates, isAfter, isBefore, type IsoDate } from '../date.js';
 import {
+  RFID_CARRIER,
   BREED_GROUP,
   IDENTIFIER_TYPE,
   ORIGIN,
   SEX,
   type BreedGroup,
   type IdentifierType,
+  type RfidCarrier,
   type Origin,
   type Sex,
 } from '../enums.js';
@@ -70,6 +72,7 @@ export const IMPORT_COLUMNS = [
   { key: 'visualTag', label: 'Chapeta visual', required: false },
   { key: 'din', label: 'DIN', required: false },
   { key: 'rfid', label: 'RFID (15 dígitos)', required: false },
+  { key: 'rfidCarrier', label: 'Dónde va el chip', required: false },
   { key: 'priorCalvings', label: 'Partos previos', required: false },
   { key: 'lastCalvingDate', label: 'Fecha último parto', required: false },
   { key: 'pregnant', label: 'Preñada', required: false },
@@ -201,7 +204,12 @@ export type ParsedImportRow = {
   readonly damCode: string | null;
   readonly sireText: string | null;
   readonly lotId: string | null;
-  readonly identifiers: readonly { readonly type: IdentifierType; readonly value: string }[];
+  readonly identifiers: readonly {
+    readonly type: IdentifierType;
+    readonly value: string;
+    /** Solo en el RFID: dónde va el chip (columna «Dónde va el chip»), o `null`. */
+    readonly carrier?: RfidCarrier | null;
+  }[];
   readonly importedPriorCalvings: number;
   readonly lastCalving: { readonly date: IsoDate; readonly serviceDate: IsoDate } | null;
   readonly pregnancy: {
@@ -475,7 +483,7 @@ function parseRow(
   }
 
   // Identificadores (IDN-01).
-  const identifiers: { type: IdentifierType; value: string }[] = [];
+  const identifiers: { type: IdentifierType; value: string; carrier?: RfidCarrier | null }[] = [];
   const visualTag = text('visualTag');
   if (visualTag !== '') {
     identifiers.push({
@@ -491,6 +499,14 @@ function parseRow(
     });
   const rfidCell = cells.rfid;
   const rfid = normalizeIdentifier(IDENTIFIER_TYPE.RFID, text('rfid'));
+  // Dónde va el chip: Arete, Inyectable, Bolo o vacío. Sin RFID en la fila, se avisa y se ignora.
+  const carrierText = text('rfidCarrier');
+  const carrier = carrierText === '' ? null : parseRfidCarrier(carrierText);
+  if (carrierText !== '' && carrier === undefined) {
+    error('rfidCarrier', 'Escribe Arete, Inyectable o Bolo, o deja la columna vacía.');
+  } else if (carrierText !== '' && rfid === '') {
+    warn('rfidCarrier', 'La fila no trae RFID: se ignora «Dónde va el chip».');
+  }
   if (rfid !== '') {
     if (!isValidRfid(rfid)) {
       error(
@@ -500,7 +516,7 @@ function parseRow(
           : 'El código RFID debe tener exactamente 15 dígitos.',
       );
     } else {
-      identifiers.push({ type: IDENTIFIER_TYPE.RFID, value: rfid });
+      identifiers.push({ type: IDENTIFIER_TYPE.RFID, value: rfid, carrier: carrier ?? null });
       if (!rfidPrefixIsCommon(rfid)) {
         warn('rfid', WARNING_CATALOG.RFID_UNCOMMON_PREFIX);
       }
@@ -951,4 +967,18 @@ export function resolveAnimalImport(
 export function formatImportIssue(issue: ImportIssue): string {
   const where = issue.column === null ? '' : ` · ${importColumnLabel(issue.column)}`;
   return `Fila ${issue.row}${where}: ${issue.message}`;
+}
+
+/**
+ * «Dónde va el chip» de la plantilla: Arete, Inyectable o Bolo (también «Chip en arete», «Chip
+ * inyectable» y «Bolo ruminal», sin importar tildes ni mayúsculas). `undefined` si no es ninguno.
+ */
+export function parseRfidCarrier(text: string): RfidCarrier | undefined {
+  const key = importHeaderKey(text);
+  const choices: readonly (readonly [RfidCarrier, readonly string[]])[] = [
+    [RFID_CARRIER.EAR_TAG, ['arete', 'chip en arete']],
+    [RFID_CARRIER.INJECTABLE, ['inyectable', 'chip inyectable']],
+    [RFID_CARRIER.BOLUS, ['bolo', 'bolo ruminal']],
+  ];
+  return choices.find(([, words]) => words.includes(key))?.[0];
 }

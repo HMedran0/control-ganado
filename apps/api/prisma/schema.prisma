@@ -75,6 +75,13 @@ enum IdentifierRetireReason {
   ARCHIVED
 }
 
+/// Dónde va el chip RFID (ajuste previo de M9). Solo con type = RFID (CHECK en la migración).
+enum RfidCarrier {
+  EAR_TAG
+  INJECTABLE
+  BOLUS
+}
+
 enum ServiceMethod {
   NATURAL
   AI
@@ -456,6 +463,7 @@ model Identifier {
   retiredAt    DateTime?               @map("retired_at") @db.Date
   retireReason IdentifierRetireReason? @map("retire_reason")
   replacedById String?                 @map("replaced_by_id") @db.Uuid
+  carrier      RfidCarrier?
   createdAt    DateTime                @default(now()) @map("created_at") @db.Timestamptz
   updatedAt    DateTime                @default(now()) @map("updated_at") @db.Timestamptz
 

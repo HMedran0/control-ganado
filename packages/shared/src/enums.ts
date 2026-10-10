@@ -85,6 +85,17 @@ export const IDENTIFIER_RETIRE_REASON = {
 export type IdentifierRetireReason =
   (typeof IDENTIFIER_RETIRE_REASON)[keyof typeof IDENTIFIER_RETIRE_REASON];
 
+/**
+ * Dónde va el chip RFID (IDN-01, ajuste previo de M9): en un arete, inyectado bajo la piel o en un
+ * bolo ruminal. Opcional; solo para identificadores `RFID`.
+ */
+export const RFID_CARRIER = {
+  EAR_TAG: 'EAR_TAG',
+  INJECTABLE: 'INJECTABLE',
+  BOLUS: 'BOLUS',
+} as const;
+export type RfidCarrier = (typeof RFID_CARRIER)[keyof typeof RFID_CARRIER];
+
 /** Motivos que una persona puede elegir al retirar o reemplazar un identificador. */
 export const MANUAL_RETIRE_REASONS = [
   IDENTIFIER_RETIRE_REASON.LOST,

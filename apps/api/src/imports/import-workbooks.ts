@@ -54,7 +54,7 @@ const HEADER_FILL: ExcelJS.Fill = {
   fgColor: { argb: 'FFE7EFE4' },
 };
 
-/** Letra de la columna número `index` (desde 0). Basta con A–Z: la plantilla tiene 21. */
+/** Letra de la columna número `index` (desde 0). Basta con A–Z: la plantilla tiene 22. */
 function letter(index: number): string {
   return String.fromCharCode(65 + index);
 }
@@ -90,6 +90,7 @@ export async function buildTemplate(catalog: {
     '9. «Fecha de ingreso» es para los comprados; si la dejas vacía se toma la de nacimiento y podrás corregirla en la ficha.',
     `10. Hasta ${IMPORT_MAX_ROWS.toLocaleString('es-CO')} filas y 5 MB por archivo. Se aceptan .xlsx y .csv, no archivos con macros.`,
     '11. En el sistema: Importar inventario → Subir archivo → revisar la simulación → Importar.',
+    '12. «Dónde va el chip» (opcional): Arete, Inyectable o Bolo, solo si la fila trae RFID.',
   ];
   lines.forEach((text, index) => {
     const cell = instructions.getCell(index + 1, 1);
@@ -107,6 +108,7 @@ export async function buildTemplate(catalog: {
     ['Procedencia', ['Nacido en la finca', 'Comprado']],
     ['Lote', catalog.lots],
     ['SiNo', ['Sí', 'No']],
+    ['Chip', ['Arete', 'Inyectable', 'Bolo']],
   ];
   columns.forEach(([title, values], column) => {
     lists.getCell(1, column + 1).value = title;
@@ -148,6 +150,7 @@ export async function buildTemplate(catalog: {
   validate('sex', listRange(0, 2));
   validate('breed', listRange(1, catalog.breeds.length));
   validate('origin', listRange(2, 2));
+  validate('rfidCarrier', listRange(5, 3));
   validate('lot', listRange(3, catalog.lots.length));
   validate('birthDateEstimated', listRange(4, 2));
   validate('pregnant', listRange(4, 2));

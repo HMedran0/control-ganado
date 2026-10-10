@@ -12,6 +12,7 @@ import {
   ORIGIN_LABEL,
   PREGNANCY_OUTCOME_LABEL,
   RETIRE_REASON_LABEL,
+  RFID_CARRIER_LABEL,
   ROLE_LABEL,
   SCALE_FILE_FORMAT_LABEL,
   SERVICE_METHOD_LABEL,
@@ -833,6 +834,13 @@ const IDENTIFIERS = sheet<IdentifierRow>({
       description: 'Número o código del identificador.',
       kind: 'text',
       value: (row) => row.value,
+    },
+    {
+      header: 'Dónde va el chip',
+      description:
+        'Solo en los chips: Chip en arete, Chip inyectable o Bolo ruminal; vacío si no se indicó.',
+      kind: 'text',
+      value: (row) => label(RFID_CARRIER_LABEL, row.carrier),
     },
     {
       header: 'Asignado el',
