@@ -10,15 +10,18 @@ import {
   type AnimalDetail,
   type IdentifierView,
   type IsoDate,
+  RFID_CARRIER_CHOICE,
+  type RfidCarrier,
 } from '@hato/shared';
 import { Link } from '@tanstack/react-router';
 import { CircleAlert } from 'lucide-react';
-import { useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useEffect, useState } from 'react';
+import { Controller, useForm, useWatch } from 'react-hook-form';
 
 import { Button } from '../../../components/ui/Button';
 import { DateQuickPick } from '../../../components/ui/DateQuickPick';
 import { Dialog } from '../../../components/ui/Dialog';
+import { SegmentedChoice } from '../../../components/ui/SegmentedChoice';
 import { SelectField } from '../../../components/ui/SelectField';
 import { Tag } from '../../../components/ui/Tag';
 import { TextField } from '../../../components/ui/TextField';
@@ -74,7 +77,9 @@ export function IdentifiersSection({
               className="flex flex-wrap items-center justify-between gap-2 p-3"
             >
               <div>
-                <p className="font-bold">{identifierText(identifier.type, identifier.value)}</p>
+                <p className="font-bold">
+                  {identifierText(identifier.type, identifier.value, identifier.carrier)}
+                </p>
                 <p className="text-aux text-texto-2">
                   Desde el {formatDate(identifier.assignedAt)}
                 </p>
@@ -112,8 +117,8 @@ export function IdentifiersSection({
             {retired.map((identifier) => (
               <li key={identifier.id} className="flex flex-wrap items-center gap-2 text-texto-2">
                 <Tag tone="neutro">Anterior</Tag>
-                {identifierText(identifier.type, identifier.value)} · retirado el{' '}
-                {formatDate(identifier.retiredAt ?? identifier.assignedAt)}
+                {identifierText(identifier.type, identifier.value, identifier.carrier)} · retirado
+                el {formatDate(identifier.retiredAt ?? identifier.assignedAt)}
                 {identifier.retireReason === null
                   ? ''
                   : ` · ${RETIRE_REASON_LABEL[identifier.retireReason]}`}
@@ -226,16 +231,27 @@ function AddIdentifierDialog({
     control,
     handleSubmit,
     getValues,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(addIdentifierSchema),
-    defaultValues: { type: IDENTIFIER_TYPE.RFID, value: '', assignedAt: today },
+    defaultValues: {
+      type: IDENTIFIER_TYPE.RFID,
+      value: '',
+      assignedAt: today,
+      carrier: null as RfidCarrier | null,
+    },
   });
+  // Dónde va el chip solo se pregunta para un chip; al cambiar de tipo se borra.
+  const type = useWatch({ control, name: 'type' });
+  useEffect(() => {
+    if (type !== IDENTIFIER_TYPE.RFID) setValue('carrier', null);
+  }, [type, setValue]);
 
   const save = async (confirmReuse: boolean) => {
     const values = addIdentifierSchema.parse(getValues());
     const saved = await add.mutateAsync({ ...values, ...(confirmReuse ? { confirmReuse } : {}) });
-    onDone(`${identifierText(saved.type, saved.value)} agregado.`);
+    onDone(`${identifierText(saved.type, saved.value, saved.carrier)} agregado.`);
   };
 
   return (
@@ -273,6 +289,28 @@ function AddIdentifierDialog({
           {...{ [RFID_FIELD_ATTRIBUTE]: '' }}
           {...register('value')}
         />
+        {type === IDENTIFIER_TYPE.RFID ? (
+          <Controller
+            control={control}
+            name="carrier"
+            render={({ field }) => (
+              <SegmentedChoice
+                label="Dónde va el chip"
+                hint="Opcional."
+                options={[
+                  { value: 'EAR_TAG', label: RFID_CARRIER_CHOICE.EAR_TAG },
+                  { value: 'INJECTABLE', label: RFID_CARRIER_CHOICE.INJECTABLE },
+                  { value: 'BOLUS', label: RFID_CARRIER_CHOICE.BOLUS },
+                  { value: '', label: 'Sin indicar' },
+                ]}
+                value={field.value ?? ''}
+                onChange={(value: RfidCarrier | '') => {
+                  field.onChange(value === '' ? null : value);
+                }}
+              />
+            )}
+          />
+        ) : null}
         <Controller
           control={control}
           name="assignedAt"

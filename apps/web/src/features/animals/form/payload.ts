@@ -6,6 +6,7 @@ import {
   type AnimalRef,
   type CreateAnimalInput,
   type IdentifierType,
+  type RfidCarrier,
   type Origin,
   type Sex,
   type UpdateAnimalInput,
@@ -43,6 +44,8 @@ export type AnimalFormValues = {
   /** Solo al crear: los identificadores se gestionan después desde la ficha. */
   visualTag: string;
   rfid: string;
+  /** Dónde va el chip; '' = sin indicar (ajuste previo de M9). */
+  rfidCarrier: RfidCarrier | '';
   din: string;
   /** Solo al crear: peso inicial. */
   weightKg: string | null;
@@ -81,6 +84,7 @@ export function emptyValues(today: string): AnimalFormValues {
     notes: '',
     visualTag: '',
     rfid: '',
+    rfidCarrier: '',
     din: '',
     weightKg: null,
     weighedOn: today,
@@ -121,7 +125,11 @@ export function createBody(values: AnimalFormValues, isAdmin: boolean): Record<s
   const purchased = values.origin === 'PURCHASED';
   const identifiers = IDENTIFIER_FIELDS.flatMap(([field, type]) => {
     const value = values[field];
-    return typeof value === 'string' && value.trim() !== '' ? [{ type, value }] : [];
+    if (typeof value !== 'string' || value.trim() === '') return [];
+    // Dónde va el chip, solo con el chip y si se indicó.
+    return type === IDENTIFIER_TYPE.RFID && values.rfidCarrier !== ''
+      ? [{ type, value, carrier: values.rfidCarrier }]
+      : [{ type, value }];
   });
   return {
     code: values.code,

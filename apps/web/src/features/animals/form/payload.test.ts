@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { identifierText } from '../labels';
+
 import {
   createBody,
   createResolver,
@@ -29,6 +31,30 @@ async function resolve(resolver: ReturnType<typeof createResolver>, input: Anima
 }
 
 describe('alta (ANI-01)', () => {
+  it('dónde va el chip: solo con el chip y si se indicó (ajuste previo de M9)', () => {
+    const injectable = createBody(
+      values({ rfid: '982000000000555', rfidCarrier: 'INJECTABLE', visualTag: '55' }),
+      false,
+    );
+    expect(injectable.identifiers).toEqual([
+      { type: 'VISUAL_TAG', value: '55' },
+      { type: 'RFID', value: '982000000000555', carrier: 'INJECTABLE' },
+    ]);
+    const none = createBody(values({ rfid: '982000000000555', rfidCarrier: '' }), false);
+    expect(none.identifiers).toEqual([{ type: 'RFID', value: '982000000000555' }]);
+    // Sin chip, la elección no viaja.
+    const noChip = createBody(values({ rfidCarrier: 'BOLUS', visualTag: '56' }), false);
+    expect(noChip.identifiers).toEqual([{ type: 'VISUAL_TAG', value: '56' }]);
+  });
+
+  it('identifierText dice dónde va el chip', () => {
+    expect(identifierText('RFID', '982000123456789', 'INJECTABLE')).toBe(
+      'Chip inyectable 982 000123456789',
+    );
+    expect(identifierText('RFID', '982000123456789')).toBe('Chip 982 000123456789');
+    expect(identifierText('DIN', 'CO1', null)).toBe('DIN CO1');
+  });
+
   it('un comprado con valor de compra, chip y peso inicial arma el cuerpo del contrato', () => {
     const body = createBody(
       values({

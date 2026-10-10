@@ -1,4 +1,4 @@
-import { isIsoDate, type AnimalDetail } from '@hato/shared';
+import { RFID_CARRIER_CHOICE, isIsoDate, type AnimalDetail } from '@hato/shared';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Controller, useForm, useWatch, type UseFormSetError } from 'react-hook-form';
@@ -391,6 +391,24 @@ export function AnimalForm({
                 error={errors.rfid?.message}
                 {...{ [RFID_FIELD_ATTRIBUTE]: '' }}
                 {...register('rfid')}
+              />
+              <Controller
+                name="rfidCarrier"
+                control={control}
+                render={({ field }) => (
+                  <SegmentedChoice
+                    label="Dónde va el chip"
+                    hint="Opcional. Arete, inyectado bajo la piel o bolo en el rumen."
+                    options={[
+                      { value: 'EAR_TAG', label: RFID_CARRIER_CHOICE.EAR_TAG },
+                      { value: 'INJECTABLE', label: RFID_CARRIER_CHOICE.INJECTABLE },
+                      { value: 'BOLUS', label: RFID_CARRIER_CHOICE.BOLUS },
+                      { value: '', label: 'Sin indicar' },
+                    ]}
+                    value={field.value}
+                    onChange={field.onChange}
+                  />
+                )}
               />
               <TextField
                 label="DIN"

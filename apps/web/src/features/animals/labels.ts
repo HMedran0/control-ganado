@@ -5,9 +5,11 @@ import type {
   ManagementCategory,
   Sex,
   WeightMethod,
+  RfidCarrier,
 } from '@hato/shared';
 
 import {
+  RFID_CARRIER_LABEL,
   ALERT_LABEL,
   CATEGORY_LABEL,
   DERIVED_TAG_LABEL,
@@ -98,8 +100,15 @@ export function animalsCount(count: number): string {
 }
 
 /** «Chip 170 000123456789»: el RFID se agrupa como se lee en el arete (06 §5.3). */
-export function identifierText(type: IdentifierType, value: string): string {
+export function identifierText(
+  type: IdentifierType,
+  value: string,
+  carrier: RfidCarrier | null = null,
+): string {
   const shown =
     type === 'RFID' && value.length === 15 ? `${value.slice(0, 3)} ${value.slice(3)}` : value;
-  return `${IDENTIFIER_TYPE_LABEL[type]} ${shown}`;
+  // «Chip inyectable 982 000123456789»: dónde va el chip, si se indicó (ajuste previo de M9).
+  const name =
+    type === 'RFID' && carrier !== null ? RFID_CARRIER_LABEL[carrier] : IDENTIFIER_TYPE_LABEL[type];
+  return `${name} ${shown}`;
 }
