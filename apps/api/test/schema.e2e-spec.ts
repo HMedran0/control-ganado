@@ -81,7 +81,7 @@ describe('Esquema de la base de datos', () => {
     },
   );
 
-  it('tiene las 21 restricciones CHECK (14 de la migración manual, la de M4d, dos de M5, dos de M6 y dos de M7)', async () => {
+  it('tiene las 22 restricciones CHECK (14 de la migración manual, la de M4d, dos de M5, dos de M6, dos de M7 y la del chip antes de M9)', async () => {
     const rows = await prisma.$queryRaw<{ conname: string }[]>`
       SELECT conname FROM pg_constraint
       WHERE contype = 'c' AND connamespace = 'public'::regnamespace
@@ -101,6 +101,7 @@ describe('Esquema de la base de datos', () => {
       'expense_amount_positive_ck',
       'expense_general_without_lot_ck',
       'identifier_rfid_format_ck',
+      'identifiers_carrier_only_rfid_chk',
       'pregnancy_stillborn_ck',
       'sale_amount_positive_ck',
       'username_format_ck',
